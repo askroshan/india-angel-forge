@@ -1,0 +1,123 @@
+import { Link } from "react-router-dom";
+import { Linkedin, Twitter, Mail } from "lucide-react";
+
+const Footer = () => {
+  return (
+    <footer className="bg-primary text-primary-foreground">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Brand */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">
+              India Angel Forum
+            </h3>
+            <p className="text-sm text-primary-foreground/80">
+              India's largest angel network connecting accredited investors with exceptional founders.
+            </p>
+            <div className="flex space-x-4">
+              <a href="#" className="hover:text-accent transition-colors">
+                <Linkedin className="h-5 w-5" />
+              </a>
+              <a href="#" className="hover:text-accent transition-colors">
+                <Twitter className="h-5 w-5" />
+              </a>
+              <a href="#" className="hover:text-accent transition-colors">
+                <Mail className="h-5 w-5" />
+              </a>
+            </div>
+          </div>
+
+          {/* For Founders */}
+          <div>
+            <h4 className="font-semibold mb-4">For Founders</h4>
+            <ul className="space-y-2 text-sm text-primary-foreground/80">
+              <li>
+                <Link to="/founders#apply" className="hover:text-accent transition-colors">
+                  Apply for Funding
+                </Link>
+              </li>
+              <li>
+                <Link to="/founders#how-it-works" className="hover:text-accent transition-colors">
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <Link to="/founders#calendar" className="hover:text-accent transition-colors">
+                  Forum Calendar
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* For Investors */}
+          <div>
+            <h4 className="font-semibold mb-4">For Investors</h4>
+            <ul className="space-y-2 text-sm text-primary-foreground/80">
+              <li>
+                <Link to="/investors#join" className="hover:text-accent transition-colors">
+                  Join as Member
+                </Link>
+              </li>
+              <li>
+                <Link to="/investors#plans" className="hover:text-accent transition-colors">
+                  Membership Plans
+                </Link>
+              </li>
+              <li>
+                <Link to="/investors#deals" className="hover:text-accent transition-colors">
+                  Deal Rooms & SPVs
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 className="font-semibold mb-4">Company</h4>
+            <ul className="space-y-2 text-sm text-primary-foreground/80">
+              <li>
+                <Link to="/about" className="hover:text-accent transition-colors">
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/portfolio" className="hover:text-accent transition-colors">
+                  Portfolio
+                </Link>
+              </li>
+              <li>
+                <Link to="/events" className="hover:text-accent transition-colors">
+                  Events
+                </Link>
+              </li>
+              <li>
+                <a href="#" className="hover:text-accent transition-colors">
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-primary-foreground/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <p className="text-sm text-primary-foreground/60">
+            © 2025 India Angel Forum. All rights reserved.
+          </p>
+          <div className="flex space-x-6 text-sm text-primary-foreground/60">
+            <a href="#" className="hover:text-accent transition-colors">
+              Terms & Policies
+            </a>
+            <a href="#" className="hover:text-accent transition-colors">
+              Privacy Policy
+            </a>
+            <a href="#" className="hover:text-accent transition-colors">
+              Code of Conduct
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;
