@@ -14,7 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      founder_applications: {
+        Row: {
+          admin_notes: string | null
+          amount_raising: string
+          business_model: string
+          co_founders: string | null
+          company_name: string
+          company_website: string | null
+          created_at: string
+          current_revenue: string | null
+          customers_count: string | null
+          founder_email: string
+          founder_linkedin: string | null
+          founder_name: string
+          founder_phone: string
+          founding_date: string | null
+          id: string
+          industry_sector: string
+          key_metrics: Json | null
+          location: string
+          monthly_burn_rate: string | null
+          pitch_deck_url: string | null
+          previous_funding: string | null
+          problem_statement: string
+          referral_source: string | null
+          solution_description: string
+          stage: string
+          status: string
+          target_market: string
+          team_size: number | null
+          unique_value_proposition: string
+          updated_at: string
+          use_of_funds: string
+          video_pitch_url: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount_raising: string
+          business_model: string
+          co_founders?: string | null
+          company_name: string
+          company_website?: string | null
+          created_at?: string
+          current_revenue?: string | null
+          customers_count?: string | null
+          founder_email: string
+          founder_linkedin?: string | null
+          founder_name: string
+          founder_phone: string
+          founding_date?: string | null
+          id?: string
+          industry_sector: string
+          key_metrics?: Json | null
+          location: string
+          monthly_burn_rate?: string | null
+          pitch_deck_url?: string | null
+          previous_funding?: string | null
+          problem_statement: string
+          referral_source?: string | null
+          solution_description: string
+          stage: string
+          status?: string
+          target_market: string
+          team_size?: number | null
+          unique_value_proposition: string
+          updated_at?: string
+          use_of_funds: string
+          video_pitch_url?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount_raising?: string
+          business_model?: string
+          co_founders?: string | null
+          company_name?: string
+          company_website?: string | null
+          created_at?: string
+          current_revenue?: string | null
+          customers_count?: string | null
+          founder_email?: string
+          founder_linkedin?: string | null
+          founder_name?: string
+          founder_phone?: string
+          founding_date?: string | null
+          id?: string
+          industry_sector?: string
+          key_metrics?: Json | null
+          location?: string
+          monthly_burn_rate?: string | null
+          pitch_deck_url?: string | null
+          previous_funding?: string | null
+          problem_statement?: string
+          referral_source?: string | null
+          solution_description?: string
+          stage?: string
+          status?: string
+          target_market?: string
+          team_size?: number | null
+          unique_value_proposition?: string
+          updated_at?: string
+          use_of_funds?: string
+          video_pitch_url?: string | null
+        }
+        Relationships: []
+      }
+      investor_applications: {
+        Row: {
+          aadhaar_document_url: string | null
+          admin_notes: string | null
+          annual_income_range: string
+          bank_statement_url: string | null
+          company_organization: string | null
+          created_at: string
+          email: string
+          full_name: string
+          how_did_you_hear: string | null
+          id: string
+          investment_experience: string
+          investment_thesis: string
+          linkedin_profile: string | null
+          membership_type: string
+          motivation: string
+          net_worth_range: string
+          pan_document_url: string | null
+          phone: string
+          portfolio_examples: string | null
+          preferred_sectors: string[]
+          previous_angel_investments: number | null
+          professional_role: string
+          reference_email_1: string | null
+          reference_email_2: string | null
+          reference_name_1: string | null
+          reference_name_2: string | null
+          status: string
+          typical_check_size: string
+          updated_at: string
+          years_of_experience: number | null
+        }
+        Insert: {
+          aadhaar_document_url?: string | null
+          admin_notes?: string | null
+          annual_income_range: string
+          bank_statement_url?: string | null
+          company_organization?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          how_did_you_hear?: string | null
+          id?: string
+          investment_experience: string
+          investment_thesis: string
+          linkedin_profile?: string | null
+          membership_type: string
+          motivation: string
+          net_worth_range: string
+          pan_document_url?: string | null
+          phone: string
+          portfolio_examples?: string | null
+          preferred_sectors: string[]
+          previous_angel_investments?: number | null
+          professional_role: string
+          reference_email_1?: string | null
+          reference_email_2?: string | null
+          reference_name_1?: string | null
+          reference_name_2?: string | null
+          status?: string
+          typical_check_size: string
+          updated_at?: string
+          years_of_experience?: number | null
+        }
+        Update: {
+          aadhaar_document_url?: string | null
+          admin_notes?: string | null
+          annual_income_range?: string
+          bank_statement_url?: string | null
+          company_organization?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          how_did_you_hear?: string | null
+          id?: string
+          investment_experience?: string
+          investment_thesis?: string
+          linkedin_profile?: string | null
+          membership_type?: string
+          motivation?: string
+          net_worth_range?: string
+          pan_document_url?: string | null
+          phone?: string
+          portfolio_examples?: string | null
+          preferred_sectors?: string[]
+          previous_angel_investments?: number | null
+          professional_role?: string
+          reference_email_1?: string | null
+          reference_email_2?: string | null
+          reference_name_1?: string | null
+          reference_name_2?: string | null
+          status?: string
+          typical_check_size?: string
+          updated_at?: string
+          years_of_experience?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
