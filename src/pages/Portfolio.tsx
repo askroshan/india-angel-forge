@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
@@ -240,8 +241,8 @@ const Portfolio = () => {
             <p className="text-xl text-primary-foreground/90">
               We're always looking for exceptional founders building the future
             </p>
-            <Button size="lg" variant="hero">
-              Apply for Funding
+            <Button size="lg" variant="hero" asChild>
+              <Link to="/apply/founder">Apply for Funding</Link>
             </Button>
           </div>
         </div>

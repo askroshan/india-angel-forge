@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
@@ -271,8 +272,8 @@ const About = () => {
               Whether you're an investor or founder, we'd love to hear from you
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="hero">
-                Become a Member
+              <Button size="lg" variant="hero" asChild>
+                <Link to="/apply/investor">Become a Member</Link>
               </Button>
               <Button size="lg" variant="outline" className="bg-background hover:bg-background/90">
                 Contact Us

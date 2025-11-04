@@ -121,7 +121,7 @@ const Investors = () => {
               Join 400+ angels and family offices backing the next generation of Indian unicorns.
             </p>
             <Button size="lg" variant="hero" asChild>
-              <Link to="#plans">View Membership Plans</Link>
+              <Link to="/apply/investor">View Membership Plans</Link>
             </Button>
           </div>
         </div>
@@ -330,8 +330,8 @@ const Investors = () => {
               Join India's most active angel network and back exceptional founders
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="hero">
-                Apply for Membership
+              <Button size="lg" variant="hero" asChild>
+                <Link to="/apply/investor">Apply for Membership</Link>
               </Button>
               <Button size="lg" variant="outline" className="bg-background hover:bg-background/90">
                 Schedule a Call

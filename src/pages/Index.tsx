@@ -91,15 +91,15 @@ const Index = () => {
               startups through rigorous curation, transparent economics, and data-driven diligence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" variant="hero" asChild>
-                <Link to="/founders#apply">
-                  Apply for Funding
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" className="bg-background hover:bg-background/90" asChild>
-                <Link to="/investors#join">Become a Member</Link>
-              </Button>
+            <Button variant="hero" asChild>
+              <Link to="/apply/founder">
+                Apply for Funding
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="bg-background hover:bg-background/90" asChild>
+              <Link to="/apply/investor">Become a Member</Link>
+            </Button>
             </div>
           </div>
         </div>
@@ -190,9 +190,9 @@ const Index = () => {
                 ))}
               </div>
 
-              <Button variant="accent" className="w-full mt-4" asChild>
-                <Link to="/founders">Learn More & Apply</Link>
-              </Button>
+            <Button variant="accent" className="w-full mt-4" asChild>
+              <Link to="/apply/founder">Learn More & Apply</Link>
+            </Button>
             </div>
 
             {/* For Investors */}
@@ -224,9 +224,9 @@ const Index = () => {
                 ))}
               </div>
 
-              <Button variant="default" className="w-full mt-4" asChild>
-                <Link to="/investors">View Membership Plans</Link>
-              </Button>
+            <Button variant="default" className="w-full mt-4" asChild>
+              <Link to="/apply/investor">View Membership Plans</Link>
+            </Button>
             </div>
           </div>
         </div>
@@ -275,12 +275,12 @@ const Index = () => {
               connects you with the right partners.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="hero" asChild>
-                <Link to="/founders#apply">I'm a Founder</Link>
-              </Button>
-              <Button size="lg" variant="outline" className="bg-background hover:bg-background/90" asChild>
-                <Link to="/investors#join">I'm an Investor</Link>
-              </Button>
+            <Button size="lg" variant="hero" asChild>
+              <Link to="/apply/founder">I'm a Founder</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="bg-background hover:bg-background/90" asChild>
+              <Link to="/apply/investor">I'm an Investor</Link>
+            </Button>
             </div>
           </div>
         </div>

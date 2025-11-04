@@ -106,7 +106,7 @@ const Founders = () => {
               Get funded by experienced investors who understand your market and can help you scale.
             </p>
             <Button size="lg" variant="hero" asChild>
-              <Link to="#apply">Apply for Funding</Link>
+              <Link to="/apply/founder">Apply for Funding</Link>
             </Button>
           </div>
         </div>
@@ -297,7 +297,7 @@ const Founders = () => {
               Join 40+ companies that have raised capital through India Angel Forum
             </p>
             <Button size="lg" variant="hero">
-              Start Your Application
+              <Link to="/apply/founder">Start Your Application</Link>
             </Button>
           </div>
         </div>
