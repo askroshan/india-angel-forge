@@ -47,10 +47,18 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Temporary: Allow authenticated users to access admin dashboard
-      // TODO: Set up proper role-based access control with user_roles table
-      // Once the database migration is approved, this will use the has_role function
-      setIsAdmin(true);
+      // Use the has_role function to check if user is admin
+      const { data, error } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+
+      if (error) {
+        console.error('Error checking admin role:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data === true);
+      }
       setCheckingRole(false);
     };
 
