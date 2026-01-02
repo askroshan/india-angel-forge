@@ -1,11 +1,73 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Check, Users, Target, Shield, TrendingUp, Database, Award } from "lucide-react";
+import { Check, Users, Target, Shield, TrendingUp, Database, Award, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Investors = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      toast({
+        title: "Payment Successful!",
+        description: "Welcome to India Angel Forum. Check your email for details.",
+      });
+    } else if (payment === "cancelled") {
+      toast({
+        title: "Payment Cancelled",
+        description: "Your payment was cancelled. You can try again anytime.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams, toast]);
+
+  const handleCheckout = async (membershipType: string) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to purchase a membership.",
+      });
+      navigate("/auth", { state: { from: { pathname: "/investors#plans" } } });
+      return;
+    }
+
+    setLoadingPlan(membershipType);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-membership-checkout", {
+        body: { membershipType },
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleContactFamilyOffice = () => {
+    window.location.href = "mailto:hello@indiaangelforum.com?subject=Family Office Membership Inquiry";
+  };
+
   const membershipPlans = [
     {
       name: "Standard Member",
@@ -21,7 +83,9 @@ const Investors = () => {
         "Pro-rata rights management"
       ],
       cta: "Join as Standard Member",
-      popular: false
+      action: () => handleCheckout("standard"),
+      popular: false,
+      planKey: "standard"
     },
     {
       name: "Operator Angel",
@@ -35,7 +99,9 @@ const Investors = () => {
         "Exclusive operator community",
       ],
       cta: "Apply for Operator Plan",
-      popular: true
+      action: () => handleCheckout("operator"),
+      popular: true,
+      planKey: "operator"
     },
     {
       name: "Family Office",
@@ -51,7 +117,9 @@ const Investors = () => {
         "Enhanced analytics & reporting"
       ],
       cta: "Contact for Family Office",
-      popular: false
+      action: handleContactFamilyOffice,
+      popular: false,
+      planKey: "family"
     }
   ];
 
@@ -225,8 +293,17 @@ const Investors = () => {
                   <Button 
                     variant={plan.popular ? "accent" : "default"} 
                     className="w-full"
+                    onClick={plan.action}
+                    disabled={loadingPlan === plan.planKey}
                   >
-                    {plan.cta}
+                    {loadingPlan === plan.planKey ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      plan.cta
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -331,9 +408,14 @@ const Investors = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" variant="hero" asChild>
-                <Link to="/apply/investor">Apply for Membership</Link>
+                <a href="#plans">View Membership Plans</a>
               </Button>
-              <Button size="lg" variant="outline" className="bg-background hover:bg-background/90">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-background hover:bg-background/90"
+                onClick={() => window.location.href = "mailto:hello@indiaangelforum.com?subject=Schedule a Call - Angel Membership"}
+              >
                 Schedule a Call
               </Button>
             </div>
