@@ -66,7 +66,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/investors?payment=success`,
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/investors?payment=cancelled`,
       metadata: {
         membership_type: membershipType,
