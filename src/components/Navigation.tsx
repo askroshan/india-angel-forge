@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, LogOut, User, Shield } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -96,6 +96,12 @@ const Navigation = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
+                    <Link to="/membership" className="flex items-center gap-2 cursor-pointer">
+                      <CreditCard className="h-4 w-4" />
+                      Membership
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
                       <Shield className="h-4 w-4" />
                       Admin Dashboard
@@ -151,6 +157,12 @@ const Navigation = () => {
             <div className="px-4 pt-4 space-y-2 border-t">
               {user ? (
                 <>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/membership" onClick={() => setIsOpen(false)}>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Membership
+                    </Link>
+                  </Button>
                   <Button variant="outline" className="w-full" asChild>
                     <Link to="/admin" onClick={() => setIsOpen(false)}>
                       <Shield className="h-4 w-4 mr-2" />
