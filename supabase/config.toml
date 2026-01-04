@@ -1,1 +1,13 @@
 project_id = "njuzmwmittiykdeigyra"
+
+[functions.create-membership-checkout]
+verify_jwt = false
+
+[functions.send-membership-confirmation]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
