@@ -24,22 +24,36 @@ serve(async (req) => {
   );
 
   try {
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[CREATE-CHECKOUT] ERROR: Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.log("[CREATE-CHECKOUT] ERROR: Invalid authentication", { error: claimsError });
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userEmail = claimsData.claims.email as string;
+    console.log("[CREATE-CHECKOUT] User authenticated", { email: userEmail });
+
     const { membershipType } = await req.json();
     
     if (!membershipType || !MEMBERSHIP_PRICES[membershipType as keyof typeof MEMBERSHIP_PRICES]) {
       throw new Error("Invalid membership type");
     }
 
-    const authHeader = req.headers.get("Authorization");
-    let userEmail: string | undefined;
     let customerId: string | undefined;
-
-    // Check if user is authenticated
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data } = await supabaseClient.auth.getUser(token);
-      userEmail = data.user?.email;
-    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
