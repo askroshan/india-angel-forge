@@ -11,6 +11,7 @@ import Investors from "./pages/Investors";
 import Portfolio from "./pages/Portfolio";
 import About from "./pages/About";
 import Events from "./pages/Events";
+import EventDetail from "./pages/EventDetail";
 import ApplyFounder from "./pages/ApplyFounder";
 import ApplyInvestor from "./pages/ApplyInvestor";
 import Auth from "./pages/Auth";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/about" element={<About />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/events/:slug" element={<EventDetail />} />
             <Route path="/apply/founder" element={<ApplyFounder />} />
             <Route path="/apply/investor" element={<ApplyInvestor />} />
             <Route path="/auth" element={<Auth />} />
