@@ -14,6 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_registrations: {
+        Row: {
+          company: string | null
+          dietary_requirements: string | null
+          email: string
+          event_id: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          registered_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          dietary_requirements?: string | null
+          email: string
+          event_id: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          registered_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          dietary_requirements?: string | null
+          email?: string
+          event_id?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          registered_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          agenda: Json | null
+          created_at: string
+          date: string
+          description: string
+          end_time: string
+          event_type: string
+          id: string
+          image_url: string | null
+          is_featured: boolean | null
+          is_members_only: boolean | null
+          location: string
+          max_attendees: number | null
+          registration_deadline: string | null
+          slug: string
+          speakers: Json | null
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+          venue_address: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          agenda?: Json | null
+          created_at?: string
+          date: string
+          description: string
+          end_time: string
+          event_type: string
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          is_members_only?: boolean | null
+          location: string
+          max_attendees?: number | null
+          registration_deadline?: string | null
+          slug: string
+          speakers?: Json | null
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+          venue_address?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          agenda?: Json | null
+          created_at?: string
+          date?: string
+          description?: string
+          end_time?: string
+          event_type?: string
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          is_members_only?: boolean | null
+          location?: string
+          max_attendees?: number | null
+          registration_deadline?: string | null
+          slug?: string
+          speakers?: Json | null
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          venue_address?: string | null
+          venue_name?: string | null
+        }
+        Relationships: []
+      }
       founder_applications: {
         Row: {
           admin_notes: string | null
