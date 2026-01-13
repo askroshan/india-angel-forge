@@ -177,12 +177,26 @@ export function useRegisterForEvent() {
         }
         throw error;
       }
+
+      // Send confirmation email
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          await supabase.functions.invoke('send-event-confirmation', {
+            body: { registrationId: data.id },
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the registration if email fails
+      }
+
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['my-registrations'] });
-      toast.success('Successfully registered for event!');
+      toast.success('Successfully registered! Check your email for confirmation.');
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Failed to register');
