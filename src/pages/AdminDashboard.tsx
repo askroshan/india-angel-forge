@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Building2, Calendar, FileText, Shield } from "lucide-react";
+import { EventManagement } from "@/components/admin/EventManagement";
 
 interface FounderApplication {
   id: string;
@@ -191,7 +192,7 @@ const AdminDashboard = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage applications and users</p>
+          <p className="text-muted-foreground">Manage applications, events, and users</p>
         </div>
 
         {/* Stats Overview */}
@@ -240,12 +241,17 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* Applications Tabs */}
-        <Tabs defaultValue="founders" className="space-y-4">
+        {/* Main Tabs */}
+        <Tabs defaultValue="events" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="founders">Founder Applications</TabsTrigger>
             <TabsTrigger value="investors">Investor Applications</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="events">
+            <EventManagement />
+          </TabsContent>
 
           <TabsContent value="founders">
             <Card>
