@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.send-event-confirmation]
 verify_jwt = false
+
+[functions.submit-founder-application]
+verify_jwt = false
+
+[functions.submit-investor-application]
+verify_jwt = false

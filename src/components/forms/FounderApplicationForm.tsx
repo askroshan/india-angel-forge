@@ -96,11 +96,32 @@ export function FounderApplicationForm() {
         referral_source: values.referral_source || null,
       };
 
-      const { error } = await supabase
-        .from("founder_applications")
-        .insert([submissionData]);
+      // Submit via edge function for server-side validation and rate limiting
+      const { data, error } = await supabase.functions.invoke("submit-founder-application", {
+        body: submissionData,
+      });
 
       if (error) throw error;
+      
+      // Check for application-level errors from edge function
+      if (data?.error) {
+        if (data.error.includes("already exists")) {
+          toast.error("Application already submitted", {
+            description: "An application with this email address already exists.",
+          });
+        } else if (data.error.includes("Too many submissions")) {
+          toast.error("Too many attempts", {
+            description: "Please wait before submitting another application.",
+          });
+        } else if (data.details) {
+          toast.error("Validation error", {
+            description: data.details.join(", "),
+          });
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
 
       toast.success("Application submitted successfully!", {
         description: "We'll review your application and get back to you within 2 weeks.",
