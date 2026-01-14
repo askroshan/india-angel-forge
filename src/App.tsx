@@ -39,6 +39,11 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/events" element={<Events />} />
             <Route path="/events/:slug" element={<EventDetail />} />
+            <Route path="/my-registrations" element={
+              <ProtectedRoute>
+                <MyRegistrationsPage />
+              </ProtectedRoute>
+            } />
             <Route path="/apply/founder" element={<ApplyFounder />} />
             <Route path="/apply/investor" element={<ApplyInvestor />} />
             <Route path="/auth" element={<Auth />} />
