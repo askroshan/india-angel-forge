@@ -6,9 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Rate limit: max 3 submissions per hour per IP
-const RATE_LIMIT_MAX = 3;
+// Rate limit: max 3 submissions per hour per IP, max 5 per email domain
+const RATE_LIMIT_MAX_IP = 3;
+const RATE_LIMIT_MAX_DOMAIN = 5;
 const RATE_LIMIT_WINDOW_MINUTES = 60;
+
+// Extract email domain for rate limiting
+function getEmailDomain(email: string): string {
+  const parts = email.toLowerCase().split("@");
+  return parts.length > 1 ? parts[1] : "unknown";
+}
 
 // Validation helpers
 function validateEmail(email: string): boolean {
@@ -147,34 +154,10 @@ serve(async (req) => {
     const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
                      req.headers.get("x-real-ip") || 
                      "unknown";
-    const rateLimitIdentifier = `investor_${clientIP}`;
 
     console.log(`Investor application submission from IP: ${clientIP}`);
 
-    // Check rate limit
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-    const { count: recentSubmissions } = await supabaseAdmin
-      .from("rate_limits")
-      .select("*", { count: "exact", head: true })
-      .eq("identifier", rateLimitIdentifier)
-      .eq("action", "investor_application")
-      .gte("created_at", windowStart);
-
-    if (recentSubmissions !== null && recentSubmissions >= RATE_LIMIT_MAX) {
-      console.log(`Rate limit exceeded for ${clientIP}: ${recentSubmissions} submissions`);
-      return new Response(
-        JSON.stringify({ 
-          error: "Too many submissions. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW_MINUTES 
-        }),
-        { 
-          status: 429, 
-          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60) } 
-        }
-      );
-    }
-
-    // Parse and validate request body
+    // Parse request body first to get email for domain-based rate limiting
     const data: InvestorApplicationData = await req.json();
     const validation = validateInvestorApplication(data);
 
@@ -186,11 +169,62 @@ serve(async (req) => {
       );
     }
 
-    // Record rate limit entry
-    await supabaseAdmin.from("rate_limits").insert({
-      identifier: rateLimitIdentifier,
-      action: "investor_application",
-    });
+    // Multi-factor rate limiting: check both IP and email domain
+    const emailDomain = getEmailDomain(data.email);
+    const ipIdentifier = `investor_ip_${clientIP}`;
+    const domainIdentifier = `investor_domain_${emailDomain}`;
+
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
+
+    // Check IP-based rate limit
+    const { count: ipSubmissions } = await supabaseAdmin
+      .from("rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("identifier", ipIdentifier)
+      .eq("action", "investor_application")
+      .gte("created_at", windowStart);
+
+    if (ipSubmissions !== null && ipSubmissions >= RATE_LIMIT_MAX_IP) {
+      console.log(`IP rate limit exceeded for ${clientIP}: ${ipSubmissions} submissions`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many submissions from this network. Please try again later.",
+          retryAfter: RATE_LIMIT_WINDOW_MINUTES 
+        }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60) } 
+        }
+      );
+    }
+
+    // Check email domain-based rate limit
+    const { count: domainSubmissions } = await supabaseAdmin
+      .from("rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("identifier", domainIdentifier)
+      .eq("action", "investor_application")
+      .gte("created_at", windowStart);
+
+    if (domainSubmissions !== null && domainSubmissions >= RATE_LIMIT_MAX_DOMAIN) {
+      console.log(`Domain rate limit exceeded for ${emailDomain}: ${domainSubmissions} submissions`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many submissions from this email domain. Please try again later.",
+          retryAfter: RATE_LIMIT_WINDOW_MINUTES 
+        }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60) } 
+        }
+      );
+    }
+
+    // Record rate limit entries for both IP and domain
+    await supabaseAdmin.from("rate_limits").insert([
+      { identifier: ipIdentifier, action: "investor_application" },
+      { identifier: domainIdentifier, action: "investor_application" }
+    ]);
 
     // Clean up old rate limit records periodically (1% chance)
     if (Math.random() < 0.01) {
