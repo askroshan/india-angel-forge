@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Founders from "./pages/Founders";
+import MyRegistrationsPage from "./pages/MyRegistrations";
 import Investors from "./pages/Investors";
 import Portfolio from "./pages/Portfolio";
 import About from "./pages/About";
