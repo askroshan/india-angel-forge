@@ -21,6 +21,12 @@ verify_jwt = false
 [functions.send-event-cancellation]
 verify_jwt = false
 
+[functions.send-event-reminders]
+verify_jwt = false
+
+[functions.notify-waitlist]
+verify_jwt = false
+
 [functions.submit-founder-application]
 verify_jwt = false
 

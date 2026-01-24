@@ -7,12 +7,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import EventRegistrationForm from "@/components/events/EventRegistrationForm";
+import WaitlistForm from "@/components/events/WaitlistForm";
 import { 
   useEvent, 
   useRegistrationCount, 
   useMyRegistrations,
   EVENT_TYPE_LABELS 
 } from "@/hooks/useEvents";
+import { useWaitlistPosition, useWaitlistCount, useLeaveWaitlist } from "@/hooks/useWaitlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Calendar, 
@@ -23,7 +25,8 @@ import {
   Lock, 
   Star,
   User,
-  CheckCircle
+  CheckCircle,
+  ClockIcon
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -32,8 +35,12 @@ export default function EventDetail() {
   const { data: event, isLoading, error } = useEvent(slug || "");
   const { data: registrationCount } = useRegistrationCount(event?.id || "");
   const { data: myRegistrations } = useMyRegistrations();
+  const { data: waitlistEntry } = useWaitlistPosition(event?.id || "");
+  const { data: waitlistCount } = useWaitlistCount(event?.id || "");
+  const leaveWaitlistMutation = useLeaveWaitlist();
   const { user } = useAuth();
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
 
   const isRegistered = myRegistrations?.some(
     r => r.event_id === event?.id && r.status === 'registered'
@@ -244,14 +251,29 @@ export default function EventDetail() {
                       </p>
                     )}
                     {spotsLeft === 0 && (
-                      <p className="text-sm text-destructive font-medium mt-1">
-                        Sold out
-                      </p>
+                      <>
+                        <p className="text-sm text-destructive font-medium mt-1">
+                          Sold out
+                        </p>
+                        {(waitlistCount ?? 0) > 0 && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {waitlistCount} on waitlist
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
 
                 {/* Registration Deadline */}
+                {event.registration_deadline && event.status === 'upcoming' && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Registration closes: </span>
+                    <span className="font-medium">
+                      {format(parseISO(event.registration_deadline), 'MMMM d, yyyy')}
+                    </span>
+                  </div>
+                )}
                 {event.registration_deadline && event.status === 'upcoming' && (
                   <div className="text-sm">
                     <span className="text-muted-foreground">Registration closes: </span>
@@ -271,6 +293,29 @@ export default function EventDetail() {
                           You're registered!
                         </span>
                       </div>
+                    ) : waitlistEntry ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <ClockIcon className="h-5 w-5 text-amber-600" />
+                          <div>
+                            <span className="font-medium text-amber-700 dark:text-amber-300 block">
+                              You're on the waitlist
+                            </span>
+                            <span className="text-sm text-amber-600 dark:text-amber-400">
+                              Position #{waitlistEntry.position}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => leaveWaitlistMutation.mutate(waitlistEntry.id)}
+                          disabled={leaveWaitlistMutation.isPending}
+                        >
+                          Leave Waitlist
+                        </Button>
+                      </div>
                     ) : isRegistrationOpen ? (
                       <Button 
                         variant="accent" 
@@ -280,9 +325,19 @@ export default function EventDetail() {
                       >
                         Register Now
                       </Button>
+                    ) : spotsLeft === 0 ? (
+                      <Button 
+                        variant="secondary" 
+                        size="lg" 
+                        className="w-full"
+                        onClick={() => setShowWaitlist(true)}
+                      >
+                        <ClockIcon className="mr-2 h-4 w-4" />
+                        Join Waitlist
+                      </Button>
                     ) : (
                       <Button variant="secondary" size="lg" className="w-full" disabled>
-                        {spotsLeft === 0 ? 'Sold Out' : 'Registration Closed'}
+                        Registration Closed
                       </Button>
                     )}
                   </>
@@ -314,6 +369,13 @@ export default function EventDetail() {
         event={event}
         open={showRegistration}
         onOpenChange={setShowRegistration}
+      />
+
+      {/* Waitlist Modal */}
+      <WaitlistForm
+        event={event}
+        open={showWaitlist}
+        onOpenChange={setShowWaitlist}
       />
 
       <Footer />
