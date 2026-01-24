@@ -215,11 +215,26 @@ export function useCancelRegistration() {
         .eq('id', registrationId);
 
       if (error) throw error;
+
+      // Send cancellation email
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          await supabase.functions.invoke('send-event-cancellation', {
+            body: { registrationId },
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+        // Don't fail the cancellation if email fails
+      }
+
+      return registrationId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['my-registrations'] });
-      toast.success('Registration cancelled');
+      toast.success('Registration cancelled. Check your email for confirmation.');
     },
     onError: () => {
       toast.error('Failed to cancel registration');
