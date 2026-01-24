@@ -25,6 +25,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           registered_at: string
+          reminder_sent: boolean | null
           status: string
           user_id: string
         }
@@ -38,6 +39,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registered_at?: string
+          reminder_sent?: boolean | null
           status?: string
           user_id: string
         }
@@ -51,12 +53,66 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           registered_at?: string
+          reminder_sent?: boolean | null
           status?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_waitlist: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          event_id: string
+          full_name: string
+          id: string
+          notified_at: string | null
+          phone: string | null
+          position: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          event_id: string
+          full_name: string
+          id?: string
+          notified_at?: string | null
+          phone?: string | null
+          position?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          event_id?: string
+          full_name?: string
+          id?: string
+          notified_at?: string | null
+          phone?: string | null
+          position?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_waitlist_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -388,6 +444,10 @@ export type Database = {
     }
     Functions: {
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      get_waitlist_position: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

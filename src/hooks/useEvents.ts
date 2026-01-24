@@ -39,6 +39,7 @@ export interface EventRegistration {
   notes: string | null;
   status: 'registered' | 'attended' | 'cancelled' | 'no_show';
   registered_at: string;
+  reminder_sent?: boolean;
 }
 
 export const EVENT_TYPE_LABELS: Record<Event['event_type'], string> = {
@@ -209,6 +210,16 @@ export function useCancelRegistration() {
 
   return useMutation({
     mutationFn: async (registrationId: string) => {
+      // First get the registration to know which event
+      const { data: registration, error: fetchError } = await supabase
+        .from('event_registrations')
+        .select('event_id')
+        .eq('id', registrationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Cancel the registration
       const { error } = await supabase
         .from('event_registrations')
         .update({ status: 'cancelled' })
@@ -223,6 +234,11 @@ export function useCancelRegistration() {
           await supabase.functions.invoke('send-event-cancellation', {
             body: { registrationId },
           });
+
+          // Notify waitlisted users that a spot opened up
+          await supabase.functions.invoke('notify-waitlist', {
+            body: { eventId: registration.event_id, spotsAvailable: 1 },
+          });
         }
       } catch (emailError) {
         console.error('Failed to send cancellation email:', emailError);
@@ -234,6 +250,8 @@ export function useCancelRegistration() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['my-registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['waitlist-position'] });
+      queryClient.invalidateQueries({ queryKey: ['waitlist-count'] });
       toast.success('Registration cancelled. Check your email for confirmation.');
     },
     onError: () => {
