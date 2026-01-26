@@ -1,0 +1,317 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String                  @id @default(uuid())
+  email                   String                  @unique
+  passwordHash            String                  @map("password_hash")
+  fullName                String?                 @map("full_name")
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
+  
+  // Relations
+  roles                   UserRole[]
+  founderApplications     FounderApplication[]
+  investorApplications    InvestorApplication[]
+  eventRegistrations      EventRegistration[]
+  eventWaitlist           EventWaitlist[]
+  companyProfiles         CompanyProfile[]
+  pitchSessions           PitchSession[]
+  pitchMaterials          PitchMaterial[]
+  portfolioCompanies      PortfolioCompany[]
+  portfolioUpdates        PortfolioUpdate[]
+  sharedDocuments         SharedDocument[]
+  deals                   Deal[]
+  dueDiligenceItems       DueDiligenceItem[]
+
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  role      String
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+model Event {
+  id                  String              @id @default(uuid())
+  title               String
+  description         String?
+  eventDate           DateTime            @map("event_date")
+  location            String?
+  capacity            Int?
+  registrationDeadline DateTime?          @map("registration_deadline")
+  status              String              @default("upcoming")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  registrations       EventRegistration[]
+  waitlist            EventWaitlist[]
+
+  @@map("events")
+}
+
+model EventRegistration {
+  id                    String    @id @default(uuid())
+  eventId               String    @map("event_id")
+  userId                String    @map("user_id")
+  fullName              String    @map("full_name")
+  email                 String
+  phone                 String?
+  company               String?
+  dietaryRequirements   String?   @map("dietary_requirements")
+  status                String    @default("confirmed")
+  notes                 String?
+  reminderSent          Boolean   @default(false) @map("reminder_sent")
+  registeredAt          DateTime  @default(now()) @map("registered_at")
+  
+  event                 Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+model EventWaitlist {
+  id          String    @id @default(uuid())
+  eventId     String    @map("event_id")
+  userId      String    @map("user_id")
+  fullName    String    @map("full_name")
+  email       String
+  phone       String?
+  company     String?
+  position    Int       @default(1)
+  status      String    @default("waiting")
+  notifiedAt  DateTime? @map("notified_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_waitlist")
+}
+
+model FounderApplication {
+  id                String    @id @default(uuid())
+  userId            String?   @map("user_id")
+  fullName          String    @map("full_name")
+  email             String
+  phone             String?
+  companyName       String    @map("company_name")
+  companyWebsite    String?   @map("company_website")
+  industry          String?
+  stage             String?
+  description       String?
+  fundingGoal       Decimal?  @map("funding_goal") @db.Decimal(15, 2)
+  currentRevenue    Decimal?  @map("current_revenue") @db.Decimal(15, 2)
+  pitchDeckUrl      String?   @map("pitch_deck_url")
+  status            String    @default("pending")
+  reviewedAt        DateTime? @map("reviewed_at")
+  reviewedBy        String?   @map("reviewed_by")
+  reviewNotes       String?   @map("review_notes")
+  submittedAt       DateTime  @default(now()) @map("submitted_at")
+  
+  user              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("founder_applications")
+}
+
+model InvestorApplication {
+  id                  String    @id @default(uuid())
+  userId              String?   @map("user_id")
+  fullName            String    @map("full_name")
+  email               String
+  phone               String?
+  investorType        String    @map("investor_type")
+  organization        String?
+  investmentRange     String?   @map("investment_range")
+  industriesOfInterest String?  @map("industries_of_interest")
+  linkedinUrl         String?   @map("linkedin_url")
+  accreditationStatus String?   @map("accreditation_status")
+  status              String    @default("pending")
+  reviewedAt          DateTime? @map("reviewed_at")
+  reviewedBy          String?   @map("reviewed_by")
+  reviewNotes         String?   @map("review_notes")
+  submittedAt         DateTime  @default(now()) @map("submitted_at")
+  
+  user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("investor_applications")
+}
+
+model CompanyProfile {
+  id          String    @id @default(uuid())
+  founderId   String    @map("founder_id")
+  companyName String    @map("company_name")
+  description String
+  industry    String?
+  stage       String?
+  foundedYear Int?      @map("founded_year")
+  teamSize    Int?      @map("team_size")
+  website     String?
+  linkedin    String?
+  twitter     String?
+  location    String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  founder     User      @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  fundraisingRounds FundraisingRound[]
+  portfolioCompanies PortfolioCompany[]
+
+  @@unique([founderId])
+  @@map("company_profiles")
+}
+
+model FundraisingRound {
+  id                String    @id @default(uuid())
+  companyId         String    @map("company_id")
+  roundName         String    @map("round_name")
+  targetAmount      Decimal   @map("target_amount") @db.Decimal(15, 2)
+  raisedAmount      Decimal   @default(0) @map("raised_amount") @db.Decimal(15, 2)
+  status            String    @default("planning")
+  startDate         DateTime? @map("start_date")
+  targetCloseDate   DateTime? @map("target_close_date")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  company           CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("fundraising_rounds")
+}
+
+model PitchSession {
+  id                String    @id @default(uuid())
+  founderId         String    @map("founder_id")
+  investorId        String?   @map("investor_id")
+  sessionDate       DateTime  @map("session_date")
+  duration          Int       @default(30)
+  location          String?
+  meetingLink       String?   @map("meeting_link")
+  status            String    @default("scheduled")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  founder           User      @relation(fields: [founderId], references: [id], onDelete: Cascade)
+
+  @@map("pitch_sessions")
+}
+
+model PitchMaterial {
+  id          String    @id @default(uuid())
+  founderId   String    @map("founder_id")
+  title       String
+  description String?
+  fileType    String    @map("file_type")
+  filePath    String    @map("file_path")
+  fileSize    Int       @map("file_size")
+  version     Int       @default(1)
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at")
+  
+  founder     User      @relation(fields: [founderId], references: [id], onDelete: Cascade)
+
+  @@map("pitch_materials")
+}
+
+model PortfolioCompany {
+  id                  String              @id @default(uuid())
+  investorId          String              @map("investor_id")
+  companyId           String              @map("company_id")
+  investmentAmount    Decimal?            @map("investment_amount") @db.Decimal(15, 2)
+  investmentDate      DateTime?           @map("investment_date")
+  ownershipPercent    Decimal?            @map("ownership_percent") @db.Decimal(5, 2)
+  currentValuation    Decimal?            @map("current_valuation") @db.Decimal(15, 2)
+  status              String              @default("active")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  investor            User                @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  company             CompanyProfile      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  portfolioUpdates    PortfolioUpdate[]
+  sharedDocuments     SharedDocument[]
+
+  @@unique([investorId, companyId])
+  @@map("portfolio_companies")
+}
+
+model PortfolioUpdate {
+  id          String            @id @default(uuid())
+  investorId  String            @map("investor_id")
+  companyId   String            @map("company_id")
+  title       String
+  content     String
+  createdAt   DateTime          @default(now()) @map("created_at")
+  
+  investor    User              @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  company     PortfolioCompany  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_updates")
+}
+
+model SharedDocument {
+  id          String            @id @default(uuid())
+  investorId  String            @map("investor_id")
+  companyId   String            @map("company_id")
+  fileName    String            @map("file_name")
+  fileType    String            @map("file_type")
+  fileSize    Int               @map("file_size")
+  filePath    String            @map("file_path")
+  sharedAt    DateTime          @default(now()) @map("shared_at")
+  
+  investor    User              @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  company     PortfolioCompany  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("shared_documents")
+}
+
+model Deal {
+  id                String              @id @default(uuid())
+  investorId        String              @map("investor_id")
+  companyName       String?             @map("company_name")
+  valuation         Decimal?            @db.Decimal(15, 2)
+  amount            Decimal             @db.Decimal(15, 2)
+  status            String?
+  industry          String?
+  stage             String?
+  createdAt         DateTime            @default(now()) @map("created_at")
+  
+  investor          User                @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  dueDiligenceItems DueDiligenceItem[]
+
+  @@map("deals")
+}
+
+model DueDiligenceItem {
+  id          String    @id @default(uuid())
+  dealId      String    @map("deal_id")
+  investorId  String    @map("investor_id")
+  itemName    String    @map("item_name")
+  category    String?
+  completed   Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  deal        Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  investor    User      @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@map("due_diligence_items")
+}

@@ -1,21 +1,27 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getApiClient } from '@/api';
-import type { User, Session, ApiError } from '@/api/types';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  fullName?: string | null;
+  roles?: string[];
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
+  token: string | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: ApiError | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: ApiError | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: ApiError | null }>;
-  updatePassword: (newPassword: string) => Promise<{ error: ApiError | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'auth_session';
+const AUTH_STORAGE_KEY = 'auth_token';
+const USER_STORAGE_KEY = 'auth_user';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -27,99 +33,145 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const apiClient = getApiClient();
 
   // Load session from storage on mount
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
+        const storedToken = localStorage.getItem(AUTH_STORAGE_KEY);
+        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         
-        if (storedSession) {
-          const parsedSession: Session = JSON.parse(storedSession);
-          
-          // Check if session is expired
-          if (parsedSession.expiresAt > Date.now()) {
-            setSession(parsedSession);
-            setUser(parsedSession.user);
-            apiClient.setAccessToken(parsedSession.accessToken);
-          } else {
-            // Session expired, clear it
-            localStorage.removeItem(AUTH_STORAGE_KEY);
-          }
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
         }
       } catch (error) {
-        console.error('Failed to load session:', error);
+        console.error('Error loading session:', error);
         localStorage.removeItem(AUTH_STORAGE_KEY);
+        localStorage.removeItem(USER_STORAGE_KEY);
       } finally {
         setLoading(false);
       }
     };
 
     loadSession();
-  }, [apiClient]);
+  }, []);
 
-  const saveSession = useCallback((newSession: Session | null) => {
-    if (newSession) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newSession));
-      apiClient.setAccessToken(newSession.accessToken);
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      apiClient.setAccessToken(null);
-    }
-    setSession(newSession);
-    setUser(newSession?.user ?? null);
-  }, [apiClient]);
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, fullName }),
+      });
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const response = await apiClient.signUp(email, password, fullName);
-    
-    if (response.data) {
-      saveSession(response.data);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: new Error(data.error || 'Sign up failed') };
+      }
+
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem(AUTH_STORAGE_KEY, data.token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
     }
-    
-    return { error: response.error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const response = await apiClient.signIn(email, password);
-    
-    if (response.data) {
-      saveSession(response.data);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: new Error(data.error || 'Sign in failed') };
+      }
+
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem(AUTH_STORAGE_KEY, data.token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
     }
-    
-    return { error: response.error };
   };
 
   const signOut = async () => {
-    await apiClient.signOut();
-    saveSession(null);
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
   };
 
   const resetPassword = async (email: string) => {
-    const response = await apiClient.resetPassword(email);
-    return { error: response.error };
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: new Error(data.error || 'Password reset failed') };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
   };
 
   const updatePassword = async (newPassword: string) => {
-    const response = await apiClient.updatePassword(newPassword);
-    return { error: response.error };
+    try {
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: new Error(data.error || 'Password update failed') };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      signUp,
-      signIn,
-      signOut,
-      resetPassword,
-      updatePassword,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        signUp,
+        signIn,
+        signOut,
+        resetPassword,
+        updatePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

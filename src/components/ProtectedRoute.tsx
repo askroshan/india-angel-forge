@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,43 +8,28 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [checkingAdmin, setCheckingAdmin] = useState(requireAdmin);
   const location = useLocation();
 
-  useEffect(() => {
-    const checkAdminRole = async () => {
-      if (!requireAdmin || !user) {
-        setCheckingAdmin(false);
-        return;
-      }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-      try {
-        const { data, error } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
 
-        if (error) {
-          console.error('Error checking admin role:', error);
-          setIsAdmin(false);
-        } else {
-          setIsAdmin(data === true);
-        }
-      } catch (err) {
-        console.error('Error checking admin role:', err);
-        setIsAdmin(false);
-      } finally {
-        setCheckingAdmin(false);
-      }
-    };
+  if (requireAdmin && !user.roles?.includes('admin')) {
+    return <Navigate to="/" replace />;
+  }
 
-    if (user && requireAdmin) {
-      checkAdminRole();
-    } else if (!requireAdmin) {
-      setCheckingAdmin(false);
-    }
-  }, [user, requireAdmin]);
+  return <>{children}</>;
+};
+
+export default ProtectedRoute;
 
   // Show loading spinner while checking auth or admin status
   if (loading || checkingAdmin) {
