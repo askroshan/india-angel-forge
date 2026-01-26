@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,18 +28,14 @@ import {
 
 interface AuditLog {
   id: string;
-  user_id: string;
+  userId: string;
   action: string;
-  resource_type: string;
-  resource_id?: string;
+  resourceType: string;
+  resourceId?: string;
   details: any;
-  created_at: string;
-  user?: {
-    profile: {
-      full_name: string;
-      email: string;
-    };
-  };
+  createdAt: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 const actionTypeColors: Record<string, string> = {
@@ -87,6 +83,7 @@ const AuditLogs = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAccess();
@@ -97,20 +94,17 @@ const AuditLogs = () => {
   }, [logs, actionFilter, searchQuery, startDate, endDate]);
 
   const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+    // Check access by attempting to fetch logs
+    const response = await fetch('/api/admin/audit-logs', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (profile?.role !== 'admin') {
+    if (response.status === 403 || response.status === 401) {
       toast({
         title: 'Access Denied',
         description: 'You do not have permission to access this page.',
@@ -126,19 +120,18 @@ const AuditLogs = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select(`
-          *,
-          user:user_id(
-            profile:profiles(full_name, email)
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(500); // Load last 500 logs
+      
+      if (!token) return;
 
-      if (error) throw error;
+      const response = await fetch('/api/admin/audit-logs', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to load audit logs');
+      }
+
+      const data = await response.json();
       setLogs(data || []);
     } catch (err: any) {
       toast({
@@ -161,21 +154,21 @@ const AuditLogs = () => {
 
     // Date range filter
     if (startDate) {
-      filtered = filtered.filter(log => new Date(log.created_at) >= new Date(startDate));
+      filtered = filtered.filter(log => new Date(log.createdAt) >= new Date(startDate));
     }
     if (endDate) {
       const endDateTime = new Date(endDate);
       endDateTime.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(log => new Date(log.created_at) <= endDateTime);
+      filtered = filtered.filter(log => new Date(log.createdAt) <= endDateTime);
     }
 
     // Search filter (user email, resource ID, or details)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(log =>
-        log.user?.profile?.email?.toLowerCase().includes(query) ||
-        log.user?.profile?.full_name?.toLowerCase().includes(query) ||
-        log.resource_id?.toLowerCase().includes(query) ||
+        log.userEmail?.toLowerCase().includes(query) ||
+        log.userName?.toLowerCase().includes(query) ||
+        log.resourceId?.toLowerCase().includes(query) ||
         JSON.stringify(log.details).toLowerCase().includes(query)
       );
     }
@@ -187,12 +180,12 @@ const AuditLogs = () => {
     const csv = [
       ['Timestamp', 'User', 'Email', 'Action', 'Resource Type', 'Resource ID', 'Details'].join(','),
       ...filteredLogs.map(log => [
-        new Date(log.created_at).toLocaleString(),
-        log.user?.profile?.full_name || 'Unknown',
-        log.user?.profile?.email || 'Unknown',
+        new Date(log.createdAt).toLocaleString(),
+        log.userName || 'Unknown',
+        log.userEmail || 'Unknown',
         log.action,
-        log.resource_type,
-        log.resource_id || '',
+        log.resourceType,
+        log.resourceId || '',
         JSON.stringify(log.details).replace(/,/g, ';')
       ].join(','))
     ].join('\n');
@@ -232,12 +225,12 @@ const AuditLogs = () => {
   const stats = {
     total: logs.length,
     today: logs.filter(log => {
-      const logDate = new Date(log.created_at);
+      const logDate = new Date(log.createdAt);
       const today = new Date();
       return logDate.toDateString() === today.toDateString();
     }).length,
     thisWeek: logs.filter(log => {
-      const logDate = new Date(log.created_at);
+      const logDate = new Date(log.createdAt);
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       return logDate >= weekAgo;
@@ -399,25 +392,25 @@ const AuditLogs = () => {
                       </Badge>
                       <span className="text-sm text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(log.created_at).toLocaleString()}
+                        {new Date(log.createdAt).toLocaleString()}
                       </span>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm">
                         <span className="font-medium">
-                          {log.user?.profile?.full_name || 'Unknown User'}
+                          {log.userName || 'Unknown User'}
                         </span>
                         <span className="text-muted-foreground">
-                          {' '}({log.user?.profile?.email || 'No email'})
+                          {' '}({log.userEmail || 'No email'})
                         </span>
                       </p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
-                          Resource: <span className="font-medium">{log.resource_type}</span>
+                          Resource: <span className="font-medium">{log.resourceType}</span>
                         </span>
-                        {log.resource_id && (
+                        {log.resourceId && (
                           <span>
-                            ID: <span className="font-mono text-xs">{log.resource_id}</span>
+                            ID: <span className="font-mono text-xs">{log.resourceId}</span>
                           </span>
                         )}
                       </div>

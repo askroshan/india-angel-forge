@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,8 +24,8 @@ import { Users, Shield, Edit, Search } from 'lucide-react';
 interface User {
   id: string;
   email: string;
-  full_name?: string;
-  created_at: string;
+  fullName?: string;
+  createdAt: string;
   role?: 'admin' | 'moderator' | 'compliance_officer' | 'user';
 }
 
@@ -49,6 +49,7 @@ export default function UserRoleManagement() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token, user } = useAuth();
 
   useEffect(() => {
     checkAccess();
@@ -65,22 +66,19 @@ export default function UserRoleManagement() {
   }, [users, searchQuery, filterRole]);
 
   const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token || !user) {
       navigate('/auth');
       return;
     }
 
-    setCurrentUserId(session.user.id);
+    setCurrentUserId(user.id);
 
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', session.user.id)
-      .single();
+    // Check if user is admin via API
+    const response = await fetch('/api/admin/users', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!roleData || roleData.role !== 'admin') {
+    if (response.status === 403 || response.status === 401) {
       setAccessDenied(true);
     }
   };
@@ -89,48 +87,23 @@ export default function UserRoleManagement() {
     try {
       setLoading(true);
       
-      // Fetch all users with their roles
-      const { data: usersData, error: usersError } = await supabase
-        .from('auth.users')
-        .select('id, email, raw_user_meta_data, created_at')
-        .order('created_at', { ascending: false });
+      if (!token) return;
 
-      if (usersError) {
-        // Fallback: try getting from user_roles table
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('user_id, role');
+      const response = await fetch('/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (rolesError) throw rolesError;
-
-        const usersWithRoles = rolesData.map(r => ({
-          id: r.user_id,
-          email: `user-${r.user_id.slice(0, 8)}`,
-          created_at: new Date().toISOString(),
-          role: r.role as any,
-        }));
-
-        setUsers(usersWithRoles);
-      } else {
-        // Get roles for each user
-        const userIds = usersData.map(u => u.id);
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', userIds);
-
-        const rolesMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
-
-        const usersWithRoles = usersData.map(u => ({
-          id: u.id,
-          email: u.email || 'No email',
-          full_name: u.raw_user_meta_data?.full_name,
-          created_at: u.created_at,
-          role: rolesMap.get(u.id) || 'user',
-        }));
-
-        setUsers(usersWithRoles);
+      if (response.status === 401 || response.status === 403) {
+        setAccessDenied(true);
+        return;
       }
+
+      if (!response.ok) {
+        throw new Error('Failed to load users');
+      }
+
+      const data = await response.json();
+      setUsers(data || []);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -153,7 +126,7 @@ export default function UserRoleManagement() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(u => 
         u.email.toLowerCase().includes(query) ||
-        u.full_name?.toLowerCase().includes(query)
+        u.fullName?.toLowerCase().includes(query)
       );
     }
 
@@ -183,48 +156,21 @@ export default function UserRoleManagement() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!token) throw new Error('Not authenticated');
 
-      // Check if role exists
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', selectedUser.id)
-        .single();
-
-      if (existingRole) {
-        // Update existing role
-        const { error: updateError } = await supabase
-          .from('user_roles')
-          .update({ role: newRole })
-          .eq('user_id', selectedUser.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert new role
-        const { error: insertError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: selectedUser.id,
-            role: newRole,
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      // Log audit trail
-      await supabase.from('audit_logs').insert({
-        user_id: session.user.id,
-        action: 'role_assigned',
-        entity_type: 'user_role',
-        entity_id: selectedUser.id,
-        details: {
-          previous_role: selectedUser.role,
-          new_role: newRole,
-          user_email: selectedUser.email,
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ role: newRole }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to assign role');
+      }
 
       toast({
         title: 'Success',
@@ -349,7 +295,7 @@ export default function UserRoleManagement() {
                   <div className="flex items-center space-x-4">
                     <Users className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <h3 className="font-semibold">{user.full_name || user.email}</h3>
+                      <h3 className="font-semibold">{user.fullName || user.email}</h3>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
@@ -357,7 +303,7 @@ export default function UserRoleManagement() {
                           {AVAILABLE_ROLES.find(r => r.value === user.role)?.label || 'User'}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          Joined {new Date(user.created_at).toLocaleDateString()}
+                          Joined {new Date(user.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
