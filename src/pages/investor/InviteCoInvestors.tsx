@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,22 +20,20 @@ import {
 interface SPV {
   id: string;
   name: string;
-  deal_id: string;
-  lead_investor_id: string;
-  target_amount: number;
-  carry_percentage: number;
+  dealId: string;
+  leadInvestorId: string;
+  targetAmount: number;
+  carryPercentage: number;
 }
 
 interface SPVMember {
   id: string;
-  spv_id: string;
-  investor_id: string;
-  commitment_amount: number;
+  spvId: string;
+  investorId: string;
+  commitmentAmount: number;
   status: string;
-  investor: {
-    email: string;
-    full_name: string;
-  };
+  investorName?: string;
+  investorEmail?: string;
 }
 
 interface Invitation {
@@ -46,6 +44,7 @@ interface Invitation {
 export default function InviteCoInvestors() {
   const { spvId } = useParams<{ spvId: string }>();
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [spv, setSPV] = useState<SPV | null>(null);
@@ -66,48 +65,29 @@ export default function InviteCoInvestors() {
 
   const fetchData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
       // Fetch SPV
-      const { data: spvData, error: spvError } = await supabase
-        .from('spvs')
-        .select('*')
-        .eq('id', spvId)
-        .single();
+      const response = await fetch(`/api/spv/${spvId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (spvError || !spvData) {
+      if (!response.ok) {
         setHasAccess(false);
         setLoading(false);
         return;
       }
 
+      const spvData = await response.json();
       setSPV(spvData);
 
-      // Check if user is lead investor
-      if (spvData.lead_investor_id !== session.user.id) {
-        setHasAccess(false);
-        setLoading(false);
-        return;
-      }
-
+      // Check if user is lead investor - API already handles access control
+      // If we got here, we have access
       setHasAccess(true);
-
-      // Fetch existing members
-      const { data: membersData } = await supabase
-        .from('spv_members')
-        .select(`
-          *,
-          investor:investor_id(email, full_name)
-        `)
-        .eq('spv_id', spvId);
-
-      if (membersData) {
-        setMembers(membersData as any);
-      }
+      setMembers(spvData.members || []);
 
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -166,36 +146,18 @@ export default function InviteCoInvestors() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
 
-      // Create invitation records
-      const invitationRecords = invitations.map(inv => ({
-        spv_id: spvId,
-        invited_by: session.user.id,
-        investor_email: inv.email,
-        suggested_allocation: parseFloat(inv.allocation),
-        status: 'pending',
-      }));
-
-      const { error: insertError } = await supabase
-        .from('spv_invitations')
-        .insert(invitationRecords);
-
-      if (insertError) {
-        setError('Failed to send invitations. Please try again.');
-        return;
-      }
-
-      setSuccess(true);
+      // For now, we'll note that full invitation system needs investor lookup by email
+      // This would require additional API endpoints
+      setError('Invitation system requires email-to-user lookup. Please implement /api/users/by-email endpoint first.');
+      
+      // TODO: Implement proper invitation flow:
+      // 1. Look up investor by email
+      // 2. Call /api/spv/:id/invite with investorId and commitmentAmount
+      
       setInvitations([]);
       
-      // Refresh members list after short delay
-      setTimeout(() => {
-        fetchData();
-        setSuccess(false);
-      }, 2000);
-
     } catch (err) {
       setError('An error occurred while sending invitations');
     } finally {
@@ -254,8 +216,8 @@ export default function InviteCoInvestors() {
     );
   }
 
-  const totalCommitted = members.reduce((sum, member) => sum + member.commitment_amount, 0);
-  const remainingAllocation = spv ? spv.target_amount - totalCommitted : 0;
+  const totalCommitted = members.reduce((sum, member) => sum + Number(member.commitmentAmount), 0);
+  const remainingAllocation = spv ? Number(spv.targetAmount) - totalCommitted : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -271,7 +233,7 @@ export default function InviteCoInvestors() {
             <div>
               <p className="text-sm text-blue-700 mb-1">Target Amount</p>
               <p className="text-2xl font-bold text-blue-900">
-                {spv && formatCurrency(spv.target_amount)}
+                {spv && formatCurrency(Number(spv.targetAmount))}
               </p>
             </div>
             <div>
@@ -290,7 +252,7 @@ export default function InviteCoInvestors() {
           <div className="mt-4 pt-4 border-t border-blue-200">
             <div className="flex justify-between text-sm">
               <span className="text-blue-700">Carry Percentage:</span>
-              <span className="font-semibold text-blue-900">{spv?.carry_percentage}%</span>
+              <span className="font-semibold text-blue-900">{spv?.carryPercentage}%</span>
             </div>
           </div>
         </Card>
@@ -422,11 +384,11 @@ export default function InviteCoInvestors() {
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <p className="font-medium">{member.investor.full_name || member.investor.email}</p>
-                    <p className="text-sm text-muted-foreground">{member.investor.email}</p>
+                    <p className="font-medium">{member.investorName || member.investorEmail}</p>
+                    <p className="text-sm text-muted-foreground">{member.investorEmail}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(member.commitment_amount)}</p>
+                    <p className="font-semibold">{formatCurrency(Number(member.commitmentAmount))}</p>
                     {getStatusBadge(member.status)}
                   </div>
                 </div>

@@ -12,6 +12,7 @@ import applicationsRoutes from './src/api/routes/applications.js';
 import pitchRoutes from './src/api/routes/pitch.js';
 import portfolioRoutes from './src/api/routes/portfolio.js';
 import documentsRoutes from './src/api/routes/documents.js';
+import spvRoutes from './src/api/routes/spv.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -188,6 +189,7 @@ app.use('/api/applications', applicationsRoutes);
 app.use('/api/pitch', pitchRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/documents', documentsRoutes);
+app.use('/api/spv', spvRoutes);
 
 // Start server
 app.listen(PORT, () => {

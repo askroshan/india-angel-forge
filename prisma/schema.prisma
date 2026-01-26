@@ -32,6 +32,8 @@ model User {
   sharedDocuments      SharedDocument[]
   deals                Deal[]
   dueDiligenceItems    DueDiligenceItem[]
+  spvs                 Spv[]
+  spvMemberships       SpvMember[]
 
   @@map("users")
 }
@@ -314,4 +316,38 @@ model DueDiligenceItem {
   investor User @relation(fields: [investorId], references: [id], onDelete: Cascade)
 
   @@map("due_diligence_items")
+}
+
+model Spv {
+  id               String   @id @default(uuid())
+  name             String
+  dealId           String   @map("deal_id")
+  leadInvestorId   String   @map("lead_investor_id")
+  targetAmount     Decimal  @map("target_amount") @db.Decimal(15, 2)
+  carryPercentage  Decimal  @map("carry_percentage") @db.Decimal(5, 2)
+  description      String?
+  status           String   @default("forming")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  leadInvestor User         @relation(fields: [leadInvestorId], references: [id], onDelete: Cascade)
+  members      SpvMember[]
+
+  @@map("spvs")
+}
+
+model SpvMember {
+  id               String    @id @default(uuid())
+  spvId            String    @map("spv_id")
+  investorId       String    @map("investor_id")
+  commitmentAmount Decimal   @map("commitment_amount") @db.Decimal(15, 2)
+  status           String    @default("invited")
+  joinedAt         DateTime? @map("joined_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  spv      Spv  @relation(fields: [spvId], references: [id], onDelete: Cascade)
+  investor User @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@unique([spvId, investorId])
+  @@map("spv_members")
 }
