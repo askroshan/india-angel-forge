@@ -1,158 +1,118 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Briefcase,
-  Clock,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { TrendingUp, TrendingDown, IndianRupee, AlertCircle, Briefcase, BarChart3, Info, PieChart } from 'lucide-react';
 
-interface PortfolioCompany {
-  id: string;
-  companyName: string;
-  investmentAmount: number;
-  investmentDate: string;
-  currentValuation?: number;
-  exitValuation?: number;
-  equityPercentage: number;
-  status: string;
+// Types
+interface PerformanceOverview {
+  total_deployed_capital: number;
+  total_current_value: number;
+  unrealized_gains: number;
+  realized_returns: number;
+  portfolio_irr: number;
+  total_companies: number;
+  active_companies: number;
+  exited_companies: number;
 }
 
-export default function PortfolioPerformance() {
-  const navigate = useNavigate();
-  const { token } = useAuth();
-  
-  const [loading, setLoading] = useState(true);
-  const [companies, setCompanies] = useState<PortfolioCompany[]>([]);
+interface SectorPerformance {
+  sector: string;
+  deployed: number;
+  current_value: number;
+  return_percentage: number;
+}
 
-  useEffect(() => {
-    fetchPortfolio();
-  }, []);
+interface StagePerformance {
+  stage: string;
+  deployed: number;
+  current_value: number;
+  return_percentage: number;
+}
 
-  const fetchPortfolio = async () => {
-    try {
-      if (!token) {
-        navigate('/auth');
-        return;
-      }
+interface PerformanceData {
+  overview: PerformanceOverview;
+  by_sector: SectorPerformance[];
+  by_stage: StagePerformance[];
+  performance_over_time: Array<{ month: string; portfolio_value: number }>;
+}
 
-      const response = await fetch('/api/portfolio/companies', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+// Helper functions
+const formatIndianCurrency = (amount: number): string => {
+  const absAmount = Math.abs(amount);
+  if (absAmount >= 10000000) {
+    return `₹${(amount / 10000000).toFixed(1)} Cr`;
+  } else if (absAmount >= 100000) {
+    return `₹${(amount / 100000).toFixed(1)} Lac`;
+  } else if (absAmount >= 1000) {
+    return `₹${(amount / 1000).toFixed(1)}K`;
+  }
+  return `₹${amount.toFixed(0)}`;
+};
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          navigate('/auth');
-        }
-        return;
-      }
+const STAGE_LABELS: Record<string, string> = {
+  SEED: 'Seed',
+  SERIES_A: 'Series A',
+  SERIES_B: 'Series B',
+  SERIES_C: 'Series C',
+  SERIES_D: 'Series D',
+  PRE_SEED: 'Pre-Seed',
+};
 
-      const data = await response.json();
-      setCompanies(data || []);
+const PortfolioPerformance = () => {
+  // Fetch portfolio performance data
+  const { data: performanceData, isLoading, error } = useQuery<PerformanceData>({
+    queryKey: ['portfolio-performance'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/portfolio/performance');
+      return response.data;
+    },
+  });
 
-    } catch (err) {
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateROI = (company: PortfolioCompany) => {
-    const currentValue = company.status === 'exited' 
-      ? (company.exitValuation || 0)
-      : (company.currentValuation || company.investmentAmount);
-    
-    const roi = ((currentValue - company.investmentAmount) / company.investmentAmount) * 100;
-    return roi.toFixed(1);
-  };
-
-  const calculateGain = (company: PortfolioCompany) => {
-    const currentValue = company.status === 'exited' 
-      ? (company.exitValuation || 0)
-      : (company.currentValuation || company.investmentAmount);
-    
-    return currentValue - company.investmentAmount;
-  };
-
-  const totalInvested = companies.reduce((sum, c) => sum + c.investmentAmount, 0);
-  
-  const currentPortfolioValue = companies.reduce((sum, c) => {
-    if (c.status === 'exited') {
-      return sum + (c.exitValuation || 0);
-    }
-    return sum + (c.currentValuation || c.investmentAmount);
-  }, 0);
-
-  const realizedGains = companies
-    .filter(c => c.status === 'exited')
-    .reduce((sum, c) => sum + calculateGain(c), 0);
-
-  const unrealizedGains = companies
-    .filter(c => c.status === 'active')
-    .reduce((sum, c) => sum + calculateGain(c), 0);
-
-  const totalReturn = ((currentPortfolioValue - totalInvested) / totalInvested) * 100;
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return (
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case 'exited':
-        return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            Exited
-          </Badge>
-        );
-      case 'closed':
-        return (
-          <Badge variant="secondary" className="bg-red-100 text-red-800">
-            <XCircle className="h-3 w-3 mr-1" />
-            Closed
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 10000000) {
-      return `₹${(amount / 10000000).toFixed(2)} Cr`;
-    }
-    return `₹${(amount / 100000).toFixed(2)} L`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <Clock className="h-8 w-8 animate-spin" />
-        </div>
+        <div className="text-center">Loading performance data...</div>
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading performance data. Please try again later.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!performanceData || performanceData.overview.total_companies === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Portfolio Performance</h1>
+        <Card>
+          <CardContent className="text-center py-12">
+            <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No performance data available</h3>
+            <p className="text-muted-foreground">
+              Make investments to start tracking your portfolio performance
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const { overview, by_sector, by_stage } = performanceData;
+  const totalGains = overview.unrealized_gains + overview.realized_returns;
+  const totalReturnPercentage = overview.total_deployed_capital > 0
+    ? (totalGains / overview.total_deployed_capital) * 100
+    : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -161,157 +121,254 @@ export default function PortfolioPerformance() {
         <div>
           <h1 className="text-3xl font-bold mb-2">Portfolio Performance</h1>
           <p className="text-muted-foreground">
-            Track your investments and returns
+            Comprehensive analysis of your investment returns
           </p>
         </div>
 
-        {/* Statistics Cards */}
-        {companies.length > 0 && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <DollarSign className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Invested</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalInvested)}</p>
-                  </div>
-                </div>
-              </Card>
+        {/* Overview Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Deployed Capital
+              </CardTitle>
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatIndianCurrency(overview.total_deployed_capital)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Invested amount
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(currentPortfolioValue)}</p>
-                  </div>
-                </div>
-              </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Current Value
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatIndianCurrency(overview.total_current_value)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Mark-to-market
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <Briefcase className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Investments</p>
-                    <p className="text-2xl font-bold">{companies.length}</p>
-                  </div>
-                </div>
-              </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Unrealized Gains
+              </CardTitle>
+              {overview.unrealized_gains >= 0 ? (
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${overview.unrealized_gains >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatIndianCurrency(overview.unrealized_gains)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Active investments
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-lg ${totalReturn >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                    {totalReturn >= 0 ? (
-                      <TrendingUp className={`h-6 w-6 ${totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                    ) : (
-                      <TrendingDown className="h-6 w-6 text-red-600" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Return</p>
-                    <p className={`text-2xl font-bold ${totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {totalReturn.toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-              </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Realized Returns
+              </CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatIndianCurrency(overview.realized_returns)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                From {overview.exited_companies} exits
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Portfolio IRR
+              </CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${overview.portfolio_irr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {overview.portfolio_irr >= 0 ? '+' : ''}{overview.portfolio_irr.toFixed(1)}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Annualized return
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Performance Summary Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Overall Performance</CardTitle>
+            <CardDescription>
+              Total return across {overview.total_companies} portfolio companies
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Total Return</span>
+              <span className={`text-lg font-bold ${totalReturnPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {totalReturnPercentage >= 0 ? '+' : ''}{totalReturnPercentage.toFixed(1)}%
+              </span>
             </div>
-
-            {/* Gains Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-6">
-                <h3 className="font-semibold mb-2">Realized Gains</h3>
-                <p className={`text-3xl font-bold ${realizedGains >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(realizedGains)}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">From exited investments</p>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="font-semibold mb-2">Unrealized Gains</h3>
-                <p className={`text-3xl font-bold ${unrealizedGains >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(unrealizedGains)}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">From active investments</p>
-              </Card>
+            <Progress
+              value={Math.min(Math.abs(totalReturnPercentage), 100)}
+              className="h-2"
+            />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Active Companies:</span>
+                <span className="ml-2 font-semibold">{overview.active_companies}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Exited:</span>
+                <span className="ml-2 font-semibold">{overview.exited_companies}</span>
+              </div>
             </div>
-          </>
-        )}
+          </CardContent>
+        </Card>
 
-        {/* Portfolio Companies */}
-        {companies.length > 0 ? (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Portfolio Companies</h2>
-            {companies.map((company) => {
-              const roi = parseFloat(calculateROI(company));
-              const gain = calculateGain(company);
-
-              return (
-                <Card key={company.id} className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold">{company.companyName}</h3>
-                        {getStatusBadge(company.status)}
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Investment</p>
-                          <p className="font-semibold">{formatCurrency(company.investmentAmount)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Current Value</p>
-                          <p className="font-semibold">
-                            {formatCurrency(
-                              company.status === 'exited' 
-                                ? (company.exitValuation || 0)
-                                : (company.currentValuation || company.investmentAmount)
-                            )}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">ROI</p>
-                          <p className={`font-semibold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {roi}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Gain/Loss</p>
-                          <p className={`font-semibold ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(gain)}
-                          </p>
+        {/* Performance by Sector */}
+        {by_sector.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5" />
+                Performance by Sector
+              </CardTitle>
+              <CardDescription>
+                Returns across different industry sectors
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {by_sector.map((sector) => (
+                  <div key={sector.sector} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">{sector.sector}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Deployed: {formatIndianCurrency(sector.deployed)} • Current: {formatIndianCurrency(sector.current_value)}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Invested: {formatDate(company.investmentDate)}</span>
-                        <span>•</span>
-                        <span>Ownership: {company.equityPercentage}%</span>
+                      <div className={`text-lg font-bold ${sector.return_percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {sector.return_percentage >= 0 ? '+' : ''}{sector.return_percentage.toFixed(1)}%
                       </div>
                     </div>
+                    <Progress
+                      value={Math.min(Math.abs(sector.return_percentage), 100)}
+                      className="h-2"
+                    />
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="p-12 text-center">
-            <Briefcase className="h-16 w-16 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No investments yet</h3>
-            <p className="text-muted-foreground">
-              Your portfolio performance will appear here once you make investments
-            </p>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         )}
+
+        {/* Performance by Stage */}
+        {by_stage.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Performance by Stage
+              </CardTitle>
+              <CardDescription>
+                Returns across different funding stages
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {by_stage.map((stage) => (
+                  <div key={stage.stage} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">{STAGE_LABELS[stage.stage] || stage.stage}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Deployed: {formatIndianCurrency(stage.deployed)} • Current: {formatIndianCurrency(stage.current_value)}
+                        </div>
+                      </div>
+                      <div className={`text-lg font-bold ${stage.return_percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {stage.return_percentage >= 0 ? '+' : ''}{stage.return_percentage.toFixed(1)}%
+                      </div>
+                    </div>
+                    <Progress
+                      value={Math.min(Math.abs(stage.return_percentage), 100)}
+                      className="h-2"
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Info Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Understanding Performance Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Deployed Capital</h4>
+              <p className="text-sm text-muted-foreground">
+                Total amount you've invested across all portfolio companies.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Current Value (Mark-to-Market)</h4>
+              <p className="text-sm text-muted-foreground">
+                Present value of your investments based on latest valuations or exit prices.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Unrealized Gains/Losses</h4>
+              <p className="text-sm text-muted-foreground">
+                Profit or loss on active investments that haven't been exited yet. These gains are "paper gains" until exit.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Realized Returns</h4>
+              <p className="text-sm text-muted-foreground">
+                Actual profit from companies you've exited through sales or IPOs.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Portfolio IRR</h4>
+              <p className="text-sm text-muted-foreground">
+                Internal Rate of Return - the annualized rate at which your portfolio is growing, considering timing of investments and returns.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default PortfolioPerformance;

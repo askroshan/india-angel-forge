@@ -1,421 +1,259 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 import PortfolioPerformance from '@/pages/investor/PortfolioPerformance';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
-    },
-    from: vi.fn(),
+// Mock API client
+vi.mock('@/api/client', () => ({
+  apiClient: {
+    get: vi.fn(),
   },
 }));
 
-// Mock react-router-dom
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'investor-1',
+      email: 'investor@example.com',
+      role: 'INVESTOR',
+    },
+    isAuthenticated: true,
+  }),
+}));
 
-describe('PortfolioPerformance', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+// Mock router
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}));
 
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'investor-123' },
-        },
+// Mock performance data
+const mockPerformanceData = {
+  overview: {
+    total_deployed_capital: 26000000,
+    total_current_value: 44000000,
+    unrealized_gains: 15000000,
+    realized_returns: 3000000,
+    portfolio_irr: 42.5,
+    total_companies: 4,
+    active_companies: 3,
+    exited_companies: 1,
+  },
+  by_sector: [
+    { sector: 'Technology', deployed: 15000000, current_value: 21500000, return_percentage: 43.3 },
+    { sector: 'Healthcare', deployed: 8000000, current_value: 15000000, return_percentage: 87.5 },
+    { sector: 'Finance', deployed: 3000000, current_value: 7500000, return_percentage: 150.0 },
+  ],
+  by_stage: [
+    { stage: 'SEED', deployed: 8000000, current_value: 9000000, return_percentage: 12.5 },
+    { stage: 'SERIES_A', deployed: 10000000, current_value: 15000000, return_percentage: 50.0 },
+    { stage: 'SERIES_B', deployed: 8000000, current_value: 20000000, return_percentage: 150.0 },
+  ],
+  performance_over_time: [
+    { month: '2024-08', portfolio_value: 26000000 },
+    { month: '2024-09', portfolio_value: 27500000 },
+    { month: '2024-10', portfolio_value: 29000000 },
+    { month: '2024-11', portfolio_value: 28500000 },
+    { month: '2024-12', portfolio_value: 32000000 },
+    { month: '2025-01', portfolio_value: 35000000 },
+    { month: '2025-02', portfolio_value: 38000000 },
+    { month: '2025-03', portfolio_value: 40000000 },
+    { month: '2025-04', portfolio_value: 41000000 },
+    { month: '2025-05', portfolio_value: 42500000 },
+    { month: '2025-06', portfolio_value: 44000000 },
+  ],
+};
+
+describe('US-INVESTOR-012: Track Portfolio Performance', () => {
+  let queryClient: QueryClient;
+
+  const renderWithProviders = (component: React.ReactElement) => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
       },
     });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {component}
+      </QueryClientProvider>
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('Portfolio Performance Dashboard', () => {
-    it('should display portfolio performance dashboard', async () => {
-      // Mock portfolio companies query
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
-        }),
-      });
+  describe('Page Display', () => {
+    it('should display portfolio performance page', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
         expect(screen.getByText(/Portfolio Performance/i)).toBeInTheDocument();
       });
     });
 
-    it('should display portfolio companies', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
+    it('should display empty state when no performance data', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: {
+          overview: {
+            total_deployed_capital: 0,
+            total_current_value: 0,
+            unrealized_gains: 0,
+            realized_returns: 0,
+            portfolio_irr: 0,
+            total_companies: 0,
+            active_companies: 0,
+            exited_companies: 0,
+          },
+          by_sector: [],
+          by_stage: [],
+          performance_over_time: [],
         },
-        {
-          id: 'company-2',
-          company_name: 'FinTech Solutions',
-          investment_amount: 3000000,
-          investment_date: '2023-06-20',
-          current_valuation: 3600000,
-          ownership_percentage: 3.5,
-          status: 'active',
-        },
-      ];
-
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
       });
 
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText('TechStartup Inc')).toBeInTheDocument();
-        expect(screen.getByText('FinTech Solutions')).toBeInTheDocument();
+        expect(screen.getByText(/No performance data available/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Investment Returns', () => {
-    it('should calculate and display ROI', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000, // 50% ROI
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-      ];
+  describe('Overview Metrics', () => {
+    it('should display total deployed capital', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/50%/)).toBeInTheDocument();
+        expect(screen.getByText(/Total Deployed Capital/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹2.6 Cr/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display total current value', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+
+      renderWithProviders(<PortfolioPerformance />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Total Current Value/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹4.4 Cr/i)).toBeInTheDocument();
       });
     });
 
     it('should display unrealized gains', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-      ];
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        // Unrealized gain = 7.5M - 5M = 2.5M
-        expect(screen.getByText(/2.5/)).toBeInTheDocument();
+        expect(screen.getByText(/Unrealized Gains/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹1.5 Cr/i)).toBeInTheDocument();
       });
     });
 
-    it('should show realized gains separately', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-        {
-          id: 'company-2',
-          company_name: 'Exited Startup',
-          investment_amount: 2000000,
-          investment_date: '2022-01-15',
-          exit_valuation: 3000000,
-          ownership_percentage: 4.0,
-          status: 'exited',
-        },
-      ];
+    it('should display realized returns', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Realized/i)).toBeInTheDocument();
-        expect(screen.getByText(/Unrealized/i)).toBeInTheDocument();
+        expect(screen.getByText(/Realized Returns/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹30.0 Lac/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display portfolio IRR', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+
+      renderWithProviders(<PortfolioPerformance />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Portfolio IRR/i)).toBeInTheDocument();
+        expect(screen.getByText(/42.5%/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Portfolio Statistics', () => {
-    it('should display total invested amount', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-        {
-          id: 'company-2',
-          company_name: 'FinTech Solutions',
-          investment_amount: 3000000,
-          investment_date: '2023-06-20',
-          current_valuation: 3600000,
-          ownership_percentage: 3.5,
-          status: 'active',
-        },
-      ];
+  describe('Performance by Sector', () => {
+    it('should display performance breakdown by sector', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        // Total invested = 5M + 3M = 8M
-        expect(screen.getByText(/8.0/)).toBeInTheDocument();
+        expect(screen.getByText(/Performance by Sector/i)).toBeInTheDocument();
+        expect(screen.getByText('Technology')).toBeInTheDocument();
+        expect(screen.getByText('Healthcare')).toBeInTheDocument();
+        expect(screen.getByText('Finance')).toBeInTheDocument();
       });
     });
 
-    it('should display current portfolio value', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-        {
-          id: 'company-2',
-          company_name: 'FinTech Solutions',
-          investment_amount: 3000000,
-          investment_date: '2023-06-20',
-          current_valuation: 3600000,
-          ownership_percentage: 3.5,
-          status: 'active',
-        },
-      ];
+    it('should display sector-wise deployed capital', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        // Current value = 7.5M + 3.6M = 11.1M
-        expect(screen.getByText(/11.1/)).toBeInTheDocument();
+        expect(screen.getByText(/₹1.5 Cr/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹80.0 Lac/i)).toBeInTheDocument();
       });
     });
 
-    it('should display number of investments', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-        {
-          id: 'company-2',
-          company_name: 'FinTech Solutions',
-          investment_amount: 3000000,
-          investment_date: '2023-06-20',
-          current_valuation: 3600000,
-          ownership_percentage: 3.5,
-          status: 'active',
-        },
-      ];
+    it('should display sector-wise return percentages', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/2/)).toBeInTheDocument();
+        expect(screen.getByText(/43.3%/i)).toBeInTheDocument();
+        expect(screen.getByText(/87.5%/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Company Status', () => {
-    it('should display different status badges', async () => {
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'Active Company',
-          investment_amount: 5000000,
-          investment_date: '2023-01-15',
-          current_valuation: 7500000,
-          ownership_percentage: 5.0,
-          status: 'active',
-        },
-        {
-          id: 'company-2',
-          company_name: 'Exited Company',
-          investment_amount: 2000000,
-          investment_date: '2022-01-15',
-          exit_valuation: 3000000,
-          ownership_percentage: 4.0,
-          status: 'exited',
-        },
-        {
-          id: 'company-3',
-          company_name: 'Closed Company',
-          investment_amount: 1000000,
-          investment_date: '2021-01-15',
-          current_valuation: 0,
-          ownership_percentage: 2.0,
-          status: 'closed',
-        },
-      ];
+  describe('Performance by Stage', () => {
+    it('should display performance breakdown by funding stage', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockCompanies,
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioPerformance />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText('Active Company')).toBeInTheDocument();
-        expect(screen.getByText('Exited Company')).toBeInTheDocument();
-        expect(screen.getByText('Closed Company')).toBeInTheDocument();
+        expect(screen.getByText(/Performance by Stage/i)).toBeInTheDocument();
+        expect(screen.getByText(/Seed/i)).toBeInTheDocument();
+        expect(screen.getByText(/Series A/i)).toBeInTheDocument();
+        expect(screen.getByText(/Series B/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display stage-wise return percentages', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+
+      renderWithProviders(<PortfolioPerformance />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/12.5%/i)).toBeInTheDocument();
+        expect(screen.getByText(/50.0%/i)).toBeInTheDocument();
+        expect(screen.getByText(/150.0%/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should display error message when loading performance fails', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Failed to load performance'));
+
+      renderWithProviders(<PortfolioPerformance />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Error loading performance data/i)).toBeInTheDocument();
       });
     });
   });
