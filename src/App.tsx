@@ -28,6 +28,11 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import CodeOfConduct from "./pages/CodeOfConduct";
 import NotFound from "./pages/NotFound";
+import KYCUpload from "./pages/investor/KYCUpload";
+import DealsPage from "./pages/investor/DealsPage";
+import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
+import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
+import UserRoleManagement from "./pages/admin/UserRoleManagement";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +80,34 @@ const App = () => (
             <Route path="/admin" element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            {/* Investor Routes */}
+            <Route path="/investor/kyc" element={
+              <ProtectedRoute>
+                <KYCUpload />
+              </ProtectedRoute>
+            } />
+            <Route path="/deals" element={
+              <ProtectedRoute>
+                <DealsPage />
+              </ProtectedRoute>
+            } />
+            {/* Compliance Routes */}
+            <Route path="/compliance/kyc-review" element={
+              <ProtectedRoute>
+                <KYCReviewDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/compliance/aml-screening" element={
+              <ProtectedRoute>
+                <AMLScreeningDashboard />
+              </ProtectedRoute>
+            } />
+            {/* Admin Routes */}
+            <Route path="/admin/users" element={
+              <ProtectedRoute>
+                <UserRoleManagement />
               </ProtectedRoute>
             } />
             {/* Legal & Contact Pages */}
