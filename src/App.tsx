@@ -30,6 +30,10 @@ import CodeOfConduct from "./pages/CodeOfConduct";
 import NotFound from "./pages/NotFound";
 import KYCUpload from "./pages/investor/KYCUpload";
 import DealsPage from "./pages/investor/DealsPage";
+import DealPipeline from "./pages/investor/DealPipeline";
+import DealDocuments from "./pages/investor/DealDocuments";
+import InvestmentCommitment from "./pages/investor/InvestmentCommitment";
+import ApplicationStatus from "./pages/founder/ApplicationStatus";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
@@ -69,6 +73,11 @@ const App = () => (
             } />
             <Route path="/apply/founder" element={<ApplyFounder />} />
             <Route path="/apply/investor" element={<ApplyInvestor />} />
+            <Route path="/founder/application-status" element={
+              <ProtectedRoute>
+                <ApplicationStatus />
+              </ProtectedRoute>
+            } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -93,6 +102,21 @@ const App = () => (
             <Route path="/deals" element={
               <ProtectedRoute>
                 <DealsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/pipeline" element={
+              <ProtectedRoute>
+                <DealPipeline />
+              </ProtectedRoute>
+            } />
+            <Route path="/deals/:dealId/documents" element={
+              <ProtectedRoute>
+                <DealDocuments />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/commitments/:interestId" element={
+              <ProtectedRoute>
+                <InvestmentCommitment />
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
