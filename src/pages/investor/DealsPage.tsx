@@ -17,8 +17,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, Calendar, DollarSign, Users, Search, Filter } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, Users, Search, Filter, CheckCircle } from 'lucide-react';
 
 interface Deal {
   id: string;
@@ -46,6 +55,15 @@ export default function DealsPage() {
   const [filterSector, setFilterSector] = useState<string>('all');
   const [filterStage, setFilterStage] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('open');
+  
+  // Express Interest State
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [interestDialogOpen, setInterestDialogOpen] = useState(false);
+  const [investmentAmount, setInvestmentAmount] = useState('');
+  const [interestNotes, setInterestNotes] = useState('');
+  const [submittingInterest, setSubmittingInterest] = useState(false);
+  const [expresssedInterests, setExpressedInterests] = useState<Record<string, boolean>>({});
+  const [isAccredited, setIsAccredited] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -87,6 +105,131 @@ export default function DealsPage() {
     }
 
     await fetchDeals();
+    await checkAccreditation();
+    await fetchExpressedInterests();
+  };
+
+  const checkAccreditation = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data } = await supabase
+        .from('accreditation_verification')
+        .select('*')
+        .eq('investor_id', session.user.id)
+        .eq('status', 'verified')
+        .single();
+
+      if (data && data.expiry_date) {
+        const isExpired = new Date(data.expiry_date) < new Date();
+        setIsAccredited(!isExpired);
+      } else {
+        setIsAccredited(false);
+      }
+    } catch (error) {
+      setIsAccredited(false);
+    }
+  };
+
+  const fetchExpressedInterests = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data } = await supabase
+        .from('deal_interests')
+        .select('deal_id')
+        .eq('investor_id', session.user.id);
+
+      if (data) {
+        const interestsMap: Record<string, boolean> = {};
+        data.forEach(interest => {
+          interestsMap[interest.deal_id] = true;
+        });
+        setExpressedInterests(interestsMap);
+      }
+    } catch (error) {
+      console.error('Failed to fetch interests:', error);
+    }
+  };
+
+  const handleExpressInterest = (deal: Deal) => {
+    if (!isAccredited) {
+      toast({
+        title: 'Accreditation Required',
+        description: 'You must be an accredited investor to express interest in deals. Please complete accreditation verification.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSelectedDeal(deal);
+    setInterestDialogOpen(true);
+  };
+
+  const submitInterest = async () => {
+    if (!selectedDeal) return;
+
+    // Validation
+    if (!investmentAmount || Number(investmentAmount) <= 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Investment amount is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const amount = Number(investmentAmount);
+    if (amount < selectedDeal.min_investment) {
+      toast({
+        title: 'Below Minimum',
+        description: `Investment amount must be at least ${formatAmount(selectedDeal.min_investment)}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSubmittingInterest(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const { error } = await supabase
+        .from('deal_interests')
+        .insert({
+          deal_id: selectedDeal.id,
+          investor_id: session.user.id,
+          commitment_amount: amount,
+          notes: interestNotes,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Interest Submitted Successfully',
+        description: 'The lead investor will review your interest and get back to you.',
+      });
+
+      // Update local state
+      setExpressedInterests(prev => ({ ...prev, [selectedDeal.id]: true }));
+      
+      // Close dialog and reset
+      setInterestDialogOpen(false);
+      setSelectedDeal(null);
+      setInvestmentAmount('');
+      setInterestNotes('');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit interest',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingInterest(false);
+    }
   };
 
   const fetchDeals = async () => {
@@ -362,9 +505,16 @@ export default function DealsPage() {
                       View Details
                     </Button>
                     {deal.deal_status === 'open' && (
-                      <Button variant="outline">
-                        Express Interest
-                      </Button>
+                      expresssedInterests[deal.id] ? (
+                        <Button variant="outline" disabled>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Interest Submitted
+                        </Button>
+                      ) : (
+                        <Button variant="outline" onClick={() => handleExpressInterest(deal)}>
+                          Express Interest
+                        </Button>
+                      )
                     )}
                   </div>
                 </CardContent>
@@ -373,6 +523,68 @@ export default function DealsPage() {
           })}
         </div>
       )}
+
+      {/* Express Interest Dialog */}
+      <Dialog open={interestDialogOpen} onOpenChange={setInterestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Express Interest in Deal</DialogTitle>
+            <DialogDescription>
+              {selectedDeal && (
+                <>
+                  <span className="font-semibold">{selectedDeal.company_name}</span> - {selectedDeal.title}
+                  <br />
+                  <span className="text-xs">Minimum Investment: {formatAmount(selectedDeal.min_investment)}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="investment-amount">Investment Amount (₹) *</Label>
+              <Input
+                id="investment-amount"
+                type="number"
+                placeholder="Enter amount in rupees"
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+                min={selectedDeal?.min_investment || 0}
+              />
+              {selectedDeal && (
+                <p className="text-xs text-muted-foreground">
+                  Minimum: {formatAmount(selectedDeal.min_investment)}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="interest-notes">Notes (Optional)</Label>
+              <Textarea
+                id="interest-notes"
+                placeholder="Add any relevant information about your interest, investment thesis, or questions..."
+                value={interestNotes}
+                onChange={(e) => setInterestNotes(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInterestDialogOpen(false);
+                setSelectedDeal(null);
+                setInvestmentAmount('');
+                setInterestNotes('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={submitInterest} disabled={submittingInterest}>
+              {submittingInterest ? 'Submitting...' : 'Submit Interest'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -81,10 +81,10 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
       renderWithRouter(<KYCUpload />);
 
       await waitFor(() => {
-        expect(screen.getByText(/PAN Card/i)).toBeInTheDocument();
-        expect(screen.getByText(/Aadhaar/i)).toBeInTheDocument();
-        expect(screen.getByText(/Bank Statement/i)).toBeInTheDocument();
-        expect(screen.getByText(/Income Proof/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/PAN Card/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Aadhaar/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Bank Statement/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Income Proof/i).length).toBeGreaterThan(0);
       });
     });
   });

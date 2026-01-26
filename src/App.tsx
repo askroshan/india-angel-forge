@@ -32,7 +32,9 @@ import KYCUpload from "./pages/investor/KYCUpload";
 import DealsPage from "./pages/investor/DealsPage";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
+import AccreditationVerification from "./pages/compliance/AccreditationVerification";
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
+import AuditLogs from "./pages/admin/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -104,10 +106,20 @@ const App = () => (
                 <AMLScreeningDashboard />
               </ProtectedRoute>
             } />
+            <Route path="/compliance/accreditation" element={
+              <ProtectedRoute>
+                <AccreditationVerification />
+              </ProtectedRoute>
+            } />
             {/* Admin Routes */}
             <Route path="/admin/users" element={
               <ProtectedRoute>
                 <UserRoleManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/audit-logs" element={
+              <ProtectedRoute>
+                <AuditLogs />
               </ProtectedRoute>
             } />
             {/* Legal & Contact Pages */}
