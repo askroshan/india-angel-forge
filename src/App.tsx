@@ -38,10 +38,14 @@ import InviteCoInvestors from "./pages/investor/InviteCoInvestors";
 import SPVDashboard from "./pages/investor/SPVDashboard";
 import PortfolioPerformance from "./pages/investor/PortfolioPerformance";
 import PortfolioDashboard from "./pages/investor/PortfolioDashboard";
+import PortfolioUpdates from "./pages/investor/PortfolioUpdates";
+import SharedDocuments from "./pages/investor/SharedDocuments";
 import ApplicationStatus from "./pages/founder/ApplicationStatus";
 import InvestorDirectory from "./pages/founder/InvestorDirectory";
 import PitchSessions from "./pages/founder/PitchSessions";
 import PitchMaterials from "./pages/founder/PitchMaterials";
+import InvestorUpdates from "./pages/founder/InvestorUpdates";
+import InvestorDocuments from "./pages/founder/InvestorDocuments";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
@@ -157,6 +161,16 @@ const App = () => (
                 <PortfolioDashboard />
               </ProtectedRoute>
             } />
+            <Route path="/investor/portfolio/updates" element={
+              <ProtectedRoute>
+                <PortfolioUpdates />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/shared-documents" element={
+              <ProtectedRoute>
+                <SharedDocuments />
+              </ProtectedRoute>
+            } />
             {/* Founder Routes */}
             <Route path="/founder/application-status" element={
               <ProtectedRoute>
@@ -176,6 +190,16 @@ const App = () => (
             <Route path="/founder/pitch-materials" element={
               <ProtectedRoute>
                 <PitchMaterials />
+              </ProtectedRoute>
+            } />
+            <Route path="/founder/investor-updates" element={
+              <ProtectedRoute>
+                <InvestorUpdates />
+              </ProtectedRoute>
+            } />
+            <Route path="/founder/investor-documents" element={
+              <ProtectedRoute>
+                <InvestorDocuments />
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
