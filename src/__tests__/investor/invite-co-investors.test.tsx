@@ -1,229 +1,212 @@
-/**
- * US-INVESTOR-009: Invite Co-investors to SPV
- * 
- * As a: Lead Investor
- * I want to: Invite other investors to join my SPV
- * So that: I can pool capital and share the investment opportunity
- * 
- * Acceptance Criteria:
- * - GIVEN I created an SPV
- *   WHEN I view SPV dashboard
- *   THEN I see invite co-investors section
- * 
- * - GIVEN I enter investor emails
- *   WHEN I send invitations
- *   THEN invited investors receive email notifications
- * 
- * - GIVEN investor receives invitation
- *   WHEN they accept
- *   THEN they are added to SPV with allocation
- * 
- * - GIVEN SPV has members
- *   WHEN viewing member list
- *   THEN I see all co-investors with commitment amounts
- * 
- * Priority: High
- * Status: Implementing
- */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { testUsers, createMockSession } from '../fixtures/testData';
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 import InviteCoInvestors from '@/pages/investor/InviteCoInvestors';
 
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
+// Mock API client
+vi.mock('@/api/client', () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+  },
+}));
+
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'investor-1',
+      email: 'lead@example.com',
+      role: 'INVESTOR',
+    },
+    isAuthenticated: true,
+  }),
+}));
+
+// Mock router params
+vi.mock('react-router-dom', () => ({
+  useParams: () => ({ spvId: 'spv-1' }),
+  useNavigate: () => vi.fn(),
+}));
+
+// Mock SPV data
+const mockSPV = {
+  id: 'spv-1',
+  spv_name: 'TechStartup SPV 2026',
+  deal_id: 'deal-1',
+  lead_investor_id: 'investor-1',
+  target_raise_amount: 10000000,
+  carry_percentage: 20,
+  minimum_investment: 500000,
+  status: 'OPEN',
+  current_commitments: 2000000,
+  deal: {
+    company_name: 'TechStartup India',
+    sector: 'Technology',
+  },
 };
 
-describe('US-INVESTOR-009: Invite Co-investors to SPV', () => {
-  const leadInvestor = testUsers.standard_investor;
-  const mockSession = createMockSession(leadInvestor);
+// Mock existing members
+const mockMembers = [
+  {
+    id: 'member-1',
+    spv_id: 'spv-1',
+    investor_id: 'investor-2',
+    commitment_amount: 1000000,
+    status: 'COMMITTED',
+    joined_at: '2026-01-20T10:00:00Z',
+    investor: {
+      full_name: 'Rajesh Kumar',
+      email: 'rajesh@example.com',
+    },
+  },
+  {
+    id: 'member-2',
+    spv_id: 'spv-1',
+    investor_id: 'investor-3',
+    commitment_amount: 1000000,
+    status: 'PENDING',
+    invited_at: '2026-01-24T14:00:00Z',
+    investor: {
+      full_name: 'Priya Sharma',
+      email: 'priya@example.com',
+    },
+  },
+];
+
+describe('US-INVESTOR-009: Invite Co-Investors to SPV', () => {
+  let queryClient: QueryClient;
+
+  const renderWithProviders = (component: React.ReactElement) => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {component}
+      </QueryClientProvider>
+    );
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    } as any);
   });
 
-  describe('Invitation Form', () => {
-    it('should display invite co-investors form', async () => {
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV 2026',
-        deal_id: 'deal-001',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000,
-        carry_percentage: 20
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+  describe('Page Display', () => {
+    it('should display invite co-investors page', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
       await waitFor(() => {
-        expect(screen.getByText(/invite co-investors/i)).toBeInTheDocument();
-        expect(screen.getByText(/Test SPV 2026/i)).toBeInTheDocument();
+        expect(screen.getByText(/Invite Co-Investors/i)).toBeInTheDocument();
       });
     });
 
-    it('should show SPV details in invitation form', async () => {
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'HealthTech SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 30000000,
-        carry_percentage: 20
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+    it('should display SPV details', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
       await waitFor(() => {
-        expect(screen.getByText(/3\.00 Cr/i)).toBeInTheDocument();
-        expect(screen.getByText(/20%/i)).toBeInTheDocument();
+        expect(screen.getByText('TechStartup SPV 2026')).toBeInTheDocument();
+        expect(screen.getByText(/TechStartup India/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display current commitment progress', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/₹20.0 Lac/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹1.0 Cr/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Email Input', () => {
-    it('should allow entering multiple email addresses', async () => {
+  describe('Invite Form', () => {
+    it('should display invite form with email input', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Investor Email/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should allow entering investor email', async () => {
       const user = userEvent.setup();
-      
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
-      await waitFor(() => {
-        expect(screen.getByLabelText(/investor email/i)).toBeInTheDocument();
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
+      await user.type(emailInput, 'investor@example.com');
+
+      expect(emailInput).toHaveValue('investor@example.com');
+    });
+
+    it('should allow setting commitment deadline', async () => {
+      const user = userEvent.setup();
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
       });
 
-      const emailInput = screen.getByLabelText(/investor email/i);
-      await user.type(emailInput, 'investor1@example.com');
+      renderWithProviders(<InviteCoInvestors />);
 
-      expect(emailInput).toHaveValue('investor1@example.com');
+      const deadlineInput = await screen.findByLabelText(/Commitment Deadline/i);
+      await user.type(deadlineInput, '2026-02-15');
+
+      expect(deadlineInput).toHaveValue('2026-02-15');
     });
 
     it('should validate email format', async () => {
       const user = userEvent.setup();
-      
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
-      await waitFor(() => {
-        expect(screen.getByLabelText(/investor email/i)).toBeInTheDocument();
-      });
-
-      const emailInput = screen.getByLabelText(/investor email/i);
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
       await user.type(emailInput, 'invalid-email');
 
-      const addButton = screen.getByRole('button', { name: /add investor/i });
-      await user.click(addButton);
+      const submitButton = screen.getByRole('button', { name: /Send Invitation/i });
+      await user.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText(/valid email/i)).toBeInTheDocument();
@@ -231,271 +214,190 @@ describe('US-INVESTOR-009: Invite Co-investors to SPV', () => {
     });
   });
 
-  describe('Sending Invitations', () => {
-    it('should send invitations successfully', async () => {
+  describe('Send Invitations', () => {
+    it('should send invitation successfully', async () => {
       const user = userEvent.setup();
-      
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_invitations') {
-          return {
-            insert: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: {
+          id: 'invitation-1',
+          spv_id: 'spv-1',
+          investor_email: 'investor@example.com',
+          status: 'PENDING',
+        },
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
-      await waitFor(() => {
-        expect(screen.getByLabelText(/investor email/i)).toBeInTheDocument();
-      });
-
-      const emailInput = screen.getByLabelText(/investor email/i);
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
       await user.type(emailInput, 'investor@example.com');
 
-      const addButton = screen.getByRole('button', { name: /add investor/i });
-      await user.click(addButton);
+      const submitButton = screen.getByRole('button', { name: /Send Invitation/i });
+      await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/investor@example.com/i)).toBeInTheDocument();
-      });
-
-      const sendButton = screen.getByRole('button', { name: /send invitations/i });
-      await user.click(sendButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/invitations sent/i)).toBeInTheDocument();
+        expect(apiClient.post).toHaveBeenCalledWith('/api/spv-invitations', {
+          spv_id: 'spv-1',
+          investor_email: 'investor@example.com',
+          commitment_deadline: expect.any(String),
+        });
       });
     });
 
-    it('should show allocation amount input for each investor', async () => {
+    it('should show success message after sending invitation', async () => {
       const user = userEvent.setup();
-      
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: {
+          id: 'invitation-1',
+          spv_id: 'spv-1',
+          investor_email: 'investor@example.com',
+        },
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
-      await waitFor(() => {
-        expect(screen.getByLabelText(/investor email/i)).toBeInTheDocument();
-      });
-
-      const emailInput = screen.getByLabelText(/investor email/i);
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
       await user.type(emailInput, 'investor@example.com');
 
-      const addButton = screen.getByRole('button', { name: /add investor/i });
-      await user.click(addButton);
+      const submitButton = screen.getByRole('button', { name: /Send Invitation/i });
+      await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/allocation amount/i)).toBeInTheDocument();
+        expect(screen.getByText(/Invitation sent successfully/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should mention SPV details are included in invitation', async () => {
+      const user = userEvent.setup();
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { id: 'invitation-1' },
+      });
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
+      await user.type(emailInput, 'investor@example.com');
+
+      const submitButton = screen.getByRole('button', { name: /Send Invitation/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Investor will receive email with SPV details/i)).toBeInTheDocument();
       });
     });
   });
 
   describe('Member List', () => {
-    it('should display existing SPV members', async () => {
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      const mockMembers = [
-        {
-          id: 'member-001',
-          spv_id: 'spv-001',
-          investor_id: 'investor-002',
-          commitment_amount: 5000000,
-          status: 'confirmed',
-          investor: {
-            email: 'investor1@example.com',
-            full_name: 'John Investor'
-          }
-        },
-        {
-          id: 'member-002',
-          spv_id: 'spv-001',
-          investor_id: 'investor-003',
-          commitment_amount: 3000000,
-          status: 'pending',
-          investor: {
-            email: 'investor2@example.com',
-            full_name: 'Jane Investor'
-          }
-        }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+    it('should display list of existing members', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: mockMembers });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
       await waitFor(() => {
-        expect(screen.getByText(/John Investor/i)).toBeInTheDocument();
-        expect(screen.getByText(/Jane Investor/i)).toBeInTheDocument();
+        expect(screen.getByText('Rajesh Kumar')).toBeInTheDocument();
+        expect(screen.getByText('Priya Sharma')).toBeInTheDocument();
       });
     });
 
-    it('should show member status badges', async () => {
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      const mockMembers = [
-        {
-          id: 'member-001',
-          spv_id: 'spv-001',
-          investor_id: 'investor-002',
-          commitment_amount: 5000000,
-          status: 'confirmed',
-          investor: {
-            email: 'investor1@example.com',
-            full_name: 'John Investor'
-          }
-        }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+    it('should display commitment status for each member', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: mockMembers });
+        return Promise.resolve({ data: [] });
       });
 
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
       await waitFor(() => {
-        expect(screen.getByText(/confirmed/i)).toBeInTheDocument();
+        expect(screen.getByText(/COMMITTED/i)).toBeInTheDocument();
+        expect(screen.getByText(/PENDING/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display commitment amounts', async () => {
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: mockMembers });
+        return Promise.resolve({ data: [] });
+      });
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      await waitFor(() => {
+        const amounts = screen.getAllByText(/₹10.0 Lac/i);
+        expect(amounts.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should allow adjusting allocations if oversubscribed', async () => {
+      const oversubscribedSPV = {
+        ...mockSPV,
+        current_commitments: 12000000, // More than target
+      };
+
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: oversubscribedSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: mockMembers });
+        return Promise.resolve({ data: [] });
+      });
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Oversubscribed/i)).toBeInTheDocument();
+        expect(screen.getByText(/Adjust Allocations/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Access Control', () => {
-    it('should only allow lead investor to invite', async () => {
-      const otherInvestor = { ...testUsers.standard_investor, id: 'other-investor' };
-      const otherSession = createMockSession(otherInvestor);
-      
-      vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-        data: { session: otherSession },
-        error: null,
-      } as any);
+  describe('Error Handling', () => {
+    it('should display error message when loading SPV fails', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Failed to load SPV'));
 
-      const mockSPV = {
-        id: 'spv-001',
-        name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
-      };
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
-
-      renderWithRouter(<InviteCoInvestors />);
+      renderWithProviders(<InviteCoInvestors />);
 
       await waitFor(() => {
-        expect(screen.getByText(/only lead investor/i)).toBeInTheDocument();
+        expect(screen.getByText(/Error loading SPV/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should handle invitation error gracefully', async () => {
+      const user = userEvent.setup();
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/spvs/spv-1') return Promise.resolve({ data: mockSPV });
+        if (url === '/api/spvs/spv-1/members') return Promise.resolve({ data: [] });
+        return Promise.resolve({ data: [] });
+      });
+      vi.mocked(apiClient.post).mockRejectedValue(new Error('Invitation failed'));
+
+      renderWithProviders(<InviteCoInvestors />);
+
+      const emailInput = await screen.findByLabelText(/Investor Email/i);
+      await user.type(emailInput, 'investor@example.com');
+
+      const submitButton = screen.getByRole('button', { name: /Send Invitation/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to send invitation/i)).toBeInTheDocument();
       });
     });
   });

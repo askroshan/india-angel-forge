@@ -1,406 +1,504 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card } from '@/components/ui/card';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, Mail, Calendar, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  UserPlus, 
-  Mail,
-  Trash2,
-  Users
-} from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+import { apiClient } from '@/api/client';
 
+/**
+ * SPV data structure
+ */
 interface SPV {
   id: string;
-  name: string;
-  dealId: string;
-  leadInvestorId: string;
-  targetAmount: number;
-  carryPercentage: number;
+  spv_name: string;
+  deal_id: string;
+  lead_investor_id: string;
+  target_raise_amount: number;
+  carry_percentage: number;
+  minimum_investment: number;
+  status: string;
+  current_commitments: number;
+  deal: {
+    company_name: string;
+    sector: string;
+  };
 }
 
+/**
+ * SPV member data structure
+ */
 interface SPVMember {
   id: string;
-  spvId: string;
-  investorId: string;
-  commitmentAmount: number;
-  status: string;
-  investorName?: string;
-  investorEmail?: string;
+  spv_id: string;
+  investor_id: string;
+  commitment_amount: number;
+  status: 'COMMITTED' | 'PENDING' | 'DECLINED';
+  joined_at?: string;
+  invited_at?: string;
+  investor: {
+    full_name: string;
+    email: string;
+  };
 }
 
+/**
+ * Invitation response
+ */
 interface Invitation {
-  email: string;
-  allocation: string;
+  id: string;
+  spv_id: string;
+  investor_email: string;
+  status: string;
 }
 
+/**
+ * Format a number as Indian currency (INR)
+ */
+function formatIndianCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-IN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+/**
+ * InviteCoInvestors component - allows SPV lead to invite co-investors
+ */
 export default function InviteCoInvestors() {
   const { spvId } = useParams<{ spvId: string }>();
-  const navigate = useNavigate();
-  const { token } = useAuth();
+  const queryClient = useQueryClient();
   
-  const [loading, setLoading] = useState(true);
-  const [spv, setSPV] = useState<SPV | null>(null);
-  const [members, setMembers] = useState<SPVMember[]>([]);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [email, setEmail] = useState('');
-  const [allocation, setAllocation] = useState('');
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [investorEmail, setInvestorEmail] = useState('');
+  const [commitmentDeadline, setCommitmentDeadline] = useState('');
+  const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, [spvId]);
+  // Fetch SPV details
+  const { data: spv, isLoading: loadingSPV, error: spvError } = useQuery<SPV>({
+    queryKey: ['spv', spvId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/api/spvs/${spvId}`);
+      return response.data;
+    },
+    enabled: !!spvId,
+  });
 
-  const fetchData = async () => {
-    try {
-      if (!token) {
-        navigate('/auth');
-        return;
-      }
+  // Fetch SPV members
+  const { data: members = [], isLoading: loadingMembers } = useQuery<SPVMember[]>({
+    queryKey: ['spv-members', spvId],
+    queryFn: async () => {
+      const response = await apiClient.get(`/api/spvs/${spvId}/members`);
+      return response.data;
+    },
+    enabled: !!spvId,
+  });
 
-      // Fetch SPV
-      const response = await fetch(`/api/spv/${spvId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+  // Send invitation mutation
+  const sendInvitationMutation = useMutation({
+    mutationFn: async (data: {
+      spv_id: string;
+      investor_email: string;
+      commitment_deadline: string;
+    }) => {
+      const response = await apiClient.post('/api/spv-invitations', data);
+      return response.data;
+    },
+    onSuccess: (data: Invitation) => {
+      toast.success('Invitation sent successfully');
+      toast.success('Investor will receive email with SPV details');
+      queryClient.invalidateQueries({ queryKey: ['spv-members', spvId] });
+      
+      // Reset form
+      setInvestorEmail('');
+      setCommitmentDeadline('');
+      setFormError('');
+    },
+    onError: () => {
+      toast.error('Failed to send invitation');
+    },
+  });
+
+  // Adjust allocations mutation
+  const adjustAllocationsMutation = useMutation({
+    mutationFn: async (data: { spv_id: string; allocations: Record<string, number> }) => {
+      const response = await apiClient.put(`/api/spvs/${data.spv_id}/allocations`, {
+        allocations: data.allocations,
       });
-
-      if (!response.ok) {
-        setHasAccess(false);
-        setLoading(false);
-        return;
-      }
-
-      const spvData = await response.json();
-      setSPV(spvData);
-
-      // Check if user is lead investor - API already handles access control
-      // If we got here, we have access
-      setHasAccess(true);
-      setMembers(spvData.members || []);
-
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      setHasAccess(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Allocations adjusted successfully');
+      queryClient.invalidateQueries({ queryKey: ['spv-members', spvId] });
+    },
+    onError: () => {
+      toast.error('Failed to adjust allocations');
+    },
+  });
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  const handleAddInvestor = () => {
-    setEmailError(null);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
 
-    if (!email.trim()) {
-      setEmailError('Email is required');
+    if (!investorEmail.trim()) {
+      setFormError('Email is required');
       return;
     }
 
-    if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email address');
+    if (!validateEmail(investorEmail)) {
+      setFormError('Please enter a valid email address');
       return;
     }
 
-    // Check for duplicates
-    if (invitations.some(inv => inv.email.toLowerCase() === email.toLowerCase())) {
-      setEmailError('This investor has already been added');
+    if (!commitmentDeadline) {
+      setFormError('Commitment deadline is required');
       return;
     }
 
-    setInvitations([...invitations, { email: email.trim(), allocation: allocation || '1000000' }]);
-    setEmail('');
-    setAllocation('');
+    if (!spvId) return;
+
+    sendInvitationMutation.mutate({
+      spv_id: spvId,
+      investor_email: investorEmail,
+      commitment_deadline: commitmentDeadline,
+    });
   };
 
-  const handleRemoveInvestor = (index: number) => {
-    setInvitations(invitations.filter((_, i) => i !== index));
+  const handleAdjustAllocations = () => {
+    if (!spvId) return;
+    // In a real implementation, this would open a dialog to adjust allocations
+    // For now, we'll just show the button
+    adjustAllocationsMutation.mutate({
+      spv_id: spvId,
+      allocations: {}, // Would be populated from a form
+    });
   };
 
-  const handleUpdateAllocation = (index: number, value: string) => {
-    const updated = [...invitations];
-    updated[index].allocation = value;
-    setInvitations(updated);
-  };
+  const isOversubscribed = spv && spv.current_commitments > spv.target_raise_amount;
+  const commitmentProgress = spv 
+    ? (spv.current_commitments / spv.target_raise_amount) * 100 
+    : 0;
 
-  const handleSendInvitations = async () => {
-    if (invitations.length === 0) {
-      setError('Please add at least one investor to invite');
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      if (!token) return;
-
-      // For now, we'll note that full invitation system needs investor lookup by email
-      // This would require additional API endpoints
-      setError('Invitation system requires email-to-user lookup. Please implement /api/users/by-email endpoint first.');
-      
-      // TODO: Implement proper invitation flow:
-      // 1. Look up investor by email
-      // 2. Call /api/spv/:id/invite with investorId and commitmentAmount
-      
-      setInvitations([]);
-      
-    } catch (err) {
-      setError('An error occurred while sending invitations');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 10000000) {
-      return `₹${(amount / 10000000).toFixed(2)} Cr`;
-    }
-    return `₹${(amount / 100000).toFixed(2)} L`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return (
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Confirmed
-          </Badge>
-        );
-      case 'pending':
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            <Clock className="h-3 w-3 mr-1" />
-            Pending
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <Clock className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
+  if (spvError) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Only the lead investor can invite co-investors to this SPV.
-          </AlertDescription>
+          <AlertDescription>Error loading SPV details</AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  const totalCommitted = members.reduce((sum, member) => sum + Number(member.commitmentAmount), 0);
-  const remainingAllocation = spv ? Number(spv.targetAmount) - totalCommitted : 0;
+  if (loadingSPV) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p>Loading SPV details...</p>
+      </div>
+    );
+  }
+
+  if (!spv) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>SPV not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Invite Co-Investors</h1>
-          <p className="text-muted-foreground">{spv?.name}</p>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Invite Co-Investors to SPV</h1>
+        <p className="text-muted-foreground">
+          Build your investment syndicate for {spv.deal.company_name}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* SPV Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{spv.spv_name}</CardTitle>
+              <CardDescription>
+                {spv.deal.company_name} • {spv.deal.sector}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Commitment Progress</span>
+                  <span className="font-medium">
+                    {formatIndianCurrency(spv.current_commitments)} / {formatIndianCurrency(spv.target_raise_amount)}
+                  </span>
+                </div>
+                <Progress value={Math.min(commitmentProgress, 100)} />
+                <p className="text-xs text-muted-foreground">
+                  {commitmentProgress.toFixed(0)}% of target raised
+                </p>
+              </div>
+
+              {isOversubscribed && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="flex items-center justify-between">
+                      <span>
+                        <strong>Oversubscribed!</strong> SPV has exceeded target raise amount.
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAdjustAllocations}
+                        disabled={adjustAllocationsMutation.isPending}
+                      >
+                        Adjust Allocations
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Minimum Investment</p>
+                  <p className="text-lg font-semibold">
+                    {formatIndianCurrency(spv.minimum_investment)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Carry</p>
+                  <p className="text-lg font-semibold">{spv.carry_percentage}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Invitation Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Send Invitation</CardTitle>
+              <CardDescription>
+                Invite investors to join this SPV
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="investor-email">
+                    Investor Email
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="investor-email"
+                    type="email"
+                    placeholder="investor@example.com"
+                    value={investorEmail}
+                    onChange={(e) => {
+                      setInvestorEmail(e.target.value);
+                      setFormError('');
+                    }}
+                    aria-label="Investor Email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-deadline">
+                    Commitment Deadline
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="commitment-deadline"
+                    type="date"
+                    value={commitmentDeadline}
+                    onChange={(e) => {
+                      setCommitmentDeadline(e.target.value);
+                      setFormError('');
+                    }}
+                    aria-label="Commitment Deadline"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Deadline for investor to accept and commit funds
+                  </p>
+                </div>
+
+                {formError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{formError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={sendInvitationMutation.isPending}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sendInvitationMutation.isPending ? 'Sending...' : 'Send Invitation'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Members List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>SPV Members</CardTitle>
+              <CardDescription>
+                Current members and pending invitations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingMembers ? (
+                <p className="text-sm text-muted-foreground">Loading members...</p>
+              ) : members.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No members yet. Send your first invitation!
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {members.map(member => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="font-medium">{member.investor.full_name}</p>
+                          <p className="text-sm text-muted-foreground">{member.investor.email}</p>
+                          <div className="flex items-center gap-4 mt-2">
+                            <span className="text-sm font-medium">
+                              {formatIndianCurrency(member.commitment_amount)}
+                            </span>
+                            <Badge
+                              variant={
+                                member.status === 'COMMITTED'
+                                  ? 'default'
+                                  : member.status === 'PENDING'
+                                  ? 'secondary'
+                                  : 'destructive'
+                              }
+                            >
+                              {member.status === 'COMMITTED' && <CheckCircle className="h-3 w-3 mr-1" />}
+                              {member.status === 'PENDING' && <Clock className="h-3 w-3 mr-1" />}
+                              {member.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        {member.joined_at && formatDate(member.joined_at)}
+                        {member.invited_at && !member.joined_at && `Invited ${formatDate(member.invited_at)}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* SPV Overview */}
-        <Card className="p-6 bg-blue-50 border-blue-200">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-blue-700 mb-1">Target Amount</p>
-              <p className="text-2xl font-bold text-blue-900">
-                {spv && formatCurrency(Number(spv.targetAmount))}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-blue-700 mb-1">Committed</p>
-              <p className="text-2xl font-bold text-blue-900">
-                {formatCurrency(totalCommitted)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-blue-700 mb-1">Remaining</p>
-              <p className="text-2xl font-bold text-blue-900">
-                {formatCurrency(remainingAllocation)}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-blue-200">
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Carry Percentage:</span>
-              <span className="font-semibold text-blue-900">{spv?.carryPercentage}%</span>
-            </div>
-          </div>
-        </Card>
-
-        {success && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              Invitations sent successfully! Invited investors will receive email notifications.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Invitation Form */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Add Investors
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Investor Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailError(null);
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddInvestor();
-                    }
-                  }}
-                  placeholder="investor@example.com"
-                  className={emailError ? 'border-red-500' : ''}
-                />
-                {emailError && (
-                  <p className="text-sm text-red-600">{emailError}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="allocation">Allocation Amount (₹)</Label>
-                <Input
-                  id="allocation"
-                  type="number"
-                  value={allocation}
-                  onChange={(e) => setAllocation(e.target.value)}
-                  placeholder="1000000"
-                />
-              </div>
-            </div>
-
-            <Button onClick={handleAddInvestor} variant="outline" size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Investor
-            </Button>
-          </div>
-
-          {/* Pending Invitations */}
-          {invitations.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground">
-                Pending Invitations ({invitations.length})
-              </h3>
-              {invitations.map((inv, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="font-medium">{inv.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Label htmlFor={`allocation-${index}`} className="text-xs text-muted-foreground">
-                        Allocation:
-                      </Label>
-                      <Input
-                        id={`allocation-${index}`}
-                        type="number"
-                        value={inv.allocation}
-                        onChange={(e) => handleUpdateAllocation(index, e.target.value)}
-                        className="w-32 h-7 text-sm"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        ({formatCurrency(parseFloat(inv.allocation) || 0)})
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveInvestor(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              ))}
-
-              <Button
-                onClick={handleSendInvitations}
-                disabled={submitting}
-                className="w-full"
-              >
-                {submitting ? 'Sending...' : `Send ${invitations.length} Invitation${invitations.length > 1 ? 's' : ''}`}
-              </Button>
-            </div>
-          )}
-        </Card>
-
-        {/* Current Members */}
-        {members.length > 0 && (
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              SPV Members ({members.length})
-            </h2>
-            
-            <div className="space-y-3">
-              {members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{member.investorName || member.investorEmail}</p>
-                    <p className="text-sm text-muted-foreground">{member.investorEmail}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(Number(member.commitmentAmount))}</p>
-                    {getStatusBadge(member.status)}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Info Sidebar */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">How it Works</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">1.</span>
+                  <span>Enter investor's email address</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">2.</span>
+                  <span>Set commitment deadline</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">3.</span>
+                  <span>Investor receives invitation email</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">4.</span>
+                  <span>They review SPV details and terms</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">5.</span>
+                  <span>They accept and commit their amount</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">6.</span>
+                  <span>You track all commitments here</span>
+                </li>
+              </ol>
+            </CardContent>
           </Card>
-        )}
 
-        <div className="flex gap-4">
-          <Button variant="outline" onClick={() => navigate(`/investor/spv/${spvId}`)}>
-            Back to SPV Dashboard
-          </Button>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Invitation Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-blue-500 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1">Email Invitation</p>
+                  <p className="text-xs text-muted-foreground">
+                    Includes SPV details, deal information, and commitment terms
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <Calendar className="h-4 w-4 text-green-500 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1">Commitment Deadline</p>
+                  <p className="text-xs text-muted-foreground">
+                    Investors must accept and commit by this date
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <TrendingUp className="h-4 w-4 text-purple-500 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1">Allocation Management</p>
+                  <p className="text-xs text-muted-foreground">
+                    Adjust allocations if SPV becomes oversubscribed
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

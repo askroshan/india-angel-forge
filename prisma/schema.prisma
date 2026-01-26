@@ -19,23 +19,23 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  roles                UserRole[]
-  founderApplications  FounderApplication[]
-  investorApplications InvestorApplication[]
-  eventRegistrations   EventRegistration[]
-  eventWaitlist        EventWaitlist[]
-  companyProfiles      CompanyProfile[]
-  pitchSessions        PitchSession[]
-  pitchMaterials       PitchMaterial[]
-  portfolioCompanies   PortfolioCompany[]
-  portfolioUpdates     PortfolioUpdate[]
-  sharedDocuments      SharedDocument[]
-  deals                Deal[]
-  dueDiligenceItems    DueDiligenceItem[]
-  spvs                 Spv[]
-  spvMemberships       SpvMember[]
-  dealInterests        DealInterest[]
-  dealDocuments        DealDocument[]
+  roles                 UserRole[]
+  founderApplications   FounderApplication[]
+  investorApplications  InvestorApplication[]
+  eventRegistrations    EventRegistration[]
+  eventWaitlist         EventWaitlist[]
+  companyProfiles       CompanyProfile[]
+  pitchSessions         PitchSession[]
+  pitchMaterials        PitchMaterial[]
+  portfolioCompanies    PortfolioCompany[]
+  portfolioUpdates      PortfolioUpdate[]
+  sharedDocuments       SharedDocument[]
+  deals                 Deal[]
+  dueDiligenceItems     DueDiligenceItem[]
+  spvs                  Spv[]
+  spvMemberships        SpvMember[]
+  dealInterests         DealInterest[]
+  dealDocuments         DealDocument[]
   investmentCommitments InvestmentCommitment[]
 
   @@map("users")
@@ -324,18 +324,18 @@ model DueDiligenceItem {
 }
 
 model Spv {
-  id               String   @id @default(uuid())
-  name             String
-  dealId           String   @map("deal_id")
-  leadInvestorId   String   @map("lead_investor_id")
-  targetAmount     Decimal  @map("target_amount") @db.Decimal(15, 2)
-  carryPercentage  Decimal  @map("carry_percentage") @db.Decimal(5, 2)
-  description      String?
-  status           String   @default("forming")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  name            String
+  dealId          String   @map("deal_id")
+  leadInvestorId  String   @map("lead_investor_id")
+  targetAmount    Decimal  @map("target_amount") @db.Decimal(15, 2)
+  carryPercentage Decimal  @map("carry_percentage") @db.Decimal(5, 2)
+  description     String?
+  status          String   @default("forming")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  leadInvestor User         @relation(fields: [leadInvestorId], references: [id], onDelete: Cascade)
+  leadInvestor User        @relation(fields: [leadInvestorId], references: [id], onDelete: Cascade)
   members      SpvMember[]
 
   @@map("spvs")
@@ -369,9 +369,9 @@ model DealInterest {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime? @updatedAt @map("updated_at")
 
-  deal                    Deal                     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  investor                User                     @relation(fields: [investorId], references: [id], onDelete: Cascade)
-  investmentCommitments   InvestmentCommitment[]
+  deal                  Deal                   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  investor              User                   @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  investmentCommitments InvestmentCommitment[]
 
   @@map("deal_interests")
 }
@@ -409,4 +409,3 @@ model InvestmentCommitment {
 
   @@map("investment_commitments")
 }
-
