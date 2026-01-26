@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle, Shield, XCircle } from 'lucide-react';
 
+/**
+ * AML Screening data structure
+ */
 interface AMLScreening {
   id: string;
   investor_id: string;
@@ -31,13 +34,76 @@ interface AMLScreening {
   };
 }
 
+/**
+ * Status badge configuration
+ */
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
+
+interface StatusConfig {
+  variant: BadgeVariant;
+  icon: React.ComponentType<{ className?: string }> | null;
+  text: string;
+}
+
+const STATUS_CONFIGS: Record<string, StatusConfig> = {
+  pending: { variant: 'secondary', icon: null, text: 'Pending' },
+  in_progress: { variant: 'default', icon: null, text: 'In Progress' },
+  completed: { variant: 'default', icon: CheckCircle, text: 'Completed' },
+  flagged: { variant: 'destructive', icon: AlertTriangle, text: 'Flagged' },
+  cleared: { variant: 'default', icon: Shield, text: 'Cleared' }
+};
+
+const RISK_SCORE_THRESHOLD = 70;
+
+/**
+ * Renders a status badge with appropriate styling and icon
+ */
+const StatusBadge = ({ status }: { status: string }) => {
+  const config = STATUS_CONFIGS[status] || STATUS_CONFIGS.pending;
+  const Icon = config.icon;
+
+  return (
+    <Badge variant={config.variant}>
+      {Icon && <Icon className="w-3 h-3 mr-1" />}
+      {config.text}
+    </Badge>
+  );
+};
+
+/**
+ * Renders a risk score badge with color coding
+ */
+const RiskScoreBadge = ({ score }: { score: number | null }) => {
+  if (score === null) return null;
+  
+  return (
+    <Badge variant={score > RISK_SCORE_THRESHOLD ? 'destructive' : 'default'}>
+      Risk: {score}
+    </Badge>
+  );
+};
+
+/**
+ * AML Screening Dashboard Component
+ * 
+ * Allows compliance officers to:
+ * - View pending AML screenings
+ * - Initiate screening for investors
+ * - Flag suspicious activities
+ * - Clear investors after review
+ * - Filter screenings by status
+ */
 export default function AMLScreening() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Dialog state
   const [selectedScreening, setSelectedScreening] = useState<AMLScreening | null>(null);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  
+  // Form state
   const [flagReason, setFlagReason] = useState('');
   const [clearNotes, setClearNotes] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -45,10 +111,7 @@ export default function AMLScreening() {
   // Fetch AML screenings
   const { data: screenings = [], isLoading, error } = useQuery({
     queryKey: ['aml-screenings'],
-    queryFn: async () => {
-      const response = await apiClient.get<AMLScreening[]>('/api/compliance/aml');
-      return response;
-    },
+    queryFn: async () => await apiClient.get<AMLScreening[]>('/api/compliance/aml'),
     enabled: !!user
   });
 
@@ -129,26 +192,7 @@ export default function AMLScreening() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; icon: any; text: string }> = {
-      pending: { variant: 'secondary', icon: null, text: 'Pending' },
-      in_progress: { variant: 'default', icon: null, text: 'In Progress' },
-      completed: { variant: 'default', icon: CheckCircle, text: 'Completed' },
-      flagged: { variant: 'destructive', icon: AlertTriangle, text: 'Flagged' },
-      cleared: { variant: 'default', icon: Shield, text: 'Cleared' }
-    };
-
-    const config = variants[status] || variants.pending;
-    const Icon = config.icon;
-
-    return (
-      <Badge variant={config.variant as any}>
-        {Icon && <Icon className="w-3 h-3 mr-1" />}
-        {config.text}
-      </Badge>
-    );
-  };
-
+  // Filter screenings by status
   const filteredScreenings = screenings.filter(screening => {
     if (statusFilter === 'all') return true;
     return screening.screening_status === statusFilter;
@@ -219,12 +263,8 @@ export default function AMLScreening() {
                     <CardDescription>{screening.investor.email}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(screening.screening_status)}
-                    {screening.risk_score !== null && (
-                      <Badge variant={screening.risk_score > 70 ? 'destructive' : 'default'}>
-                        Risk: {screening.risk_score}
-                      </Badge>
-                    )}
+                    <StatusBadge status={screening.screening_status} />
+                    <RiskScoreBadge score={screening.risk_score} />
                   </div>
                 </div>
               </CardHeader>
