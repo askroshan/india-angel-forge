@@ -1,28 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Search, Users, Target, TrendingUp } from 'lucide-react';
 
-interface InvestorProfile {
-  focus_areas: string[];
-  ticket_size_min: number;
-  ticket_size_max: number;
-  bio?: string;
-  portfolio_count?: number;
-}
-
 interface Investor {
   id: string;
   email: string;
-  full_name: string;
-  investor_profile: InvestorProfile;
+  fullName: string;
+  createdAt: string;
 }
 
 export default function InvestorDirectory() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [investors, setInvestors] = useState<Investor[]>([]);
@@ -39,49 +32,24 @@ export default function InvestorDirectory() {
 
   const fetchInvestors = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      // Fetch investors with profiles
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          full_name,
-          investor_profile:investor_profiles(
-            focus_areas,
-            ticket_size_min,
-            ticket_size_max,
-            bio,
-            portfolio_count
-          )
-        `)
-        .eq('role', 'investor')
-        .order('full_name');
+      // Fetch investors
+      const response = await fetch('/api/admin/investors', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (error) {
-        console.error('Error fetching investors:', error);
+      if (!response.ok) {
+        console.error('Error fetching investors');
         return;
       }
 
-      if (data) {
-        // Filter out investors without profiles and flatten structure
-        const investorsWithProfiles = data
-          .filter(inv => inv.investor_profile)
-          .map(inv => ({
-            ...inv,
-            investor_profile: Array.isArray(inv.investor_profile) 
-              ? inv.investor_profile[0] 
-              : inv.investor_profile
-          })) as Investor[];
-        
-        setInvestors(investorsWithProfiles);
-        setFilteredInvestors(investorsWithProfiles);
-      }
+      const data = await response.json();
+      setInvestors(data || []);
+      setFilteredInvestors(data || []);
 
     } catch (err) {
       console.error('Error:', err);
@@ -107,13 +75,6 @@ export default function InvestorDirectory() {
     });
 
     setFilteredInvestors(filtered);
-  };
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 10000000) {
-      return `₹${(amount / 10000000).toFixed(2)} Cr`;
-    }
-    return `₹${(amount / 100000).toFixed(2)} L`;
   };
 
   if (loading) {
@@ -178,9 +139,9 @@ export default function InvestorDirectory() {
               <TrendingUp className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {investors.reduce((sum, inv) => sum + (inv.investor_profile.portfolio_count || 0), 0)}
+                  {filteredInvestors.length}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Investments</p>
+                <p className="text-sm text-muted-foreground">Active Investors</p>
               </div>
             </div>
           </Card>
@@ -202,45 +163,18 @@ export default function InvestorDirectory() {
                   {/* Investor Info */}
                   <div>
                     <h3 className="text-lg font-semibold mb-1">
-                      {investor.full_name || investor.email}
+                      {investor.fullName || investor.email}
                     </h3>
                     <p className="text-sm text-muted-foreground">{investor.email}</p>
                   </div>
 
-                  {/* Bio */}
-                  {investor.investor_profile.bio && (
-                    <p className="text-sm line-clamp-2">{investor.investor_profile.bio}</p>
-                  )}
-
-                  {/* Focus Areas */}
-                  {investor.investor_profile.focus_areas && investor.investor_profile.focus_areas.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">FOCUS AREAS</p>
-                      <div className="flex flex-wrap gap-2">
-                        {investor.investor_profile.focus_areas.map((area, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {area}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ticket Size */}
+                  {/* Member Since */}
                   <div className="pt-3 border-t">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">TICKET SIZE</p>
-                    <p className="text-sm font-semibold">
-                      {formatCurrency(investor.investor_profile.ticket_size_min)} - {formatCurrency(investor.investor_profile.ticket_size_max)}
-                    </p>
-                  </div>
-
-                  {/* Portfolio Count */}
-                  {investor.investor_profile.portfolio_count !== undefined && investor.investor_profile.portfolio_count > 0 && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>{investor.investor_profile.portfolio_count} investments</span>
+                      <Clock className="h-4 w-4" />
+                      <span>Member since {new Date(investor.createdAt).toLocaleDateString()}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               </Card>
             ))}

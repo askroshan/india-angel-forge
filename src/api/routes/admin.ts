@@ -253,4 +253,44 @@ router.post('/audit-logs', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all investors for directory (accessible to founders)
+router.get('/investors', authenticateToken, async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const where: any = {
+      roles: {
+        some: {
+          role: {
+            name: 'investor',
+          },
+        },
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { email: { contains: String(search), mode: 'insensitive' } },
+        { fullName: { contains: String(search), mode: 'insensitive' } },
+      ];
+    }
+
+    const investors = await prisma.user.findMany({
+      where,
+      orderBy: { fullName: 'asc' },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        createdAt: true,
+      },
+    });
+
+    res.json(investors);
+  } catch (error) {
+    console.error('Fetch investors error:', error);
+    res.status(500).json({ error: 'Failed to fetch investors' });
+  }
+});
+
 export default router;

@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,13 +23,13 @@ import {
 
 interface DealDocument {
   id: string;
-  deal_id: string;
-  document_type: 'pitch_deck' | 'financials' | 'legal' | 'due_diligence' | 'other';
-  file_name: string;
-  file_path: string;
-  file_size: number;
-  uploaded_at: string;
-  uploaded_by?: string;
+  dealId: string;
+  title: string;
+  description?: string;
+  filePath: string;
+  fileType: string;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 const DealDocuments = () => {
@@ -41,15 +41,14 @@ const DealDocuments = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAccessAndLoadDocuments();
   }, [dealId]);
 
   const checkAccessAndLoadDocuments = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }

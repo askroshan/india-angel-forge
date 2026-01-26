@@ -166,4 +166,165 @@ router.patch('/:dealId/due-diligence/:itemId', authenticateToken, async (req: an
   }
 });
 
+// Get all deal interests for the current investor
+router.get('/interests', authenticateToken, async (req: any, res) => {
+  try {
+    const investorId = req.user.userId;
+
+    const interests = await prisma.dealInterest.findMany({
+      where: { investorId },
+      include: {
+        deal: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true,
+            slug: true,
+            description: true,
+            industrySector: true,
+            dealSize: true,
+            minInvestment: true,
+            dealStatus: true,
+            closingDate: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(interests);
+  } catch (error) {
+    console.error('Error fetching deal interests:', error);
+    res.status(500).json({ error: 'Failed to fetch deal interests' });
+  }
+});
+
+// Get a specific deal interest
+router.get('/interests/:id', authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const investorId = req.user.userId;
+
+    const interest = await prisma.dealInterest.findFirst({
+      where: {
+        id,
+        investorId,
+      },
+      include: {
+        deal: {
+          select: {
+            id: true,
+            title: true,
+            companyName: true,
+            description: true,
+            dealSize: true,
+            minInvestment: true,
+            dealStatus: true,
+            closingDate: true,
+          },
+        },
+      },
+    });
+
+    if (!interest) {
+      return res.status(404).json({ error: 'Deal interest not found' });
+    }
+
+    res.json(interest);
+  } catch (error) {
+    console.error('Error fetching deal interest:', error);
+    res.status(500).json({ error: 'Failed to fetch deal interest' });
+  }
+});
+
+// Get documents for a deal
+router.get('/:dealId/documents', authenticateToken, async (req: any, res) => {
+  try {
+    const { dealId } = req.params;
+    const investorId = req.user.userId;
+
+    // Check if investor has access to this deal
+    const interest = await prisma.dealInterest.findFirst({
+      where: {
+        dealId,
+        investorId,
+      },
+    });
+
+    if (!interest) {
+      return res.status(403).json({ error: 'Access denied. You must express interest in this deal to view documents.' });
+    }
+
+    const documents = await prisma.dealDocument.findMany({
+      where: { dealId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(documents);
+  } catch (error) {
+    console.error('Error fetching deal documents:', error);
+    res.status(500).json({ error: 'Failed to fetch deal documents' });
+  }
+});
+
+// Create investment commitment
+router.post('/commitments', authenticateToken, async (req: any, res) => {
+  try {
+    const investorId = req.user.userId;
+    const { interestId, spvId, amount } = req.body;
+
+    // Verify interest belongs to investor and is accepted
+    const interest = await prisma.dealInterest.findFirst({
+      where: {
+        id: interestId,
+        investorId,
+        status: 'accepted',
+      },
+    });
+
+    if (!interest) {
+      return res.status(403).json({ error: 'Deal interest not found or not accepted' });
+    }
+
+    const commitment = await prisma.investmentCommitment.create({
+      data: {
+        interestId,
+        investorId,
+        spvId,
+        amount,
+        status: 'pending',
+      },
+    });
+
+    res.json(commitment);
+  } catch (error) {
+    console.error('Error creating commitment:', error);
+    res.status(500).json({ error: 'Failed to create commitment' });
+  }
+});
+
+// Get commitment by interest ID
+router.get('/commitments/by-interest/:interestId', authenticateToken, async (req: any, res) => {
+  try {
+    const { interestId } = req.params;
+    const investorId = req.user.userId;
+
+    const commitment = await prisma.investmentCommitment.findFirst({
+      where: {
+        interestId,
+        investorId,
+      },
+    });
+
+    if (!commitment) {
+      return res.status(404).json({ error: 'Commitment not found' });
+    }
+
+    res.json(commitment);
+  } catch (error) {
+    console.error('Error fetching commitment:', error);
+    res.status(500).json({ error: 'Failed to fetch commitment' });
+  }
+});
+
 export default router;

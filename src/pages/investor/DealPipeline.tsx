@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,34 +26,34 @@ import {
 
 interface DealInterest {
   id: string;
-  deal_id: string;
-  investor_id: string;
+  dealId: string;
+  investorId: string;
   status: 'pending' | 'accepted' | 'rejected';
-  commitment_amount: number;
+  commitmentAmount: number;
   notes?: string;
-  rejection_reason?: string;
-  spv_id?: string;
-  created_at: string;
-  updated_at?: string;
+  rejectionReason?: string;
+  spvId?: string;
+  createdAt: string;
+  updatedAt?: string;
   deal: {
     id: string;
     title: string;
-    company_name: string;
+    companyName: string;
     slug: string;
     description?: string;
-    industry_sector?: string;
-    deal_size: number;
-    min_investment: number;
-    deal_status: 'open' | 'closing_soon' | 'closed';
-    closing_date?: string;
+    industrySector?: string;
+    dealSize: number;
+    minInvestment: number;
+    dealStatus: 'open' | 'closing_soon' | 'closed';
+    closingDate?: string;
   };
 }
 
 interface SPV {
   id: string;
   name: string;
-  target_amount: number;
-  committed_amount: number;
+  targetAmount: number;
+  committedAmount: number;
 }
 
 const DealPipeline = () => {
@@ -65,6 +65,7 @@ const DealPipeline = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAccessAndLoadPipeline();
@@ -75,9 +76,7 @@ const DealPipeline = () => {
   }, [interests, statusFilter]);
 
   const checkAccessAndLoadPipeline = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
@@ -88,37 +87,24 @@ const DealPipeline = () => {
   const fetchPipeline = async () => {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
 
-      const { data, error } = await supabase
-        .from('deal_interests')
-        .select(`
-          *,
-          deal:deal_id(
-            id,
-            title,
-            company_name,
-            slug,
-            description,
-            industry_sector,
-            deal_size,
-            min_investment,
-            deal_status,
-            closing_date
-          )
-        `)
-        .eq('investor_id', session.user.id)
-        .order('created_at', { ascending: false });
+      // Note: This endpoint needs to be created
+      const response = await fetch('/api/deals/interests', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to fetch interests');
+      }
 
+      const data = await response.json();
       setInterests(data || []);
 
       // Fetch SPV details for accepted interests
-      const acceptedWithSPV = data?.filter(i => i.status === 'accepted' && i.spv_id) || [];
+      const acceptedWithSPV = data?.filter((i: DealInterest) => i.status === 'accepted' && i.spvId) || [];
       if (acceptedWithSPV.length > 0) {
-        await fetchSPVDetails(acceptedWithSPV.map(i => i.spv_id!));
+        await fetchSPVDetails(acceptedWithSPV.map((i: DealInterest) => i.spvId!));
       }
     } catch (err: any) {
       toast({
@@ -133,20 +119,23 @@ const DealPipeline = () => {
 
   const fetchSPVDetails = async (spvIds: string[]) => {
     try {
-      const { data, error } = await supabase
-        .from('spvs')
-        .select('*')
-        .in('id', spvIds);
+      if (!token) return;
 
-      if (error) throw error;
+      // Fetch each SPV individually - could be optimized with bulk endpoint
+      const promises = spvIds.map(id => 
+        fetch(`/api/spv/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(r => r.ok ? r.json() : null)
+      );
 
-      if (data) {
-        const spvMap: Record<string, SPV> = {};
-        data.forEach(spv => {
+      const results = await Promise.all(promises);
+      const spvMap: Record<string, SPV> = {};
+      results.forEach(spv => {
+        if (spv) {
           spvMap[spv.id] = spv;
-        });
-        setSPVDetails(spvMap);
-      }
+        }
+      });
+      setSPVDetails(spvMap);
     } catch (err) {
       console.error('Failed to fetch SPV details:', err);
     }
@@ -225,7 +214,7 @@ const DealPipeline = () => {
     rejected: interests.filter(i => i.status === 'rejected').length,
     totalCommitment: interests
       .filter(i => i.status === 'accepted')
-      .reduce((sum, i) => sum + i.commitment_amount, 0),
+      .reduce((sum, i) => sum + Number(i.commitmentAmount), 0),
   };
 
   if (loading) {
@@ -345,11 +334,11 @@ const DealPipeline = () => {
                         {getDealStatusBadge(deal.deal_status)}
                       </div>
                       <CardDescription className="text-base">
-                        {deal.company_name}
-                        {deal.industry_sector && ` • ${deal.industry_sector}`}
+                        {deal.companyName}
+                        {deal.industrySector && ` • ${deal.industrySector}`}
                       </CardDescription>
                     </div>
-                    {daysLeft !== null && daysLeft > 0 && deal.deal_status !== 'closed' && (
+                    {daysLeft !== null && daysLeft > 0 && deal.dealStatus !== 'closed' && (
                       <div className="text-right">
                         <div className="text-sm text-muted-foreground">Closes in</div>
                         <div className="text-xl font-bold text-primary">{daysLeft}d</div>
@@ -364,14 +353,14 @@ const DealPipeline = () => {
                         <DollarSign className="h-4 w-4" />
                         My Commitment
                       </div>
-                      <div className="font-semibold">{formatAmount(interest.commitment_amount)}</div>
+                      <div className="font-semibold">{formatAmount(Number(interest.commitmentAmount))}</div>
                     </div>
                     <div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                         <TrendingUp className="h-4 w-4" />
                         Deal Size
                       </div>
-                      <div className="font-semibold">{formatAmount(deal.deal_size)}</div>
+                      <div className="font-semibold">{formatAmount(Number(deal.dealSize))}</div>
                     </div>
                     <div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
@@ -379,17 +368,17 @@ const DealPipeline = () => {
                         Expressed On
                       </div>
                       <div className="font-semibold">
-                        {new Date(interest.created_at).toLocaleDateString()}
+                        {new Date(interest.createdAt).toLocaleDateString()}
                       </div>
                     </div>
-                    {deal.closing_date && (
+                    {deal.closingDate && (
                       <div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                           <Calendar className="h-4 w-4" />
                           Closing Date
                         </div>
                         <div className="font-semibold">
-                          {new Date(deal.closing_date).toLocaleDateString()}
+                          {new Date(deal.closingDate).toLocaleDateString()}
                         </div>
                       </div>
                     )}
@@ -409,7 +398,7 @@ const DealPipeline = () => {
                         </div>
                         <div>
                           <span className="text-green-700">Target:</span>{' '}
-                          <span className="font-medium">{formatAmount(spv.target_amount)}</span>
+                          <span className="font-medium">{formatAmount(Number(spv.targetAmount))}</span>
                         </div>
                       </div>
                       <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
@@ -424,13 +413,13 @@ const DealPipeline = () => {
                   )}
 
                   {/* Rejection Reason */}
-                  {interest.status === 'rejected' && interest.rejection_reason && (
+                  {interest.status === 'rejected' && interest.rejectionReason && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                       <h4 className="font-semibold text-red-900 mb-1 flex items-center gap-2">
                         <XCircle className="h-4 w-4" />
                         Interest Not Accepted
                       </h4>
-                      <p className="text-sm text-red-800">{interest.rejection_reason}</p>
+                      <p className="text-sm text-red-800">{interest.rejectionReason}</p>
                     </div>
                   )}
 
@@ -446,7 +435,7 @@ const DealPipeline = () => {
                       View Deal Details
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
-                    {interest.status === 'accepted' && deal.deal_status !== 'closed' && (
+                    {interest.status === 'accepted' && deal.dealStatus !== 'closed' && (
                       <Button variant="outline" onClick={() => navigate(`/investor/commitments/${interest.id}`)}>
                         Complete Commitment
                       </Button>

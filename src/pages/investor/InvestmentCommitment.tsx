@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,34 +9,35 @@ import { AlertCircle, CheckCircle, Clock, FileText, Building } from 'lucide-reac
 
 interface DealInterest {
   id: string;
-  deal_id: string;
+  dealId: string;
   status: string;
-  commitment_amount: number;
-  spv_id: string | null;
+  commitmentAmount: number;
+  spvId: string | null;
   deal: {
     title: string;
-    company_name: string;
+    companyName: string;
   };
 }
 
 interface SPV {
   id: string;
   name: string;
-  target_amount: number;
-  carry_percentage: number;
+  targetAmount: number;
+  carryPercentage: number;
 }
 
 interface InvestmentCommitment {
   id: string;
   status: string;
   amount: number;
-  payment_reference?: string;
-  wire_instructions?: string;
+  paymentReference?: string;
+  wireInstructions?: string;
 }
 
 export default function InvestmentCommitment() {
   const { interestId } = useParams<{ interestId: string }>();
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [interest, setInterest] = useState<DealInterest | null>(null);
@@ -54,8 +55,7 @@ export default function InvestmentCommitment() {
 
   const checkAccess = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
