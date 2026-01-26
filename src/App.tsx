@@ -40,12 +40,16 @@ import PortfolioPerformance from "./pages/investor/PortfolioPerformance";
 import PortfolioDashboard from "./pages/investor/PortfolioDashboard";
 import PortfolioUpdates from "./pages/investor/PortfolioUpdates";
 import SharedDocuments from "./pages/investor/SharedDocuments";
+import DealAnalytics from "./pages/investor/DealAnalytics";
+import DueDiligenceChecklist from "./pages/investor/DueDiligenceChecklist";
 import ApplicationStatus from "./pages/founder/ApplicationStatus";
 import InvestorDirectory from "./pages/founder/InvestorDirectory";
 import PitchSessions from "./pages/founder/PitchSessions";
 import PitchMaterials from "./pages/founder/PitchMaterials";
 import InvestorUpdates from "./pages/founder/InvestorUpdates";
 import InvestorDocuments from "./pages/founder/InvestorDocuments";
+import CompanyProfile from "./pages/founder/CompanyProfile";
+import FundraisingProgress from "./pages/founder/FundraisingProgress";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
@@ -171,6 +175,16 @@ const App = () => (
                 <SharedDocuments />
               </ProtectedRoute>
             } />
+            <Route path="/investor/deal-analytics" element={
+              <ProtectedRoute>
+                <DealAnalytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/due-diligence/:dealId" element={
+              <ProtectedRoute>
+                <DueDiligenceChecklist />
+              </ProtectedRoute>
+            } />
             {/* Founder Routes */}
             <Route path="/founder/application-status" element={
               <ProtectedRoute>
@@ -200,6 +214,16 @@ const App = () => (
             <Route path="/founder/investor-documents" element={
               <ProtectedRoute>
                 <InvestorDocuments />
+              </ProtectedRoute>
+            } />
+            <Route path="/founder/company-profile" element={
+              <ProtectedRoute>
+                <CompanyProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/founder/fundraising-progress" element={
+              <ProtectedRoute>
+                <FundraisingProgress />
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
