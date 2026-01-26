@@ -1,476 +1,294 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 import PortfolioUpdates from '@/pages/investor/PortfolioUpdates';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
-    },
-    from: vi.fn(),
+// Mock API client
+vi.mock('@/api/client', () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
-// Mock react-router-dom
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'investor-1',
+      email: 'investor@example.com',
+      role: 'INVESTOR',
+    },
+    isAuthenticated: true,
+  }),
+}));
 
-describe('PortfolioUpdates', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+// Mock router
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
 
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'investor-123' },
-        },
+// Mock portfolio updates data
+const mockUpdates = [
+  {
+    id: 'update-1',
+    company_id: 'company-1',
+    title: 'Q4 2025 Growth Milestones Achieved',
+    content: 'Exceeded revenue targets by 45% and expanded to 3 new cities',
+    posted_at: '2025-12-20T10:00:00Z',
+    update_type: 'MILESTONE',
+    is_read: false,
+    company: {
+      company_name: 'TechStartup India',
+      sector: 'Technology',
+      company_logo: 'https://example.com/logo1.png',
+    },
+    metrics: {
+      revenue: 15000000,
+      users: 50000,
+      growth_rate: 45,
+    },
+    milestones: [
+      'Launched in Mumbai, Delhi, and Bangalore',
+      'Secured partnership with major enterprise client',
+      'Team expanded to 50 employees',
+    ],
+    challenges: 'Hiring qualified engineers in competitive market',
+    asks: 'Introductions to potential enterprise customers',
+    comments_count: 3,
+  },
+  {
+    id: 'update-2',
+    company_id: 'company-2',
+    title: 'Series B Fundraising Completed',
+    content: 'Successfully raised $10M Series B at 2x valuation',
+    posted_at: '2026-01-10T14:00:00Z',
+    update_type: 'FUNDING',
+    is_read: true,
+    company: {
+      company_name: 'HealthTech Solutions',
+      sector: 'Healthcare',
+      company_logo: 'https://example.com/logo2.png',
+    },
+    metrics: {
+      valuation: 100000000,
+      runway_months: 24,
+    },
+    milestones: [
+      'Closed Series B with top-tier investors',
+      'Post-money valuation: $100M',
+    ],
+    challenges: null,
+    asks: null,
+    comments_count: 5,
+  },
+  {
+    id: 'update-3',
+    company_id: 'company-3',
+    title: 'Monthly Financial Update - December 2025',
+    content: 'Strong performance with 30% MoM revenue growth',
+    posted_at: '2026-01-05T09:00:00Z',
+    update_type: 'FINANCIAL',
+    is_read: true,
+    company: {
+      company_name: 'EduTech Platform',
+      sector: 'Education',
+      company_logo: 'https://example.com/logo3.png',
+    },
+    metrics: {
+      mrr: 2000000,
+      arr: 24000000,
+      burn_rate: 800000,
+      cash_runway_months: 18,
+    },
+    milestones: [],
+    challenges: 'Customer acquisition costs higher than planned',
+    asks: 'Advice on optimizing marketing spend',
+    comments_count: 0,
+  },
+];
+
+const mockComments = [
+  {
+    id: 'comment-1',
+    update_id: 'update-1',
+    user_id: 'investor-1',
+    comment_text: 'Fantastic progress on the expansion!',
+    posted_at: '2025-12-21T11:00:00Z',
+    user: {
+      full_name: 'Roshan Shah',
+      role: 'INVESTOR',
+    },
+  },
+];
+
+describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
+  let queryClient: QueryClient;
+
+  const renderWithProviders = (component: React.ReactElement) => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
       },
     });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {component}
+      </QueryClientProvider>
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('Updates Dashboard', () => {
-    it('should display portfolio updates dashboard', async () => {
-      // Mock portfolio companies query
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: [],
-            error: null,
-          }),
-        }),
-      });
+  describe('Page Display', () => {
+    it('should display portfolio updates page', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
 
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Portfolio Updates/i)).toBeInTheDocument();
+        expect(screen.getByText(/Portfolio Company Updates/i)).toBeInTheDocument();
       });
     });
 
-    it('should display sent updates', async () => {
-      const mockUpdates = [
-        {
-          id: 'update-1',
-          title: 'Q1 2024 Performance',
-          content: 'Strong quarter with 30% revenue growth',
-          created_at: '2024-01-15T10:00:00Z',
-          company: {
-            company_name: 'TechStartup Inc',
-          },
-        },
-        {
-          id: 'update-2',
-          title: 'New Product Launch',
-          content: 'Excited to announce our new product line',
-          created_at: '2024-01-20T10:00:00Z',
-          company: {
-            company_name: 'FinTech Solutions',
-          },
-        },
-      ];
+    it('should display empty state when no updates', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockUpdates,
-                  error: null,
-                }),
-              }),
-            }),
-            insert: vi.fn(),
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText('Q1 2024 Performance')).toBeInTheDocument();
-        expect(screen.getByText('New Product Launch')).toBeInTheDocument();
+        expect(screen.getByText(/No updates yet/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Send Update', () => {
-    it('should show compose update button', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
-        }),
-      });
+  describe('Updates List', () => {
+    it('should display all portfolio company updates', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
 
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i)).toBeInTheDocument();
+        expect(screen.getByText('Q4 2025 Growth Milestones Achieved')).toBeInTheDocument();
+        expect(screen.getByText('Series B Fundraising Completed')).toBeInTheDocument();
+        expect(screen.getByText('Monthly Financial Update - December 2025')).toBeInTheDocument();
       });
     });
 
-    it('should allow composing new update', async () => {
-      const user = userEvent.setup();
+    it('should display company name for each update', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
 
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-        },
-      ];
-
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: mockCompanies,
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [],
-                  error: null,
-                }),
-              }),
-            }),
-            insert: vi.fn().mockResolvedValue({
-              data: { id: 'update-123' },
-              error: null,
-            }),
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i)).toBeInTheDocument();
-      });
-
-      // Click compose button
-      const composeButton = screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i);
-      await user.click(composeButton);
-
-      // Should show form
-      await waitFor(() => {
-        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/content/i) || screen.getByLabelText(/message/i)).toBeInTheDocument();
+        expect(screen.getByText('TechStartup India')).toBeInTheDocument();
+        expect(screen.getByText('HealthTech Solutions')).toBeInTheDocument();
+        expect(screen.getByText('EduTech Platform')).toBeInTheDocument();
       });
     });
 
-    it('should allow selecting portfolio company', async () => {
-      const user = userEvent.setup();
+    it('should display key metrics when available', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
 
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-        },
-        {
-          id: 'company-2',
-          company_name: 'FinTech Solutions',
-        },
-      ];
-
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: mockCompanies,
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [],
-                  error: null,
-                }),
-              }),
-            }),
-            insert: vi.fn().mockResolvedValue({
-              data: { id: 'update-123' },
-              error: null,
-            }),
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        const composeButton = screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i);
-        expect(composeButton).toBeInTheDocument();
-      });
-
-      const composeButton = screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i);
-      await user.click(composeButton);
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/company/i)).toBeInTheDocument();
+        expect(screen.getByText(/50,000/i)).toBeInTheDocument(); // users
+        expect(screen.getByText(/45%/i)).toBeInTheDocument(); // growth rate
       });
     });
 
-    it('should send update to selected company', async () => {
+    it('should display milestones when available', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+
+      renderWithProviders(<PortfolioUpdates />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Launched in Mumbai, Delhi, and Bangalore/i)).toBeInTheDocument();
+        expect(screen.getByText(/Secured partnership with major enterprise client/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display challenges when available', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+
+      renderWithProviders(<PortfolioUpdates />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Hiring qualified engineers in competitive market/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display asks when available', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+
+      renderWithProviders(<PortfolioUpdates />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Introductions to potential enterprise customers/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Comments', () => {
+    it('should allow commenting on updates', async () => {
       const user = userEvent.setup();
-
-      const mockCompanies = [
-        {
-          id: 'company-1',
-          company_name: 'TechStartup Inc',
-        },
-      ];
-
-      const mockInsert = vi.fn().mockResolvedValue({
-        data: { id: 'update-123' },
-        error: null,
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/portfolio/updates') return Promise.resolve({ data: mockUpdates });
+        if (url.includes('/comments')) return Promise.resolve({ data: mockComments });
+        return Promise.resolve({ data: [] });
       });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'new-comment' } });
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: mockCompanies,
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [],
-                  error: null,
-                }),
-              }),
-            }),
-            insert: mockInsert,
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        const composeButton = screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i);
-        expect(composeButton).toBeInTheDocument();
+        expect(screen.getByText('Q4 2025 Growth Milestones Achieved')).toBeInTheDocument();
       });
 
-      const composeButton = screen.getByText(/Compose Update/i) || screen.getByText(/Send Update/i);
-      await user.click(composeButton);
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
-      });
-
-      // Fill form
-      const titleInput = screen.getByLabelText(/title/i);
-      const contentInput = screen.getByLabelText(/content/i) || screen.getByLabelText(/message/i);
+      const commentInputs = screen.getAllByPlaceholderText(/Add a comment/i);
+      await user.type(commentInputs[0], 'Great work team!');
       
-      await user.type(titleInput, 'Q1 Update');
-      await user.type(contentInput, 'Great quarter!');
-
-      // Submit
-      const sendButton = screen.getByRole('button', { name: /send/i });
-      await user.click(sendButton);
+      const postButtons = screen.getAllByText(/Post Comment/i);
+      await user.click(postButtons[0]);
 
       await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: 'Q1 Update',
-            content: 'Great quarter!',
-          })
+        expect(apiClient.post).toHaveBeenCalledWith(
+          '/api/portfolio/updates/update-1/comments',
+          expect.objectContaining({ comment_text: 'Great work team!' })
         );
       });
     });
-  });
 
-  describe('Update Details', () => {
-    it('should display update timestamp', async () => {
-      const mockUpdates = [
-        {
-          id: 'update-1',
-          title: 'Q1 2024 Performance',
-          content: 'Strong quarter',
-          created_at: '2024-01-15T10:00:00Z',
-          company: {
-            company_name: 'TechStartup Inc',
-          },
-        },
-      ];
+    it('should display comment count for each update', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockUpdates,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText(/2024/)).toBeInTheDocument();
-      });
-    });
-
-    it('should display company name with update', async () => {
-      const mockUpdates = [
-        {
-          id: 'update-1',
-          title: 'Q1 2024 Performance',
-          content: 'Strong quarter',
-          created_at: '2024-01-15T10:00:00Z',
-          company: {
-            company_name: 'TechStartup Inc',
-          },
-        },
-      ];
-
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
-              }),
-            }),
-          };
-        }
-        if (table === 'portfolio_updates') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockUpdates,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
-
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('TechStartup Inc')).toBeInTheDocument();
+        expect(screen.getByText(/3 comments/i)).toBeInTheDocument();
+        expect(screen.getByText(/5 comments/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Empty State', () => {
-    it('should display empty state when no updates', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
-        }),
-      });
+  describe('Error Handling', () => {
+    it('should display error message when loading updates fails', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Failed to load updates'));
 
-      render(
-        <BrowserRouter>
-          <PortfolioUpdates />
-        </BrowserRouter>
-      );
+      renderWithProviders(<PortfolioUpdates />);
 
       await waitFor(() => {
-        expect(screen.getByText(/No updates/i)).toBeInTheDocument();
+        expect(screen.getByText(/Error loading updates/i)).toBeInTheDocument();
       });
     });
   });
