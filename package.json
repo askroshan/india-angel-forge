@@ -15,6 +15,13 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:compliance": "playwright test e2e/compliance-officer.spec.ts",
+    "test:e2e:investor": "playwright test e2e/investor.spec.ts",
+    "test:seed": "tsx e2e/fixtures/seed.ts",
+    "test:all": "npm run test:run && npm run test:e2e",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
