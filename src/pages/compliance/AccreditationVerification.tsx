@@ -1,295 +1,211 @@
-/**
- * US-COMPLIANCE-003: Verify Accredited Investor Status
- * 
- * Compliance officer dashboard for verifying investor accreditation status.
- * Supports income-based and net-worth-based verification with expiry tracking.
- */
-
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, AlertTriangle, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
+import { CheckCircle, AlertTriangle, XCircle, FileText, Download } from 'lucide-react';
 
-interface AccreditationRecord {
+/**
+ * Accreditation Application data structure
+ */
+interface AccreditationApplication {
   id: string;
-  investorId: string;
-  verificationType: 'income_based' | 'net_worth_based' | 'professional_certification';
-  status: 'pending' | 'verified' | 'rejected';
-  verifiedBy?: string;
-  verifiedAt?: string;
-  expiryDate?: string;
-  rejectionReason?: string;
-  documents: any;
-  investorName: string;
-  investorEmail: string;
+  investor_id: string;
+  verification_status: 'pending' | 'approved' | 'rejected' | 'expired';
+  verification_method: 'income' | 'net_worth' | 'professional';
+  annual_income: number | null;
+  net_worth: number | null;
+  professional_certification: string | null;
+  expiry_date?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  documents: Array<{
+    id: string;
+    type: string;
+    url: string;
+  }>;
+  submitted_at: string;
+  investor: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
 }
 
-const AccreditationVerification = () => {
-  const [accreditations, setAccreditations] = useState<AccreditationRecord[]>([]);
-  const [filteredAccreditations, setFilteredAccreditations] = useState<AccreditationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAccreditation, setSelectedAccreditation] = useState<AccreditationRecord | null>(null);
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+/**
+ * Status badge configuration
+ */
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
+
+interface StatusConfig {
+  variant: BadgeVariant;
+  icon: React.ComponentType<{ className?: string }> | null;
+  text: string;
+}
+
+const STATUS_CONFIGS: Record<string, StatusConfig> = {
+  pending: { variant: 'secondary', icon: null, text: 'Pending' },
+  approved: { variant: 'default', icon: CheckCircle, text: 'Approved' },
+  rejected: { variant: 'destructive', icon: XCircle, text: 'Rejected' },
+  expired: { variant: 'outline', icon: AlertTriangle, text: 'Expired' }
+};
+
+const VERIFICATION_METHOD_LABELS: Record<string, string> = {
+  income: 'Income Based',
+  net_worth: 'Net Worth Based',
+  professional: 'Professional Certification'
+};
+
+/**
+ * Formats Indian currency (Rupees)
+ */
+const formatIndianCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+/**
+ * Renders a status badge with appropriate styling and icon
+ */
+const StatusBadge = ({ status }: { status: string }) => {
+  const config = STATUS_CONFIGS[status] || STATUS_CONFIGS.pending;
+  const Icon = config.icon;
+
+  return (
+    <Badge variant={config.variant}>
+      {Icon && <Icon className="w-3 h-3 mr-1" />}
+      {config.text}
+    </Badge>
+  );
+};
+
+/**
+ * Accreditation Verification Component
+ * 
+ * Allows compliance officers to:
+ * - View accreditation applications
+ * - Review submitted documents
+ * - Approve applications with expiry date
+ * - Reject applications with detailed reasons
+ * - Filter applications by status
+ */
+export default function AccreditationVerification() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Dialog state
+  const [selectedApplication, setSelectedApplication] = useState<AccreditationApplication | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false);
+  
+  // Form state
   const [expiryDate, setExpiryDate] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { token } = useAuth();
 
-  useEffect(() => {
-    checkAccess();
-  }, []);
+  // Fetch accreditation applications
+  const { data: applications = [], isLoading, error } = useQuery({
+    queryKey: ['accreditation-applications'],
+    queryFn: async () => await apiClient.get<AccreditationApplication[]>('/api/compliance/accreditation'),
+    enabled: !!user
+  });
 
-  useEffect(() => {
-    filterAccreditations();
-  }, [accreditations, statusFilter, searchQuery]);
-
-  const checkAccess = async () => {
-    if (!token) {
-      navigate('/auth');
-      return;
-    }
-
-    // Check access by attempting to fetch accreditations
-    const response = await fetch('/api/compliance/accreditation', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (response.status === 403 || response.status === 401) {
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to access this page.',
-        variant: 'destructive',
-      });
-      navigate('/');
-      return;
-    }
-
-    fetchAccreditations();
-  };
-
-  const fetchAccreditations = async () => {
-    try {
-      setLoading(true);
-      
-      if (!token) return;
-
-      const response = await fetch('/api/compliance/accreditation/all', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load accreditations');
-      }
-
-      const data = await response.json();
-      setAccreditations(data || []);
-    } catch (err: any) {
-      setError(err.message);
-      toast({
-        title: 'Error',
-        description: 'Failed to load accreditations',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAccreditations = () => {
-    let filtered = [...accreditations];
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'expiring_soon') {
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        
-        filtered = filtered.filter(acc => {
-          if (!acc.expiryDate || acc.status !== 'verified') return false;
-          const expiryDate = new Date(acc.expiryDate);
-          const today = new Date();
-          return expiryDate > today && expiryDate <= thirtyDaysFromNow;
-        });
-      } else if (statusFilter === 'expired') {
-        filtered = filtered.filter(acc => {
-          if (!acc.expiryDate) return false;
-          return new Date(acc.expiryDate) < new Date();
-        });
-      } else {
-        filtered = filtered.filter(acc => acc.status === statusFilter);
-      }
-    }
-
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(acc =>
-        acc.investorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        acc.investorEmail?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredAccreditations(filtered);
-  };
-
-  const handleVerify = async () => {
-    if (!selectedAccreditation) return;
-
-    if (!expiryDate) {
-      toast({
-        title: 'Error',
-        description: 'Expiry date is required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      if (!token) throw new Error('No authentication');
-
-      const response = await fetch(`/api/compliance/accreditation/${selectedAccreditation.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: 'verified',
-          expiryDate,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to verify accreditation');
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Investor accreditation verified successfully',
-      });
-
-      setVerifyDialogOpen(false);
-      setSelectedAccreditation(null);
+  // Approve application mutation
+  const approveApplication = useMutation({
+    mutationFn: async ({ id, expiry_date }: { id: string; expiry_date: string }) => {
+      return await apiClient.patch(`/api/compliance/accreditation/${id}/approve`, { expiry_date });
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['accreditation-applications'] });
+      setApproveDialogOpen(false);
       setExpiryDate('');
-      fetchAccreditations();
-    } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleReject = async () => {
-    if (!selectedAccreditation || !rejectionReason) return;
-
-    try {
-      if (!token) throw new Error('No authentication');
-
-      const response = await fetch(`/api/compliance/accreditation/${selectedAccreditation.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: 'rejected',
-          rejectionReason,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to reject accreditation');
+      toast.success('Application approved successfully');
+      if (response.certificate_sent) {
+        toast.success('Verification certificate sent to investor');
       }
+    },
+    onError: () => {
+      toast.error('Failed to approve application');
+    }
+  });
 
-      toast({
-        title: 'Accreditation Rejected',
-        description: 'Investor has been notified',
-      });
-
+  // Reject application mutation
+  const rejectApplication = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      return await apiClient.patch(`/api/compliance/accreditation/${id}/reject`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accreditation-applications'] });
       setRejectDialogOpen(false);
-      setSelectedAccreditation(null);
       setRejectionReason('');
-      fetchAccreditations();
-    } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message,
-        variant: 'destructive',
-      });
+      toast.success('Application rejected');
+    },
+    onError: () => {
+      toast.error('Failed to reject application');
+    }
+  });
+
+  const handleApproveClick = (application: AccreditationApplication) => {
+    setSelectedApplication(application);
+    // Default expiry date: 1 year from now
+    const defaultExpiry = new Date();
+    defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
+    setExpiryDate(defaultExpiry.toISOString().split('T')[0]);
+    setApproveDialogOpen(true);
+  };
+
+  const handleRejectClick = (application: AccreditationApplication) => {
+    setSelectedApplication(application);
+    setRejectDialogOpen(true);
+  };
+
+  const handleViewDocuments = (application: AccreditationApplication) => {
+    setSelectedApplication(application);
+    setDocumentsDialogOpen(true);
+  };
+
+  const handleApproveSubmit = () => {
+    if (selectedApplication && expiryDate) {
+      approveApplication.mutate({ id: selectedApplication.id, expiry_date: expiryDate });
     }
   };
 
-  const getStatusBadge = (accreditation: AccreditationRecord) => {
-    // Check if expired
-    if (accreditation.expiryDate) {
-      const expiryDate = new Date(accreditation.expiryDate);
-      const today = new Date();
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-      if (expiryDate < today) {
-        return <Badge variant="destructive">Expired</Badge>;
-      }
-
-      if (expiryDate <= thirtyDaysFromNow) {
-        return <Badge variant="secondary" className="bg-amber-100 text-amber-800">Expiring Soon</Badge>;
-      }
-    }
-
-    switch (accreditation.status) {
-      case 'verified':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Verified</Badge>;
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>;
-      default:
-        return null;
+  const handleRejectSubmit = () => {
+    if (selectedApplication && rejectionReason.trim()) {
+      rejectApplication.mutate({ id: selectedApplication.id, reason: rejectionReason });
     }
   };
 
-  const stats = {
-    total: accreditations.length,
-    verified: accreditations.filter(a => a.status === 'verified' && (!a.expiryDate || new Date(a.expiryDate) > new Date())).length,
-    pending: accreditations.filter(a => a.status === 'pending').length,
-    expiringSoon: accreditations.filter(a => {
-      if (!a.expiryDate || a.status !== 'verified') return false;
-      const expiryDate = new Date(a.expiryDate);
-      const today = new Date();
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      return expiryDate > today && expiryDate <= thirtyDaysFromNow;
-    }).length,
-  };
+  // Filter applications by status
+  const filteredApplications = applications.filter(application => {
+    if (statusFilter === 'all') return true;
+    return application.verification_status === statusFilter;
+  });
 
-  if (loading) {
+  if (error) {
     return (
       <div className="container mx-auto py-8">
-        <p>Loading accreditations...</p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-red-600">
+              <XCircle className="w-12 h-12 mx-auto mb-4" />
+              <p>Error loading accreditation applications</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -299,176 +215,194 @@ const AccreditationVerification = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Accreditation Verification</h1>
         <p className="text-muted-foreground">
-          Verify and manage investor accreditation status
+          Verify investor accreditation requirements and issue certificates
         </p>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Total Accreditations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Verified</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.verified}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.expiringSoon}</div>
-          </CardContent>
-        </Card>
+      {/* Filter */}
+      <div className="mb-6">
+        <Label htmlFor="status-filter">Filter by Status</Label>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger id="status-filter" className="w-[200px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search investors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[200px]" aria-label="Status Filter">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="verified">Verified</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="expiring_soon">Expiring Soon</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Accreditation List */}
-      <div className="space-y-4">
-        {filteredAccreditations.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No accreditations found
-            </CardContent>
-          </Card>
-        ) : (
-          filteredAccreditations.map((accreditation) => (
-            <Card key={accreditation.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">
-                        {accreditation.investorName}
-                      </h3>
-                      {getStatusBadge(accreditation)}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {accreditation.investorEmail}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="capitalize">
-                        {accreditation.verificationType.replace(/_/g, ' ')}
-                      </span>
-                      {accreditation.expiryDate && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          Expires: {new Date(accreditation.expiryDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    {accreditation.rejectionReason && (
-                      <p className="mt-2 text-sm text-red-600">
-                        Rejection Reason: {accreditation.rejectionReason}
-                      </p>
+      {/* Applications List */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center">Loading accreditations...</p>
+          </CardContent>
+        </Card>
+      ) : filteredApplications.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">No accreditation applications found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredApplications.map((application) => (
+            <Card key={application.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>{application.investor.full_name}</CardTitle>
+                    <CardDescription>{application.investor.email}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={application.verification_status} />
+                    <Badge variant="outline">
+                      {VERIFICATION_METHOD_LABELS[application.verification_method]}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Verification Details */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {application.annual_income && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Annual Income</Label>
+                        <p className="font-medium">{formatIndianCurrency(application.annual_income)}</p>
+                      </div>
+                    )}
+                    {application.net_worth && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Net Worth</Label>
+                        <p className="font-medium">{formatIndianCurrency(application.net_worth)}</p>
+                      </div>
+                    )}
+                    {application.professional_certification && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Certification</Label>
+                        <p className="font-medium">{application.professional_certification}</p>
+                      </div>
+                    )}
+                    {application.expiry_date && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Expiry Date</Label>
+                        <p className="font-medium">
+                          {new Date(application.expiry_date).toLocaleDateString('en-IN')}
+                        </p>
+                      </div>
                     )}
                   </div>
-                  
-                  {accreditation.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedAccreditation(accreditation);
-                          setVerifyDialogOpen(true);
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Verify
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setSelectedAccreditation(accreditation);
-                          setRejectDialogOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleViewDocuments(application)}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      View Documents
+                    </Button>
+                    {application.verification_status === 'pending' && (
+                      <>
+                        <Button
+                          onClick={() => handleApproveClick(application)}
+                          disabled={approveApplication.isPending}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleRejectClick(application)}
+                          disabled={rejectApplication.isPending}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Verify Dialog */}
-      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+      {/* Documents Dialog */}
+      <Dialog open={documentsDialogOpen} onOpenChange={setDocumentsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Verify Accreditation</DialogTitle>
+            <DialogTitle>Application Documents</DialogTitle>
             <DialogDescription>
-              Set the expiry date for this accreditation. Typically 1 year from verification.
+              Review submitted documents for {selectedApplication?.investor.full_name}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="expiry-date">Expiry Date *</Label>
+          {selectedApplication && (
+            <div className="space-y-4">
+              {selectedApplication.documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 border rounded-md">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{doc.type}</p>
+                      <p className="text-sm text-muted-foreground">Document ID: {doc.id}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(doc.url, '_blank')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Accreditation</DialogTitle>
+            <DialogDescription>
+              Set expiry date for {selectedApplication?.investor.full_name}'s accreditation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="expiry-date">Expiry Date</Label>
               <Input
                 id="expiry-date"
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
               />
+              <p className="text-sm text-muted-foreground mt-1">
+                Typically set to 1 year from approval date
+              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setVerifyDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleVerify}>Confirm Verification</Button>
+            <Button
+              onClick={handleApproveSubmit}
+              disabled={!expiryDate || approveApplication.isPending}
+            >
+              Approve
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -477,19 +411,20 @@ const AccreditationVerification = () => {
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Accreditation</DialogTitle>
+            <DialogTitle>Reject Application</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejection
+              Provide detailed reasons for rejection
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="rejection-reason">Reason for Rejection *</Label>
-              <Input
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rejection-reason">Rejection Reason</Label>
+              <Textarea
                 id="rejection-reason"
-                placeholder="e.g., Insufficient documentation, Income below threshold"
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Explain why this application is being rejected..."
+                rows={4}
               />
             </div>
           </div>
@@ -497,14 +432,16 @@ const AccreditationVerification = () => {
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReject}>
-              Confirm Rejection
+            <Button
+              variant="destructive"
+              onClick={handleRejectSubmit}
+              disabled={!rejectionReason.trim() || rejectApplication.isPending}
+            >
+              Reject
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-};
-
-export default AccreditationVerification;
+}
