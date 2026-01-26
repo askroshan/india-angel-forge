@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,16 +39,16 @@ import { FileText, Download, Check, X, Filter, Search } from 'lucide-react';
 
 interface KYCDocument {
   id: string;
-  investor_id: string;
-  investor_name?: string;
-  investor_email?: string;
-  document_type: 'pan' | 'aadhaar' | 'bank_statement' | 'income_proof';
-  file_path: string;
-  verification_status: 'pending' | 'verified' | 'rejected';
-  uploaded_at: string;
-  verified_at?: string;
-  verified_by?: string;
-  rejection_reason?: string;
+  investorId: string;
+  investorName?: string;
+  investorEmail?: string;
+  documentType: 'pan' | 'aadhaar' | 'bank_statement' | 'income_proof';
+  filePath: string;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  uploadedAt: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  rejectionReason?: string;
 }
 
 type DocumentAction = 'verify' | 'reject' | null;
@@ -68,6 +68,7 @@ export default function KYCReviewDashboard() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAccess();
@@ -84,21 +85,17 @@ export default function KYCReviewDashboard() {
   }, [documents, filterStatus, filterType, searchQuery]);
 
   const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
-    // Check if user has compliance officer role
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', session.user.id)
-      .single();
+    // Check access by attempting to fetch documents
+    const response = await fetch('/api/compliance/kyc-review', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!roleData || !['admin', 'compliance_officer'].includes(roleData.role)) {
+    if (response.status === 403 || response.status === 401) {
       setAccessDenied(true);
     }
   };
@@ -107,26 +104,18 @@ export default function KYCReviewDashboard() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('kyc_documents')
-        .select(`
-          *,
-          investor:investor_applications(
-            full_name,
-            email
-          )
-        `)
-        .order('uploaded_at', { ascending: false });
+      if (!token) return;
 
-      if (error) throw error;
+      const response = await fetch('/api/compliance/kyc-review', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      const docsWithInvestor = data.map(doc => ({
-        ...doc,
-        investor_name: doc.investor?.full_name,
-        investor_email: doc.investor?.email,
-      }));
+      if (!response.ok) {
+        throw new Error('Failed to load KYC documents');
+      }
 
-      setDocuments(docsWithInvestor);
+      const data = await response.json();
+      setDocuments(data || []);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -143,20 +132,20 @@ export default function KYCReviewDashboard() {
 
     // Filter by status
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(doc => doc.verification_status === filterStatus);
+      filtered = filtered.filter(doc => doc.verificationStatus === filterStatus);
     }
 
     // Filter by type
     if (filterType !== 'all') {
-      filtered = filtered.filter(doc => doc.document_type === filterType);
+      filtered = filtered.filter(doc => doc.documentType === filterType);
     }
 
     // Search by investor name or email
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(doc => 
-        doc.investor_name?.toLowerCase().includes(query) ||
-        doc.investor_email?.toLowerCase().includes(query)
+        doc.investorName?.toLowerCase().includes(query) ||
+        doc.investorEmail?.toLowerCase().includes(query)
       );
     }
 
@@ -165,15 +154,7 @@ export default function KYCReviewDashboard() {
 
   const handleViewDocument = async (doc: KYCDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('kyc-documents')
-        .download(doc.file_path);
-
-      if (error) throw error;
-
-      // Create blob URL and open in new tab
-      const url = URL.createObjectURL(data);
-      window.open(url, '_blank');
+      window.open(`/uploads/${doc.filePath}`, '_blank');
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -185,21 +166,7 @@ export default function KYCReviewDashboard() {
 
   const handleDownloadDocument = async (doc: KYCDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('kyc-documents')
-        .download(doc.file_path);
-
-      if (error) throw error;
-
-      // Create download link
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${doc.document_type}_${doc.investor_name}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      window.open(`/uploads/${doc.filePath}`, '_blank');
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -236,46 +203,23 @@ export default function KYCReviewDashboard() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!token) throw new Error('Not authenticated');
 
-      const updateData: any = {
-        verification_status: action === 'verify' ? 'verified' : 'rejected',
-        verified_at: new Date().toISOString(),
-        verified_by: session.user.id,
-      };
-
-      if (action === 'reject') {
-        updateData.rejection_reason = rejectionReason;
-      }
-
-      const { error: updateError } = await supabase
-        .from('kyc_documents')
-        .update(updateData)
-        .eq('id', selectedDoc.id);
-
-      if (updateError) throw updateError;
-
-      // Log audit trail
-      await supabase.from('audit_logs').insert({
-        user_id: session.user.id,
-        action: action === 'verify' ? 'kyc_verified' : 'kyc_rejected',
-        entity_type: 'kyc_document',
-        entity_id: selectedDoc.id,
-        details: {
-          document_type: selectedDoc.document_type,
-          investor_id: selectedDoc.investor_id,
-          notes: action === 'verify' ? notes : rejectionReason,
+      const response = await fetch(`/api/compliance/kyc-review/${selectedDoc.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          status: action === 'verify' ? 'verified' : 'rejected',
+          rejectionReason: action === 'reject' ? rejectionReason : undefined,
+        }),
       });
 
-      // Send notification to investor
-      if (action === 'reject') {
-        await supabase.rpc('send_kyc_rejection_notification', {
-          p_investor_id: selectedDoc.investor_id,
-          p_document_type: selectedDoc.document_type,
-          p_reason: rejectionReason,
-        });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update document');
       }
 
       toast({
@@ -402,20 +346,20 @@ export default function KYCReviewDashboard() {
                   <div className="flex items-center space-x-4">
                     <FileText className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <h3 className="font-semibold">{doc.investor_name || 'Unknown'}</h3>
-                      <p className="text-sm text-muted-foreground">{doc.investor_email}</p>
+                      <h3 className="font-semibold">{doc.investorName || 'Unknown'}</h3>
+                      <p className="text-sm text-muted-foreground">{doc.investorEmail}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={
-                          doc.verification_status === 'verified' ? 'default' :
-                          doc.verification_status === 'rejected' ? 'destructive' : 'secondary'
+                          doc.verificationStatus === 'verified' ? 'default' :
+                          doc.verificationStatus === 'rejected' ? 'destructive' : 'secondary'
                         }>
-                          {doc.verification_status}
+                          {doc.verificationStatus}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                          {doc.document_type.replace('_', ' ').toUpperCase()}
+                          {doc.documentType.replace('_', ' ').toUpperCase()}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
+                          Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -436,7 +380,7 @@ export default function KYCReviewDashboard() {
                     >
                       <Download className="h-4 w-4" />
                     </Button>
-                    {doc.verification_status === 'pending' && (
+                    {doc.verificationStatus === 'pending' && (
                       <>
                         <Button
                           size="sm"
@@ -458,10 +402,10 @@ export default function KYCReviewDashboard() {
                   </div>
                 </div>
 
-                {doc.rejection_reason && (
+                {doc.rejectionReason && (
                   <div className="mt-4 p-3 bg-destructive/10 rounded-md">
                     <p className="text-sm font-medium">Rejection Reason:</p>
-                    <p className="text-sm">{doc.rejection_reason}</p>
+                    <p className="text-sm">{doc.rejectionReason}</p>
                   </div>
                 )}
               </CardContent>

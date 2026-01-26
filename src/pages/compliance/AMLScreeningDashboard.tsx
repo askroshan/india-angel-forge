@@ -17,7 +17,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,17 +31,17 @@ import { Shield, AlertTriangle, CheckCircle, Search, Play } from 'lucide-react';
 
 interface AMLScreening {
   id: string;
-  investor_id: string;
-  investor_name?: string;
-  investor_email?: string;
-  screening_date: string;
-  screening_status: 'pending' | 'clear' | 'flagged' | 'rejected';
-  screening_provider?: string;
-  match_score?: number;
-  screening_results?: any;
-  flagged_reasons?: string[];
-  reviewed_by?: string;
-  reviewed_at?: string;
+  investorId: string;
+  investorName?: string;
+  investorEmail?: string;
+  screeningDate: string;
+  screeningStatus: 'pending' | 'clear' | 'flagged' | 'rejected';
+  screeningProvider?: string;
+  matchScore?: number;
+  screeningResults?: any;
+  flaggedReasons?: string[];
+  reviewedBy?: string;
+  reviewedAt?: string;
   notes?: string;
 }
 
@@ -60,6 +60,7 @@ export default function AMLScreeningDashboard() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   const FLAG_REASONS = [
     'Politically Exposed Person (PEP)',
@@ -85,20 +86,17 @@ export default function AMLScreeningDashboard() {
   }, [screenings, filterStatus, searchQuery]);
 
   const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', session.user.id)
-      .single();
+    // Check access by attempting to fetch screenings
+    const response = await fetch('/api/compliance/aml-screening', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!roleData || !['admin', 'compliance_officer'].includes(roleData.role)) {
+    if (response.status === 403 || response.status === 401) {
       setAccessDenied(true);
     }
   };
@@ -107,26 +105,18 @@ export default function AMLScreeningDashboard() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('aml_screening')
-        .select(`
-          *,
-          investor:investor_applications(
-            full_name,
-            email
-          )
-        `)
-        .order('screening_date', { ascending: false });
+      if (!token) return;
 
-      if (error) throw error;
+      const response = await fetch('/api/compliance/aml-screening', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      const screeningsWithInvestor = data.map(s => ({
-        ...s,
-        investor_name: s.investor?.full_name,
-        investor_email: s.investor?.email,
-      }));
+      if (!response.ok) {
+        throw new Error('Failed to load AML screenings');
+      }
 
-      setScreenings(screeningsWithInvestor);
+      const data = await response.json();
+      setScreenings(data || []);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -142,14 +132,14 @@ export default function AMLScreeningDashboard() {
     let filtered = [...screenings];
 
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(s => s.screening_status === filterStatus);
+      filtered = filtered.filter(s => s.screeningStatus === filterStatus);
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(s => 
-        s.investor_name?.toLowerCase().includes(query) ||
-        s.investor_email?.toLowerCase().includes(query)
+        s.investorName?.toLowerCase().includes(query) ||
+        s.investorEmail?.toLowerCase().includes(query)
       );
     }
 
@@ -222,41 +212,27 @@ export default function AMLScreeningDashboard() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!token) throw new Error('Not authenticated');
 
       const allReasons = [...flagReasons, customReason].filter(Boolean);
 
-      const updateData: any = {
-        screening_status: action === 'clear' ? 'clear' : 'flagged',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: session.user.id,
-        notes,
-      };
-
-      if (action === 'flag') {
-        updateData.flagged_reasons = allReasons;
-      }
-
-      const { error: updateError } = await supabase
-        .from('aml_screening')
-        .update(updateData)
-        .eq('id', selectedScreening.id);
-
-      if (updateError) throw updateError;
-
-      // Log audit trail
-      await supabase.from('audit_logs').insert({
-        user_id: session.user.id,
-        action: action === 'clear' ? 'aml_cleared' : 'aml_flagged',
-        entity_type: 'aml_screening',
-        entity_id: selectedScreening.id,
-        details: {
-          investor_id: selectedScreening.investor_id,
-          reasons: action === 'flag' ? allReasons : null,
-          notes,
+      const response = await fetch(`/api/compliance/aml-screening/${selectedScreening.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          status: action === 'clear' ? 'clear' : 'flagged',
+          flaggedReasons: action === 'flag' ? allReasons : undefined,
+          notes,
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update screening');
+      }
 
       toast({
         title: 'Success',
@@ -363,30 +339,30 @@ export default function AMLScreeningDashboard() {
                   <div className="flex items-center space-x-4">
                     <Shield className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <h3 className="font-semibold">{screening.investor_name || 'Unknown'}</h3>
-                      <p className="text-sm text-muted-foreground">{screening.investor_email}</p>
+                      <h3 className="font-semibold">{screening.investorName || 'Unknown'}</h3>
+                      <p className="text-sm text-muted-foreground">{screening.investorEmail}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={
-                          screening.screening_status === 'clear' ? 'default' :
-                          screening.screening_status === 'flagged' ? 'destructive' :
-                          screening.screening_status === 'rejected' ? 'destructive' : 'secondary'
+                          screening.screeningStatus === 'clear' ? 'default' :
+                          screening.screeningStatus === 'flagged' ? 'destructive' :
+                          screening.screeningStatus === 'rejected' ? 'destructive' : 'secondary'
                         }>
-                          {screening.screening_status}
+                          {screening.screeningStatus}
                         </Badge>
-                        {screening.match_score !== null && (
+                        {screening.matchScore !== null && (
                           <span className="text-sm text-muted-foreground">
-                            Match Score: {screening.match_score?.toFixed(1)}%
+                            Match Score: {screening.matchScore?.toFixed(1)}%
                           </span>
                         )}
                         <span className="text-sm text-muted-foreground">
-                          {new Date(screening.screening_date).toLocaleDateString()}
+                          {new Date(screening.screeningDate).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                    {screening.screening_status === 'pending' && (
+                    {screening.screeningStatus === 'pending' && (
                       <>
                         <Button
                           size="sm"
@@ -408,11 +384,11 @@ export default function AMLScreeningDashboard() {
                   </div>
                 </div>
 
-                {screening.flagged_reasons && screening.flagged_reasons.length > 0 && (
+                {screening.flaggedReasons && screening.flaggedReasons.length > 0 && (
                   <div className="mt-4 p-3 bg-destructive/10 rounded-md">
                     <p className="text-sm font-medium mb-2">Flagged Reasons:</p>
                     <ul className="text-sm list-disc list-inside">
-                      {screening.flagged_reasons.map((reason, idx) => (
+                      {screening.flaggedReasons.map((reason, idx) => (
                         <li key={idx}>{reason}</li>
                       ))}
                     </ul>

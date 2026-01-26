@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,21 +27,16 @@ import { CheckCircle, XCircle, AlertTriangle, Calendar } from 'lucide-react';
 
 interface AccreditationRecord {
   id: string;
-  investor_id: string;
-  verification_type: 'income_based' | 'net_worth_based' | 'professional_certification';
+  investorId: string;
+  verificationType: 'income_based' | 'net_worth_based' | 'professional_certification';
   status: 'pending' | 'verified' | 'rejected';
-  verified_by?: string;
-  verified_at?: string;
-  expiry_date?: string;
-  rejection_reason?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  expiryDate?: string;
+  rejectionReason?: string;
   documents: any;
-  investor: {
-    id: string;
-    profile: {
-      full_name: string;
-      email: string;
-    };
-  };
+  investorName: string;
+  investorEmail: string;
 }
 
 const AccreditationVerification = () => {
@@ -59,6 +54,7 @@ const AccreditationVerification = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAccess();
@@ -69,20 +65,17 @@ const AccreditationVerification = () => {
   }, [accreditations, statusFilter, searchQuery]);
 
   const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+    // Check access by attempting to fetch accreditations
+    const response = await fetch('/api/compliance/accreditation', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (profile?.role !== 'compliance_officer' && profile?.role !== 'admin') {
+    if (response.status === 403 || response.status === 401) {
       toast({
         title: 'Access Denied',
         description: 'You do not have permission to access this page.',
@@ -98,19 +91,18 @@ const AccreditationVerification = () => {
   const fetchAccreditations = async () => {
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('accreditation_verification')
-        .select(`
-          *,
-          investor:investor_id(
-            id,
-            profile:profiles(full_name, email)
-          )
-        `)
-        .order('created_at', { ascending: false });
+      
+      if (!token) return;
 
-      if (fetchError) throw fetchError;
+      const response = await fetch('/api/compliance/accreditation/all', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to load accreditations');
+      }
+
+      const data = await response.json();
       setAccreditations(data || []);
     } catch (err: any) {
       setError(err.message);
@@ -134,15 +126,15 @@ const AccreditationVerification = () => {
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
         
         filtered = filtered.filter(acc => {
-          if (!acc.expiry_date || acc.status !== 'verified') return false;
-          const expiryDate = new Date(acc.expiry_date);
+          if (!acc.expiryDate || acc.status !== 'verified') return false;
+          const expiryDate = new Date(acc.expiryDate);
           const today = new Date();
           return expiryDate > today && expiryDate <= thirtyDaysFromNow;
         });
       } else if (statusFilter === 'expired') {
         filtered = filtered.filter(acc => {
-          if (!acc.expiry_date) return false;
-          return new Date(acc.expiry_date) < new Date();
+          if (!acc.expiryDate) return false;
+          return new Date(acc.expiryDate) < new Date();
         });
       } else {
         filtered = filtered.filter(acc => acc.status === statusFilter);
@@ -152,8 +144,8 @@ const AccreditationVerification = () => {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(acc =>
-        acc.investor?.profile?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        acc.investor?.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase())
+        acc.investorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        acc.investorEmail?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -173,43 +165,24 @@ const AccreditationVerification = () => {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      if (!token) throw new Error('No authentication');
 
-      // Update accreditation record
-      const { error: updateError } = await supabase
-        .from('accreditation_verification')
-        .update({
-          status: 'verified',
-          verified_by: session.user.id,
-          verified_at: new Date().toISOString(),
-          expiry_date: expiryDate,
-        })
-        .eq('id', selectedAccreditation.id);
-
-      if (updateError) throw updateError;
-
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: session.user.id,
-        action: 'verify_accreditation',
-        resource_type: 'accreditation_verification',
-        resource_id: selectedAccreditation.id,
-        details: {
-          investor_id: selectedAccreditation.investor_id,
-          investor_name: selectedAccreditation.investor.profile.full_name,
-          expiry_date: expiryDate,
+      const response = await fetch(`/api/compliance/accreditation/${selectedAccreditation.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          status: 'verified',
+          expiryDate,
+        }),
       });
 
-      // Send notification via Edge Function
-      await supabase.functions.invoke('send-accreditation-notification', {
-        body: {
-          investor_id: selectedAccreditation.investor_id,
-          status: 'verified',
-          expiry_date: expiryDate,
-        },
-      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to verify accreditation');
+      }
 
       toast({
         title: 'Success',
@@ -233,34 +206,24 @@ const AccreditationVerification = () => {
     if (!selectedAccreditation || !rejectionReason) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      if (!token) throw new Error('No authentication');
 
-      // Update accreditation record
-      const { error: updateError } = await supabase
-        .from('accreditation_verification')
-        .update({
-          status: 'rejected',
-          verified_by: session.user.id,
-          verified_at: new Date().toISOString(),
-          rejection_reason: rejectionReason,
-        })
-        .eq('id', selectedAccreditation.id);
-
-      if (updateError) throw updateError;
-
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: session.user.id,
-        action: 'reject_accreditation',
-        resource_type: 'accreditation_verification',
-        resource_id: selectedAccreditation.id,
-        details: {
-          investor_id: selectedAccreditation.investor_id,
-          investor_name: selectedAccreditation.investor.profile.full_name,
-          reason: rejectionReason,
+      const response = await fetch(`/api/compliance/accreditation/${selectedAccreditation.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          status: 'rejected',
+          rejectionReason,
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject accreditation');
+      }
 
       toast({
         title: 'Accreditation Rejected',
@@ -282,8 +245,8 @@ const AccreditationVerification = () => {
 
   const getStatusBadge = (accreditation: AccreditationRecord) => {
     // Check if expired
-    if (accreditation.expiry_date) {
-      const expiryDate = new Date(accreditation.expiry_date);
+    if (accreditation.expiryDate) {
+      const expiryDate = new Date(accreditation.expiryDate);
       const today = new Date();
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -311,11 +274,11 @@ const AccreditationVerification = () => {
 
   const stats = {
     total: accreditations.length,
-    verified: accreditations.filter(a => a.status === 'verified' && (!a.expiry_date || new Date(a.expiry_date) > new Date())).length,
+    verified: accreditations.filter(a => a.status === 'verified' && (!a.expiryDate || new Date(a.expiryDate) > new Date())).length,
     pending: accreditations.filter(a => a.status === 'pending').length,
     expiringSoon: accreditations.filter(a => {
-      if (!a.expiry_date || a.status !== 'verified') return false;
-      const expiryDate = new Date(a.expiry_date);
+      if (!a.expiryDate || a.status !== 'verified') return false;
+      const expiryDate = new Date(a.expiryDate);
       const today = new Date();
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -423,27 +386,27 @@ const AccreditationVerification = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-lg">
-                        {accreditation.investor?.profile?.full_name}
+                        {accreditation.investorName}
                       </h3>
                       {getStatusBadge(accreditation)}
                     </div>
                     <p className="text-sm text-muted-foreground mb-1">
-                      {accreditation.investor?.profile?.email}
+                      {accreditation.investorEmail}
                     </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="capitalize">
-                        {accreditation.verification_type.replace(/_/g, ' ')}
+                        {accreditation.verificationType.replace(/_/g, ' ')}
                       </span>
-                      {accreditation.expiry_date && (
+                      {accreditation.expiryDate && (
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          Expires: {new Date(accreditation.expiry_date).toLocaleDateString()}
+                          Expires: {new Date(accreditation.expiryDate).toLocaleDateString()}
                         </span>
                       )}
                     </div>
-                    {accreditation.rejection_reason && (
+                    {accreditation.rejectionReason && (
                       <p className="mt-2 text-sm text-red-600">
-                        Rejection Reason: {accreditation.rejection_reason}
+                        Rejection Reason: {accreditation.rejectionReason}
                       </p>
                     )}
                   </div>
