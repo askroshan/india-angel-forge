@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,21 +23,20 @@ import {
 
 interface PortfolioCompany {
   id: string;
-  company_name: string;
+  companyName: string;
 }
 
 interface PortfolioUpdate {
   id: string;
   title: string;
   content: string;
-  created_at: string;
-  company: {
-    company_name: string;
-  };
+  createdAt: string;
+  companyName: string;
 }
 
 export default function PortfolioUpdates() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<PortfolioCompany[]>([]);
@@ -46,7 +45,7 @@ export default function PortfolioUpdates() {
   const [sending, setSending] = useState(false);
   
   const [updateData, setUpdateData] = useState({
-    company_id: '',
+    companyId: '',
     title: '',
     content: '',
   });
@@ -57,38 +56,34 @@ export default function PortfolioUpdates() {
 
   const fetchData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
       // Fetch portfolio companies
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('portfolio_companies')
-        .select('id, company_name')
-        .eq('investor_id', session.user.id);
+      const companiesRes = await fetch('/api/portfolio/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (companiesError) {
-        console.error('Error fetching companies:', companiesError);
-      } else if (companiesData) {
+      if (companiesRes.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (companiesRes.ok) {
+        const companiesData = await companiesRes.json();
         setCompanies(companiesData);
       }
 
       // Fetch sent updates
-      const { data: updatesData, error: updatesError } = await supabase
-        .from('portfolio_updates')
-        .select(`
-          *,
-          company:company_id(company_name)
-        `)
-        .eq('investor_id', session.user.id)
-        .order('created_at', { ascending: false });
+      const updatesRes = await fetch('/api/portfolio/updates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (updatesError) {
-        console.error('Error fetching updates:', updatesError);
-      } else if (updatesData) {
-        setUpdates(updatesData as any);
+      if (updatesRes.ok) {
+        const updatesData = await updatesRes.json();
+        setUpdates(updatesData);
       }
 
     } catch (err) {
@@ -99,7 +94,7 @@ export default function PortfolioUpdates() {
   };
 
   const handleSendUpdate = async () => {
-    if (!updateData.company_id || !updateData.title || !updateData.content) {
+    if (!updateData.companyId || !updateData.title || !updateData.content) {
       alert('Please fill in all fields');
       return;
     }
@@ -107,27 +102,33 @@ export default function PortfolioUpdates() {
     try {
       setSending(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) {
+        navigate('/auth');
+        return;
+      }
 
-      const { error } = await supabase
-        .from('portfolio_updates')
-        .insert({
-          investor_id: session.user.id,
-          company_id: updateData.company_id,
-          title: updateData.title,
-          content: updateData.content,
-        });
+      const response = await fetch('/api/portfolio/updates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      });
 
-      if (error) {
-        console.error('Error sending update:', error);
+      if (response.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (!response.ok) {
         alert('Failed to send update');
         return;
       }
 
       setShowComposeDialog(false);
       setUpdateData({
-        company_id: '',
+        companyId: '',
         title: '',
         content: '',
       });
@@ -189,8 +190,8 @@ export default function PortfolioUpdates() {
                   <div className="space-y-2">
                     <Label htmlFor="company">Company</Label>
                     <Select
-                      value={updateData.company_id}
-                      onValueChange={(value) => setUpdateData({ ...updateData, company_id: value })}
+                      value={updateData.companyId}
+                      onValueChange={(value) => setUpdateData({ ...updateData, companyId: value })}
                     >
                       <SelectTrigger id="company">
                         <SelectValue placeholder="Select a company" />
@@ -198,7 +199,7 @@ export default function PortfolioUpdates() {
                       <SelectContent>
                         {companies.map((company) => (
                           <SelectItem key={company.id} value={company.id}>
-                            {company.company_name}
+                            {company.companyName}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -248,7 +249,7 @@ export default function PortfolioUpdates() {
                       <div className="flex items-center gap-2 mb-2">
                         <Building className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          {update.company.company_name}
+                          {update.companyName}
                         </span>
                       </div>
                       <h3 className="text-lg font-semibold mb-2">{update.title}</h3>
@@ -259,7 +260,7 @@ export default function PortfolioUpdates() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    {formatDate(update.created_at)}
+                    {formatDate(update.createdAt)}
                   </div>
                 </div>
               </Card>

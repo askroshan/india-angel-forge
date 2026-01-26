@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,22 +23,21 @@ import {
 
 interface PortfolioCompany {
   id: string;
-  company_name: string;
+  companyName: string;
 }
 
 interface SharedDocument {
   id: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  shared_at: string;
-  company: {
-    company_name: string;
-  };
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  sharedAt: string;
+  companyName: string;
 }
 
 export default function SharedDocuments() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<PortfolioCompany[]>([]);
@@ -54,38 +53,34 @@ export default function SharedDocuments() {
 
   const fetchData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
       // Fetch portfolio companies
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('portfolio_companies')
-        .select('id, company_name')
-        .eq('investor_id', session.user.id);
+      const companiesRes = await fetch('/api/portfolio/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (companiesError) {
-        console.error('Error fetching companies:', companiesError);
-      } else if (companiesData) {
+      if (companiesRes.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (companiesRes.ok) {
+        const companiesData = await companiesRes.json();
         setCompanies(companiesData);
       }
 
       // Fetch shared documents
-      const { data: documentsData, error: documentsError } = await supabase
-        .from('shared_documents')
-        .select(`
-          *,
-          company:company_id(company_name)
-        `)
-        .eq('investor_id', session.user.id)
-        .order('shared_at', { ascending: false });
+      const documentsRes = await fetch('/api/documents?sharedWith=company', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (documentsError) {
-        console.error('Error fetching documents:', documentsError);
-      } else if (documentsData) {
-        setDocuments(documentsData as any);
+      if (documentsRes.ok) {
+        const documentsData = await documentsRes.json();
+        setDocuments(documentsData);
       }
 
     } catch (err) {
@@ -110,41 +105,31 @@ export default function SharedDocuments() {
     try {
       setUploading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      // Upload to storage
-      const filePath = `${session.user.id}/${Date.now()}-${selectedFile.name}`;
-      const { error: storageError } = await supabase.storage
-        .from('shared-documents')
-        .upload(filePath, selectedFile);
-
-      if (storageError) {
-        console.error('Storage error:', storageError);
-        alert('Failed to upload file');
+      if (!token) {
+        navigate('/auth');
         return;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('shared-documents')
-        .getPublicUrl(filePath);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('sharedWithId', selectedCompanyId);
+      formData.append('sharedWithType', 'company');
 
-      // Save metadata to database
-      const { error: dbError } = await supabase
-        .from('shared_documents')
-        .insert({
-          investor_id: session.user.id,
-          company_id: selectedCompanyId,
-          file_name: selectedFile.name,
-          file_type: selectedFile.type,
-          file_size: selectedFile.size,
-          file_path: filePath,
-        });
+      const response = await fetch('/api/documents', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      if (dbError) {
-        console.error('Database error:', dbError);
-        alert('Failed to save document metadata');
+      if (response.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (!response.ok) {
+        alert('Failed to share document');
         return;
       }
 
@@ -222,7 +207,7 @@ export default function SharedDocuments() {
                       <SelectContent>
                         {companies.map((company) => (
                           <SelectItem key={company.id} value={company.id}>
-                            {company.company_name}
+                            {company.companyName}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -267,16 +252,16 @@ export default function SharedDocuments() {
                       <FileText className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold mb-1">{doc.file_name}</h3>
+                      <h3 className="font-semibold mb-1">{doc.fileName}</h3>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4" />
-                          {doc.company.company_name}
+                          {doc.companyName}
                         </div>
                         <span>•</span>
-                        <span>{formatFileSize(doc.file_size)}</span>
+                        <span>{formatFileSize(doc.fileSize)}</span>
                         <span>•</span>
-                        <span>Shared {formatDate(doc.shared_at)}</span>
+                        <span>Shared {formatDate(doc.sharedAt)}</span>
                       </div>
                     </div>
                   </div>

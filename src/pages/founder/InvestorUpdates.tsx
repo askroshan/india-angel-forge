@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
@@ -12,15 +12,14 @@ interface InvestorUpdate {
   id: string;
   title: string;
   content: string;
-  created_at: string;
-  investor: {
-    full_name: string;
-    email: string;
-  };
+  createdAt: string;
+  investorName: string;
+  investorEmail: string;
 }
 
 export default function InvestorUpdates() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [updates, setUpdates] = useState<InvestorUpdate[]>([]);
@@ -31,41 +30,24 @@ export default function InvestorUpdates() {
 
   const fetchUpdates = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      // First, get the company_id for this founder
-      const { data: companyData } = await supabase
-        .from('portfolio_companies')
-        .select('id')
-        .eq('founder_id', session.user.id)
-        .single();
+      // Fetch updates (companyId is resolved on backend via founder's portfolio company)
+      const response = await fetch('/api/portfolio/updates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (!companyData) {
-        setLoading(false);
+      if (response.status === 401) {
+        navigate('/auth');
         return;
       }
 
-      // Fetch updates for this company
-      const { data, error } = await supabase
-        .from('portfolio_updates')
-        .select(`
-          *,
-          investor:investor_id(full_name, email)
-        `)
-        .eq('company_id', companyData.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching updates:', error);
-        return;
-      }
-
-      if (data) {
-        setUpdates(data as any);
+      if (response.ok) {
+        const data = await response.json();
+        setUpdates(data);
       }
 
     } catch (err) {
@@ -124,23 +106,23 @@ export default function InvestorUpdates() {
                   <div className="flex items-start gap-4">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-blue-100 text-blue-700">
-                        {getInitials(update.investor.full_name || update.investor.email)}
+                        {getInitials(update.investorName || update.investorEmail)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold">
-                          {update.investor.full_name || update.investor.email}
+                          {update.investorName || update.investorEmail}
                         </h4>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />
-                        {update.investor.email}
+                        {update.investorEmail}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      {formatDate(update.created_at)}
+                      {formatDate(update.createdAt)}
                     </div>
                   </div>
 

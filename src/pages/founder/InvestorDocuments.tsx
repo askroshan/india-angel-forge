@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,19 +13,18 @@ import {
 
 interface InvestorDocument {
   id: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  shared_at: string;
-  file_path: string;
-  investor: {
-    full_name: string;
-    email: string;
-  };
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  sharedAt: string;
+  filePath: string;
+  investorName: string;
+  investorEmail: string;
 }
 
 export default function InvestorDocuments() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<InvestorDocument[]>([]);
@@ -36,41 +35,24 @@ export default function InvestorDocuments() {
 
   const fetchDocuments = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      // First, get the company_id for this founder
-      const { data: companyData } = await supabase
-        .from('portfolio_companies')
-        .select('id')
-        .eq('founder_id', session.user.id)
-        .single();
+      // Fetch documents shared with this founder's company
+      const response = await fetch('/api/documents?sharedWith=founder', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (!companyData) {
-        setLoading(false);
+      if (response.status === 401) {
+        navigate('/auth');
         return;
       }
 
-      // Fetch documents shared with this company
-      const { data, error } = await supabase
-        .from('shared_documents')
-        .select(`
-          *,
-          investor:investor_id(full_name, email)
-        `)
-        .eq('company_id', companyData.id)
-        .order('shared_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching documents:', error);
-        return;
-      }
-
-      if (data) {
-        setDocuments(data as any);
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data);
       }
 
     } catch (err) {
@@ -82,26 +64,7 @@ export default function InvestorDocuments() {
 
   const handleDownload = async (doc: InvestorDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('shared-documents')
-        .download(doc.file_path);
-
-      if (error) {
-        console.error('Download error:', error);
-        alert('Failed to download file');
-        return;
-      }
-
-      // Create download link
-      const url = window.URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
+      window.open(`/uploads/${doc.filePath}`, '_blank');
     } catch (err) {
       console.error('Error:', err);
     }
@@ -162,28 +125,28 @@ export default function InvestorDocuments() {
                       <FileText className="h-6 w-6 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold mb-2">{doc.file_name}</h3>
+                      <h3 className="font-semibold mb-2">{doc.fileName}</h3>
                       
                       <div className="flex items-center gap-3 mb-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-purple-100 text-purple-700 text-xs">
-                            {getInitials(doc.investor.full_name || doc.investor.email)}
+                            {getInitials(doc.investorName || doc.investorEmail)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-sm">
                           <p className="font-medium">
-                            {doc.investor.full_name || doc.investor.email}
+                            {doc.investorName || doc.investorEmail}
                           </p>
                           <p className="text-muted-foreground">
-                            {doc.investor.email}
+                            {doc.investorEmail}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{formatFileSize(doc.file_size)}</span>
+                        <span>{formatFileSize(doc.fileSize)}</span>
                         <span>•</span>
-                        <span>Shared {formatDate(doc.shared_at)}</span>
+                        <span>Shared {formatDate(doc.sharedAt)}</span>
                       </div>
                     </div>
                   </div>
