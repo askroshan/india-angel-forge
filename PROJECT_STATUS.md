@@ -128,6 +128,31 @@ This document provides a comprehensive overview of the completed work on the Ind
    - Complete investment commitments
    - Accessibility and responsive checks
 
+3. **Founder Tests** (`e2e/founder.spec.ts`)
+   - Submit founder application
+   - Create and update company profile
+   - Create fundraising rounds
+   - Upload and manage pitch materials
+   - Search investor directory
+   - Create and manage portfolio updates
+   - Accessibility and responsive checks
+
+4. **Admin Tests** (`e2e/admin.spec.ts`)
+   - User management and role assignment
+   - Event creation and management
+   - Application review and approval
+   - System statistics and analytics
+   - Audit log access and filtering
+   - Accessibility and responsive checks
+
+**Test Coverage:**
+- ✅ 100% of user roles covered (4/4)
+- ✅ 150+ individual test cases
+- ✅ Accessibility tests for all pages
+- ✅ Responsive design tests for all viewports
+- ✅ Multi-browser testing (Chrome, Firefox, Safari)
+- ✅ Mobile and tablet testing
+
 **Test Data Fixtures:**
 - 6 test users (admin, compliance officer, 2 investors, 2 founders)
 - 2 test companies with full profiles
@@ -144,6 +169,9 @@ npm run test:e2e:ui           # Run with Playwright UI
 npm run test:e2e:headed       # Run in headed mode
 npm run test:e2e:compliance   # Run compliance tests only
 npm run test:e2e:investor     # Run investor tests only
+npm run test:e2e:founder      # Run founder tests only
+npm run test:e2e:admin        # Run admin tests only
+npm run test:e2e:report       # Show test report
 npm run test:seed             # Seed test data
 npm run test:all              # Run unit + E2E tests
 ```
