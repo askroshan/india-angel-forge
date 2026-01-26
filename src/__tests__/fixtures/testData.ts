@@ -12,7 +12,7 @@ export interface TestUser {
   role: UserRole;
   password: string;
   created_at: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface TestFounderApplication {

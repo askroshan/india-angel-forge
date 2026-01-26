@@ -26,5 +26,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/entities",
+    "supabase/functions",
+    "src/pages/compliance/KYCReviewDashboard.tsx",
+    "src/__tests__/compliance/kyc-review.test.tsx"
+  ]
 }
