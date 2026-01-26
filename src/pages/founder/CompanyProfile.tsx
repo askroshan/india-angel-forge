@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,12 +24,12 @@ import {
 
 interface CompanyProfile {
   id?: string;
-  company_name: string;
+  companyName: string;
   description: string;
   industry: string;
   stage: string;
-  founded_year?: number;
-  team_size?: number;
+  foundedYear?: number;
+  teamSize?: number;
   website?: string;
   linkedin?: string;
   twitter?: string;
@@ -38,11 +38,12 @@ interface CompanyProfile {
 
 export default function CompanyProfile() {
   const navigate = useNavigate();
+  const { token, user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<CompanyProfile>({
-    company_name: '',
+    companyName: '',
     description: '',
     industry: '',
     stage: '',
@@ -54,23 +55,25 @@ export default function CompanyProfile() {
 
   const fetchProfile = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('company_profiles')
-        .select('*')
-        .eq('founder_id', session.user.id)
-        .single();
+      const response = await fetch('/api/company/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
+      const data = await response.json();
       if (data) {
         setProfile(data);
       }
@@ -83,7 +86,7 @@ export default function CompanyProfile() {
   };
 
   const handleSave = async () => {
-    if (!profile.company_name || !profile.description) {
+    if (!profile.companyName || !profile.description) {
       alert('Please fill in company name and description');
       return;
     }
@@ -91,67 +94,30 @@ export default function CompanyProfile() {
     try {
       setSaving(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      if (profile.id) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('company_profiles')
-          .update({
-            company_name: profile.company_name,
-            description: profile.description,
-            industry: profile.industry,
-            stage: profile.stage,
-            founded_year: profile.founded_year,
-            team_size: profile.team_size,
-            website: profile.website,
-            linkedin: profile.linkedin,
-            twitter: profile.twitter,
-            location: profile.location,
-          })
-          .eq('id', profile.id);
-
-        if (error) {
-          console.error('Error updating profile:', error);
-          alert('Failed to update profile');
-          return;
-        }
-      } else {
-        // Create new profile
-        const { data, error } = await supabase
-          .from('company_profiles')
-          .insert({
-            founder_id: session.user.id,
-            company_name: profile.company_name,
-            description: profile.description,
-            industry: profile.industry,
-            stage: profile.stage,
-            founded_year: profile.founded_year,
-            team_size: profile.team_size,
-            website: profile.website,
-            linkedin: profile.linkedin,
-            twitter: profile.twitter,
-            location: profile.location,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating profile:', error);
-          alert('Failed to create profile');
-          return;
-        }
-
-        if (data) {
-          setProfile(data);
-        }
+      if (!token) {
+        navigate('/auth');
+        return;
       }
 
+      const response = await fetch('/api/company/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(profile),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
+
+      const data = await response.json();
+      setProfile(data);
       alert('Profile saved successfully!');
 
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error saving profile:', err);
       alert('Failed to save profile');
     } finally {
       setSaving(false);
@@ -197,11 +163,11 @@ export default function CompanyProfile() {
           </h2>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="company_name">Company Name *</Label>
+              <Label htmlFor="companyName">Company Name *</Label>
               <Input
-                id="company_name"
-                value={profile.company_name}
-                onChange={(e) => updateProfile('company_name', e.target.value)}
+                id="companyName"
+                value={profile.companyName}
+                onChange={(e) => updateProfile('companyName', e.target.value)}
                 placeholder="TechStartup Inc"
               />
             </div>
@@ -281,12 +247,12 @@ export default function CompanyProfile() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="founded_year">Founded Year</Label>
+              <Label htmlFor="foundedYear">Founded Year</Label>
               <Input
-                id="founded_year"
+                id="foundedYear"
                 type="number"
-                value={profile.founded_year || ''}
-                onChange={(e) => updateProfile('founded_year', parseInt(e.target.value) || undefined)}
+                value={profile.foundedYear || ''}
+                onChange={(e) => updateProfile('foundedYear', parseInt(e.target.value) || undefined)}
                 placeholder="2022"
                 min="1900"
                 max={new Date().getFullYear()}
@@ -294,12 +260,12 @@ export default function CompanyProfile() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="team_size">Team Size</Label>
+              <Label htmlFor="teamSize">Team Size</Label>
               <Input
-                id="team_size"
+                id="teamSize"
                 type="number"
-                value={profile.team_size || ''}
-                onChange={(e) => updateProfile('team_size', parseInt(e.target.value) || undefined)}
+                value={profile.teamSize || ''}
+                onChange={(e) => updateProfile('teamSize', parseInt(e.target.value) || undefined)}
                 placeholder="15"
                 min="1"
               />

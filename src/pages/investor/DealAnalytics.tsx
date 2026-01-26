@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Clock, TrendingUp, DollarSign, BarChart3, PieChart } from 'lucide-react';
 
 interface Deal {
   id: string;
-  company_name?: string;
+  companyName?: string;
   valuation?: number;
   amount: number;
   status?: string;
@@ -28,31 +28,35 @@ interface StageStats {
 
 export default function DealAnalytics() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<Deal[]>([]);
 
-  useEffect(() => {
+  useEffect() => {
     fetchDeals();
   }, []);
 
   const fetchDeals = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('deals')
-        .select('*')
-        .eq('investor_id', session.user.id);
+      const response = await fetch('/api/deals', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching deals:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
+      const data = await response.json();
       setDeals(data || []);
 
     } catch (err) {

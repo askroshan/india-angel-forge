@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import { prisma } from './src/lib/db.js';
 import { hashPassword, verifyPassword, generateToken, verifyToken, extractTokenFromHeader } from './src/lib/auth.js';
+import companyRoutes from './src/api/routes/company.js';
+import dealsRoutes from './src/api/routes/deals.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -168,6 +170,10 @@ app.post('/api/auth/update-password', authenticateToken, async (req: any, res) =
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// API Routes
+app.use('/api/company', companyRoutes);
+app.use('/api/deals', dealsRoutes);
 
 // Start server
 app.listen(PORT, () => {

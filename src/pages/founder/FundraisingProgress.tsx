@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,28 +31,28 @@ import {
 
 interface FundraisingRound {
   id: string;
-  round_name: string;
-  target_amount: number;
-  raised_amount: number;
+  roundName: string;
+  targetAmount: number;
+  raisedAmount: number;
   status: string;
-  start_date?: string;
-  target_close_date?: string;
+  startDate?: string;
+  targetCloseDate?: string;
 }
 
 export default function FundraisingProgress() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<FundraisingRound[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   
   const [newRound, setNewRound] = useState({
-    round_name: '',
-    target_amount: '',
-    raised_amount: '0',
+    roundName: '',
+    targetAmount: '',
+    raisedAmount: '0',
     status: 'planning',
-    target_close_date: '',
+    targetCloseDate: '',
   });
 
   useEffect(() => {
@@ -61,43 +61,34 @@ export default function FundraisingProgress() {
 
   const fetchData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      // Get company profile
-      const { data: companyData, error: companyError } = await supabase
-        .from('company_profiles')
-        .select('id')
-        .eq('founder_id', session.user.id)
-        .single();
-
-      if (companyError && companyError.code !== 'PGRST116') {
-        console.error('Error fetching company:', companyError);
-        return;
-      }
-
-      if (!companyData) {
-        setLoading(false);
-        return;
-      }
-
-      setCompanyId(companyData.id);
-
       // Get fundraising rounds
-      const { data: roundsData, error: roundsError } = await supabase
-        .from('fundraising_rounds')
-        .select('*')
-        .eq('company_id', companyData.id)
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/company/fundraising-rounds', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (roundsError) {
-        console.error('Error fetching rounds:', roundsError);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        } else if (response.status === 404) {
+          // No company profile yet
+          setLoading(false);
+          return;
+        }
         return;
       }
 
+      const roundsData = await response.json();
+      setRounds(roundsData || []);
+
+      setRounds(roundsData || []);
+      const roundsData = await response.json();
       setRounds(roundsData || []);
 
     } catch (err) {
@@ -108,7 +99,7 @@ export default function FundraisingProgress() {
   };
 
   const handleAddRound = async () => {
-    if (!newRound.round_name || !newRound.target_amount || !companyId) {
+    if (!newRound.roundName || !newRound.targetAmount) {
       alert('Please fill in round name and target amount');
       return;
     }
@@ -116,35 +107,44 @@ export default function FundraisingProgress() {
     try {
       setSaving(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data, error } = await supabase
-        .from('fundraising_rounds')
-        .insert({
-          company_id: companyId,
-          round_name: newRound.round_name,
-          target_amount: parseFloat(newRound.target_amount),
-          raised_amount: parseFloat(newRound.raised_amount || '0'),
-          status: newRound.status,
-          target_close_date: newRound.target_close_date || null,
-        })
-        .select();
-
-      if (error) {
-        console.error('Error creating round:', error);
-        alert('Failed to create round');
+      if (!token) {
+        navigate('/auth');
         return;
       }
 
-      setRounds([...(data || []), ...rounds]);
+      const response = await fetch('/api/company/fundraising-rounds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          roundName: newRound.roundName,
+          targetAmount: parseFloat(newRound.targetAmount),
+          raisedAmount: parseFloat(newRound.raisedAmount || '0'),
+          status: newRound.status,
+          targetCloseDate: newRound.targetCloseDate || null,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          alert('Please create a company profile first');
+        } else {
+          alert('Failed to create round');
+        }
+        return;
+      }
+
+      const data = await response.json();
+      setRounds([data, ...rounds]);
       setShowAddDialog(false);
       setNewRound({
-        round_name: '',
-        target_amount: '',
-        raised_amount: '0',
+        roundName: '',
+        targetAmount: '',
+        raisedAmount: '0',
         status: 'planning',
-        target_close_date: '',
+        targetCloseDate: '',
       });
 
     } catch (err) {
@@ -237,33 +237,33 @@ export default function FundraisingProgress() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="round_name">Round Name *</Label>
+                  <Label htmlFor="roundName">Round Name *</Label>
                   <Input
-                    id="round_name"
-                    value={newRound.round_name}
-                    onChange={(e) => setNewRound({ ...newRound, round_name: e.target.value })}
+                    id="roundName"
+                    value={newRound.roundName}
+                    onChange={(e) => setNewRound({ ...newRound, roundName: e.target.value })}
                     placeholder="Seed Round"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="target_amount">Target Amount (₹) *</Label>
+                  <Label htmlFor="targetAmount">Target Amount (₹) *</Label>
                   <Input
-                    id="target_amount"
+                    id="targetAmount"
                     type="number"
-                    value={newRound.target_amount}
-                    onChange={(e) => setNewRound({ ...newRound, target_amount: e.target.value })}
+                    value={newRound.targetAmount}
+                    onChange={(e) => setNewRound({ ...newRound, targetAmount: e.target.value })}
                     placeholder="1000000"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="raised_amount">Raised Amount (₹)</Label>
+                  <Label htmlFor="raisedAmount">Raised Amount (₹)</Label>
                   <Input
-                    id="raised_amount"
+                    id="raisedAmount"
                     type="number"
-                    value={newRound.raised_amount}
-                    onChange={(e) => setNewRound({ ...newRound, raised_amount: e.target.value })}
+                    value={newRound.raisedAmount}
+                    onChange={(e) => setNewRound({ ...newRound, raisedAmount: e.target.value })}
                     placeholder="0"
                   />
                 </div>
@@ -322,21 +322,21 @@ export default function FundraisingProgress() {
         {rounds.length > 0 && (
           <div className="space-y-4">
             {rounds.map((round) => {
-              const progress = getProgress(round.raised_amount, round.target_amount);
+              const progress = getProgress(round.raisedAmount, round.targetAmount);
               return (
                 <Card key={round.id} className="p-6">
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="text-xl font-semibold mb-2">{round.round_name}</h3>
+                        <h3 className="text-xl font-semibold mb-2">{round.roundName}</h3>
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(round.status)}`}>
                           {round.status.charAt(0).toUpperCase() + round.status.slice(1)}
                         </span>
                       </div>
-                      {round.target_close_date && (
+                      {round.targetCloseDate && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          Target: {new Date(round.target_close_date).toLocaleDateString('en-IN')}
+                          Target: {new Date(round.targetCloseDate).toLocaleDateString('en-IN')}
                         </div>
                       )}
                     </div>
@@ -356,7 +356,7 @@ export default function FundraisingProgress() {
                           Raised
                         </div>
                         <div className="text-2xl font-bold text-green-600">
-                          {formatAmount(round.raised_amount)}
+                          {formatAmount(round.raisedAmount)}
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -365,7 +365,7 @@ export default function FundraisingProgress() {
                           Target
                         </div>
                         <div className="text-2xl font-bold">
-                          {formatAmount(round.target_amount)}
+                          {formatAmount(round.targetAmount)}
                         </div>
                       </div>
                     </div>
