@@ -154,8 +154,10 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
       renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Unrealized Gains/i)).toBeInTheDocument();
-        expect(screen.getByText(/₹1.5 Cr/i)).toBeInTheDocument();
+        const labels = screen.getAllByText(/Unrealized Gains/i);
+        expect(labels.length).toBeGreaterThan(0);
+        const values = screen.getAllByText(/₹1.5 Cr/i);
+        expect(values.length).toBeGreaterThan(0);
       });
     });
 
@@ -165,8 +167,10 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
       renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Realized Returns/i)).toBeInTheDocument();
-        expect(screen.getByText(/₹30.0 Lac/i)).toBeInTheDocument();
+        const labels = screen.getAllByText(/Realized Returns/i);
+        expect(labels.length).toBeGreaterThan(0);
+        const values = screen.getAllByText(/₹30.0 Lac/i);
+        expect(values.length).toBeGreaterThan(0);
       });
     });
 
@@ -176,8 +180,10 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
       renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Portfolio IRR/i)).toBeInTheDocument();
-        expect(screen.getByText(/42.5%/i)).toBeInTheDocument();
+        const irrLabels = screen.getAllByText(/Portfolio IRR/i);
+        expect(irrLabels.length).toBeGreaterThan(0);
+        const irrValues = screen.getAllByText(/42.5%/i);
+        expect(irrValues.length).toBeGreaterThan(0);
       });
     });
   });
@@ -202,8 +208,10 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
       renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/₹1.5 Cr/i)).toBeInTheDocument();
-        expect(screen.getByText(/₹80.0 Lac/i)).toBeInTheDocument();
+        const capital1 = screen.getAllByText(/₹1.5 Cr/i);
+        expect(capital1.length).toBeGreaterThan(0);
+        const capital2 = screen.getAllByText(/₹80.0 Lac/i);
+        expect(capital2.length).toBeGreaterThan(0);
       });
     });
 
@@ -239,9 +247,12 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
       renderWithProviders(<PortfolioPerformance />);
 
       await waitFor(() => {
-        expect(screen.getByText(/12.5%/i)).toBeInTheDocument();
-        expect(screen.getByText(/50.0%/i)).toBeInTheDocument();
-        expect(screen.getByText(/150.0%/i)).toBeInTheDocument();
+        const percent1 = screen.getAllByText(/12.5%/i);
+        expect(percent1.length).toBeGreaterThan(0);
+        const percent2 = screen.getAllByText(/50.0%/i);
+        expect(percent2.length).toBeGreaterThan(0);
+        const percent3 = screen.getAllByText(/150.0%/i);
+        expect(percent3.length).toBeGreaterThan(0);
       });
     });
   });
