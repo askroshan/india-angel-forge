@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -54,20 +54,11 @@ export function useEvents(filter?: 'upcoming' | 'past' | 'all') {
   return useQuery({
     queryKey: ['events', filter],
     queryFn: async () => {
-      let query = supabase
-        .from('events')
-        .select('*')
-        .order('date', { ascending: filter !== 'past' });
-
-      if (filter === 'upcoming') {
-        query = query.in('status', ['upcoming', 'ongoing']);
-      } else if (filter === 'past') {
-        query = query.eq('status', 'completed');
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Event[];
+      const params = new URLSearchParams();
+      if (filter) params.append('filter', filter);
+      
+      const response = await apiClient.get<Event[]>(`/api/events?${params.toString()}`);
+      return response;
     },
   });
 }
@@ -85,14 +76,13 @@ export function useEvent(slug: string) {
       if (error) throw error;
       return data as Event | null;
     },
-    enabled: !!slug,
-  });
-}
-
-export function useEventRegistrations(eventId?: string) {
-  const { user } = useAuth();
-  
-  return useQuery({
+    entry {
+        const response = await apiClient.get<Event>(`/api/events/${slug}`);
+        return response;
+      } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+      }
     queryKey: ['event-registrations', eventId, user?.id],
     queryFn: async () => {
       let query = supabase
@@ -117,17 +107,10 @@ export function useMyRegistrations() {
   return useQuery({
     queryKey: ['my-registrations', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('event_registrations')
-        .select(`
-          *,
-          events:event_id (*)
-        `)
-        .eq('user_id', user!.id)
-        .neq('status', 'cancelled');
-
-      if (error) throw error;
-      return data as (EventRegistration & { events: Event })[];
+      const response = await apiClient.get<(EventRegistration & { events: Event })[]>(
+        '/api/events/my-registrations'
+      );
+      return response;
     },
     enabled: !!user,
   });
@@ -157,50 +140,26 @@ export function useRegisterForEvent() {
     }) => {
       if (!user) throw new Error('Must be logged in to register');
 
-      const { data, error } = await supabase
-        .from('event_registrations')
-        .insert({
-          event_id: eventId,
-          user_id: user.id,
-          full_name: fullName,
-          email,
-          phone: phone || null,
-          company: company || null,
-          dietary_requirements: dietaryRequirements || null,
-          notes: notes || null,
-        })
-        .select()
-        .single();
+      const response = await apiClient.post('/api/events/register', {
+        event_id: eventId,
+        full_name: fullName,
+        email,
+        phone,
+        company,
+        dietary_requirements: dietaryRequirements,
+        notes,
+      });
 
-      if (error) {
-        if (error.code === '23505') {
-          throw new Error('You are already registered for this event');
-        }
-        throw error;
-      }
-
-      // Send confirmation email
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          await supabase.functions.invoke('send-event-confirmation', {
-            body: { registrationId: data.id },
-          });
-        }
-      } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
-        // Don't fail the registration if email fails
-      }
-
-      return data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['my-registrations'] });
       toast.success('Successfully registered! Check your email for confirmation.');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to register');
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.message || 'Failed to register';
+      toast.error(message);
     },
   });
 }
@@ -210,41 +169,7 @@ export function useCancelRegistration() {
 
   return useMutation({
     mutationFn: async (registrationId: string) => {
-      // First get the registration to know which event
-      const { data: registration, error: fetchError } = await supabase
-        .from('event_registrations')
-        .select('event_id')
-        .eq('id', registrationId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Cancel the registration
-      const { error } = await supabase
-        .from('event_registrations')
-        .update({ status: 'cancelled' })
-        .eq('id', registrationId);
-
-      if (error) throw error;
-
-      // Send cancellation email
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          await supabase.functions.invoke('send-event-cancellation', {
-            body: { registrationId },
-          });
-
-          // Notify waitlisted users that a spot opened up
-          await supabase.functions.invoke('notify-waitlist', {
-            body: { eventId: registration.event_id, spotsAvailable: 1 },
-          });
-        }
-      } catch (emailError) {
-        console.error('Failed to send cancellation email:', emailError);
-        // Don't fail the cancellation if email fails
-      }
-
+      await apiClient.delete(`/api/events/registrations/${registrationId}`);
       return registrationId;
     },
     onSuccess: () => {
@@ -264,14 +189,10 @@ export function useRegistrationCount(eventId: string) {
   return useQuery({
     queryKey: ['registration-count', eventId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('event_registrations')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'registered');
-
-      if (error) throw error;
-      return count || 0;
+      const response = await apiClient.get<{ count: number }>(
+        `/api/events/${eventId}/registration-count`
+      );
+      return response.count;
     },
     enabled: !!eventId,
   });
