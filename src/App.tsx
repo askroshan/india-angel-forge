@@ -33,7 +33,11 @@ import DealsPage from "./pages/investor/DealsPage";
 import DealPipeline from "./pages/investor/DealPipeline";
 import DealDocuments from "./pages/investor/DealDocuments";
 import InvestmentCommitment from "./pages/investor/InvestmentCommitment";
+import CreateSPV from "./pages/investor/CreateSPV";
+import InviteCoInvestors from "./pages/investor/InviteCoInvestors";
+import SPVDashboard from "./pages/investor/SPVDashboard";
 import ApplicationStatus from "./pages/founder/ApplicationStatus";
+import InvestorDirectory from "./pages/founder/InvestorDirectory";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
@@ -78,6 +82,11 @@ const App = () => (
                 <ApplicationStatus />
               </ProtectedRoute>
             } />
+            <Route path="/founder/investors" element={
+              <ProtectedRoute>
+                <InvestorDirectory />
+              </ProtectedRoute>
+            } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -117,6 +126,21 @@ const App = () => (
             <Route path="/investor/commitments/:interestId" element={
               <ProtectedRoute>
                 <InvestmentCommitment />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/spv/create/:interestId" element={
+              <ProtectedRoute>
+                <CreateSPV />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/spv/:spvId/invite" element={
+              <ProtectedRoute>
+                <InviteCoInvestors />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/spv/:spvId" element={
+              <ProtectedRoute>
+                <SPVDashboard />
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
