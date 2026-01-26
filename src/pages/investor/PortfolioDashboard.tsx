@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,19 +15,20 @@ import {
 
 interface PortfolioCompany {
   id: string;
-  company_name: string;
-  investment_amount: number;
-  investment_date: string;
-  current_valuation?: number;
-  exit_valuation?: number;
-  ownership_percentage: number;
+  companyName: string;
+  investmentAmount: number;
+  investmentDate: string;
+  currentValuation?: number;
+  exitValuation?: number;
+  equityPercentage: number;
   status: string;
-  sector?: string;
+  industry?: string;
   stage?: string;
 }
 
 export default function PortfolioDashboard() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<PortfolioCompany[]>([]);
@@ -38,25 +39,26 @@ export default function PortfolioDashboard() {
 
   const fetchPortfolio = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('portfolio_companies')
-        .select('*')
-        .eq('investor_id', session.user.id);
+      const response = await fetch('/api/portfolio/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching portfolio:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
-      if (data) {
-        setCompanies(data);
-      }
+      const data = await response.json();
+      setCompanies(data || []);
 
     } catch (err) {
       console.error('Error:', err);
@@ -67,30 +69,30 @@ export default function PortfolioDashboard() {
 
   const calculateROI = (company: PortfolioCompany) => {
     const currentValue = company.status === 'exited' 
-      ? (company.exit_valuation || 0)
-      : (company.current_valuation || company.investment_amount);
+      ? (company.exitValuation || 0)
+      : (company.currentValuation || company.investmentAmount);
     
-    return ((currentValue - company.investment_amount) / company.investment_amount) * 100;
+    return ((currentValue - company.investmentAmount) / company.investmentAmount) * 100;
   };
 
-  const totalInvested = companies.reduce((sum, c) => sum + c.investment_amount, 0);
+  const totalInvested = companies.reduce((sum, c) => sum + c.investmentAmount, 0);
   
   const currentPortfolioValue = companies.reduce((sum, c) => {
     if (c.status === 'exited') {
-      return sum + (c.exit_valuation || 0);
+      return sum + (c.exitValuation || 0);
     }
-    return sum + (c.current_valuation || c.investment_amount);
+    return sum + (c.currentValuation || c.investmentAmount);
   }, 0);
 
   const activeInvestments = companies.filter(c => c.status === 'active').length;
 
   // Group by sector
   const sectorBreakdown = companies.reduce((acc, company) => {
-    const sector = company.sector || 'Other';
+    const sector = company.industry || 'Other';
     if (!acc[sector]) {
       acc[sector] = 0;
     }
-    acc[sector] += company.investment_amount;
+    acc[sector] += company.investmentAmount;
     return acc;
   }, {} as Record<string, number>);
 
@@ -100,7 +102,7 @@ export default function PortfolioDashboard() {
     if (!acc[stage]) {
       acc[stage] = 0;
     }
-    acc[stage] += company.investment_amount;
+    acc[stage] += company.investmentAmount;
     return acc;
   }, {} as Record<string, number>);
 
@@ -111,7 +113,7 @@ export default function PortfolioDashboard() {
 
   // Recent investments
   const recentInvestments = [...companies]
-    .sort((a, b) => new Date(b.investment_date).getTime() - new Date(a.investment_date).getTime())
+    .sort((a, b) => new Date(b.investmentDate).getTime() - new Date(a.investmentDate).getTime())
     .slice(0, 5);
 
   const formatCurrency = (amount: number) => {
@@ -266,9 +268,9 @@ export default function PortfolioDashboard() {
                         <div className="flex items-center gap-3">
                           <Building className="h-5 w-5 text-muted-foreground" />
                           <div>
-                            <p className="font-medium">{company.company_name}</p>
+                            <p className="font-medium">{company.companyName}</p>
                             <p className="text-sm text-muted-foreground">
-                              Invested {formatCurrency(company.investment_amount)}
+                              Invested {formatCurrency(company.investmentAmount)}
                             </p>
                           </div>
                         </div>
@@ -292,16 +294,16 @@ export default function PortfolioDashboard() {
                     <div className="flex items-center gap-3">
                       <Building className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="font-medium">{company.company_name}</p>
+                        <p className="font-medium">{company.companyName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(company.investment_date)}
+                          {formatDate(company.investmentDate)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">{formatCurrency(company.investment_amount)}</p>
-                      {company.sector && (
-                        <p className="text-sm text-muted-foreground">{company.sector}</p>
+                      <p className="font-semibold">{formatCurrency(company.investmentAmount)}</p>
+                      {company.industry && (
+                        <p className="text-sm text-muted-foreground">{company.industry}</p>
                       )}
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -15,17 +15,18 @@ import {
 
 interface PortfolioCompany {
   id: string;
-  company_name: string;
-  investment_amount: number;
-  investment_date: string;
-  current_valuation?: number;
-  exit_valuation?: number;
-  ownership_percentage: number;
+  companyName: string;
+  investmentAmount: number;
+  investmentDate: string;
+  currentValuation?: number;
+  exitValuation?: number;
+  equityPercentage: number;
   status: string;
 }
 
 export default function PortfolioPerformance() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<PortfolioCompany[]>([]);
@@ -36,26 +37,26 @@ export default function PortfolioPerformance() {
 
   const fetchPortfolio = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('portfolio_companies')
-        .select('*')
-        .eq('investor_id', session.user.id)
-        .order('investment_date', { ascending: false });
+      const response = await fetch('/api/portfolio/companies', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching portfolio:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
-      if (data) {
-        setCompanies(data);
-      }
+      const data = await response.json();
+      setCompanies(data || []);
 
     } catch (err) {
       console.error('Error:', err);
@@ -66,28 +67,28 @@ export default function PortfolioPerformance() {
 
   const calculateROI = (company: PortfolioCompany) => {
     const currentValue = company.status === 'exited' 
-      ? (company.exit_valuation || 0)
-      : (company.current_valuation || company.investment_amount);
+      ? (company.exitValuation || 0)
+      : (company.currentValuation || company.investmentAmount);
     
-    const roi = ((currentValue - company.investment_amount) / company.investment_amount) * 100;
+    const roi = ((currentValue - company.investmentAmount) / company.investmentAmount) * 100;
     return roi.toFixed(1);
   };
 
   const calculateGain = (company: PortfolioCompany) => {
     const currentValue = company.status === 'exited' 
-      ? (company.exit_valuation || 0)
-      : (company.current_valuation || company.investment_amount);
+      ? (company.exitValuation || 0)
+      : (company.currentValuation || company.investmentAmount);
     
-    return currentValue - company.investment_amount;
+    return currentValue - company.investmentAmount;
   };
 
-  const totalInvested = companies.reduce((sum, c) => sum + c.investment_amount, 0);
+  const totalInvested = companies.reduce((sum, c) => sum + c.investmentAmount, 0);
   
   const currentPortfolioValue = companies.reduce((sum, c) => {
     if (c.status === 'exited') {
-      return sum + (c.exit_valuation || 0);
+      return sum + (c.exitValuation || 0);
     }
-    return sum + (c.current_valuation || c.investment_amount);
+    return sum + (c.currentValuation || c.investmentAmount);
   }, 0);
 
   const realizedGains = companies
@@ -257,22 +258,22 @@ export default function PortfolioPerformance() {
                   <div className="flex justify-between items-start">
                     <div className="space-y-3 flex-1">
                       <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold">{company.company_name}</h3>
+                        <h3 className="text-lg font-semibold">{company.companyName}</h3>
                         {getStatusBadge(company.status)}
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Investment</p>
-                          <p className="font-semibold">{formatCurrency(company.investment_amount)}</p>
+                          <p className="font-semibold">{formatCurrency(company.investmentAmount)}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Current Value</p>
                           <p className="font-semibold">
                             {formatCurrency(
                               company.status === 'exited' 
-                                ? (company.exit_valuation || 0)
-                                : (company.current_valuation || company.investment_amount)
+                                ? (company.exitValuation || 0)
+                                : (company.currentValuation || company.investmentAmount)
                             )}
                           </p>
                         </div>
@@ -291,9 +292,9 @@ export default function PortfolioPerformance() {
                       </div>
 
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Invested: {formatDate(company.investment_date)}</span>
+                        <span>Invested: {formatDate(company.investmentDate)}</span>
                         <span>•</span>
-                        <span>Ownership: {company.ownership_percentage}%</span>
+                        <span>Ownership: {company.equityPercentage}%</span>
                       </div>
                     </div>
                   </div>
