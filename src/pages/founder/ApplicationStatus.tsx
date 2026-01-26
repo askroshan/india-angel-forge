@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,12 +19,12 @@ interface FounderApplication {
   id: string;
   status: string;
   stage: string;
-  created_at: string;
-  approved_at?: string;
-  rejected_at?: string;
-  rejection_reason?: string;
-  company_name: string;
-  can_reapply_after?: string;
+  createdAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  companyName: string;
+  canReapplyAfter?: string;
 }
 
 interface ApplicationStage {
@@ -38,6 +38,7 @@ interface ApplicationStage {
 
 export default function ApplicationStatus() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<FounderApplication | null>(null);
@@ -49,29 +50,29 @@ export default function ApplicationStatus() {
 
   const fetchApplication = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      // Fetch latest application
-      const { data, error } = await supabase
-        .from('founder_applications')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      const response = await fetch('/api/applications/founder-application', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching application:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
-      if (data && data.length > 0) {
-        const app = data[0];
-        setApplication(app);
-        setStages(buildStages(app));
+      const data = await response.json();
+
+      if (data.status !== 'not_submitted') {
+        setApplication(data);
+        setStages(buildStages(data));
       }
 
     } catch (err) {
@@ -172,8 +173,8 @@ export default function ApplicationStatus() {
   };
 
   const canReapply = (app: FounderApplication) => {
-    if (!app.can_reapply_after) return true;
-    return new Date(app.can_reapply_after) <= new Date();
+    if (!app.canReapplyAfter) return true;
+    return new Date(app.canReapplyAfter) <= new Date();
   };
 
   if (loading) {
@@ -218,9 +219,9 @@ export default function ApplicationStatus() {
           <div className="space-y-4">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-semibold mb-1">{application.company_name}</h2>
+                <h2 className="text-xl font-semibold mb-1">{application.companyName}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Submitted on {formatDate(application.created_at)}
+                  Submitted on {formatDate(application.createdAt)}
                 </p>
               </div>
               {getStatusBadge(application.status)}
@@ -236,7 +237,7 @@ export default function ApplicationStatus() {
                       <p className="font-semibold text-green-800">Congratulations!</p>
                       <p className="text-green-700">
                         Your application has been approved.
-                        {application.approved_at && ` (${formatDate(application.approved_at)})`}
+                        {application.approvedAt && ` (${formatDate(application.approvedAt)})`}
                       </p>
                     </div>
                     <div className="bg-white p-4 rounded border border-green-200">
@@ -268,14 +269,14 @@ export default function ApplicationStatus() {
                   <div className="space-y-3">
                     <div>
                       <p className="font-semibold">Application Not Approved</p>
-                      {application.rejected_at && (
-                        <p className="text-sm">Reviewed on {formatDate(application.rejected_at)}</p>
+                      {application.rejectedAt && (
+                        <p className="text-sm">Reviewed on {formatDate(application.rejectedAt)}</p>
                       )}
                     </div>
-                    {application.rejection_reason && (
+                    {application.rejectionReason && (
                       <div className="bg-white p-3 rounded border">
                         <p className="font-semibold text-sm mb-1">Reason:</p>
-                        <p className="text-sm">{application.rejection_reason}</p>
+                        <p className="text-sm">{application.rejectionReason}</p>
                       </div>
                     )}
                     {canReapply(application) ? (
@@ -290,9 +291,9 @@ export default function ApplicationStatus() {
                           Reapply Now
                         </Button>
                       </div>
-                    ) : application.can_reapply_after && (
+                    ) : application.canReapplyAfter && (
                       <p className="text-sm">
-                        You can reapply after {formatDate(application.can_reapply_after)}
+                        You can reapply after {formatDate(application.canReapplyAfter)}
                       </p>
                     )}
                   </div>
