@@ -32,7 +32,7 @@ export default function DealAnalytics() {
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<Deal[]>([]);
 
-  useEffect() => {
+  useEffect(() => {
     fetchDeals();
   }, []);
 

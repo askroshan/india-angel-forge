@@ -87,10 +87,6 @@ export default function FundraisingProgress() {
       const roundsData = await response.json();
       setRounds(roundsData || []);
 
-      setRounds(roundsData || []);
-      const roundsData = await response.json();
-      setRounds(roundsData || []);
-
     } catch (err) {
       console.error('Error:', err);
     } finally {
