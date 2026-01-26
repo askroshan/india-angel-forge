@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,19 +32,19 @@ import { TrendingUp, Calendar, DollarSign, Users, Search, Filter, CheckCircle } 
 interface Deal {
   id: string;
   title: string;
-  company_name: string;
+  companyName: string;
   slug: string;
   description: string;
-  industry_sector: string;
+  industrySector: string;
   stage: string;
-  deal_size: number;
-  min_investment: number;
+  dealSize: number;
+  minInvestment: number;
   valuation?: number;
-  deal_lead?: string;
-  deal_status: string;
-  closing_date?: string;
+  dealLead?: string;
+  dealStatus: string;
+  closingDate?: string;
   featured: boolean;
-  created_at: string;
+  createdAt: string;
 }
 
 export default function DealsPage() {
@@ -67,6 +67,7 @@ export default function DealsPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   const SECTORS = ['SaaS', 'AI & Deep Tech', 'Fintech', 'Healthcare', 'Consumer', 'Climate Tech', 'D2C', 'B2B'];
   const STAGES = ['Pre-seed', 'Seed', 'Series A', 'Series B+'];
@@ -80,28 +81,32 @@ export default function DealsPage() {
   }, [deals, searchQuery, filterSector, filterStage, filterStatus]);
 
   const checkAccessAndLoadDeals = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
     // Check if user is approved investor
-    const { data: application } = await supabase
-      .from('investor_applications')
-      .select('status')
-      .eq('user_id', session.user.id)
-      .single();
+    const appResponse = await fetch('/api/applications/investor-application', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    if (!application || application.status !== 'approved') {
-      toast({
-        title: 'Access Restricted',
-        description: 'Please complete your investor application first',
-        variant: 'destructive',
-      });
-      navigate('/apply/investor');
+    if (appResponse.status === 401) {
+      navigate('/auth');
       return;
+    }
+
+    if (appResponse.ok) {
+      const application = await appResponse.json();
+      if (!application || application.status !== 'approved') {
+        toast({
+          title: 'Access Restricted',
+          description: 'Please complete your investor application first',
+          variant: 'destructive',
+        });
+        navigate('/apply/investor');
+        return;
+      }
     }
 
     await fetchDeals();
@@ -111,19 +116,20 @@ export default function DealsPage() {
 
   const checkAccreditation = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
 
-      const { data } = await supabase
-        .from('accreditation_verification')
-        .select('*')
-        .eq('investor_id', session.user.id)
-        .eq('status', 'verified')
-        .single();
+      const response = await fetch('/api/compliance/accreditation', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (data && data.expiry_date) {
-        const isExpired = new Date(data.expiry_date) < new Date();
-        setIsAccredited(!isExpired);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.expiryDate) {
+          const isExpired = new Date(data.expiryDate) < new Date();
+          setIsAccredited(!isExpired);
+        } else {
+          setIsAccredited(false);
+        }
       } else {
         setIsAccredited(false);
       }
@@ -134,20 +140,23 @@ export default function DealsPage() {
 
   const fetchExpressedInterests = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
 
-      const { data } = await supabase
-        .from('deal_interests')
-        .select('deal_id')
-        .eq('investor_id', session.user.id);
+      const response = await fetch('/api/deals', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (data) {
-        const interestsMap: Record<string, boolean> = {};
-        data.forEach(interest => {
-          interestsMap[interest.deal_id] = true;
-        });
-        setExpressedInterests(interestsMap);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data)) {
+          const interestsMap: Record<string, boolean> = {};
+          data.forEach((deal: any) => {
+            if (deal.hasExpressedInterest) {
+              interestsMap[deal.id] = true;
+            }
+          });
+          setExpressedInterests(interestsMap);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch interests:', error);
@@ -182,10 +191,10 @@ export default function DealsPage() {
     }
 
     const amount = Number(investmentAmount);
-    if (amount < selectedDeal.min_investment) {
+    if (amount < selectedDeal.minInvestment) {
       toast({
         title: 'Below Minimum',
-        description: `Investment amount must be at least ${formatAmount(selectedDeal.min_investment)}`,
+        description: `Investment amount must be at least ${formatAmount(selectedDeal.minInvestment)}`,
         variant: 'destructive',
       });
       return;
@@ -193,20 +202,25 @@ export default function DealsPage() {
 
     try {
       setSubmittingInterest(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      if (!token) throw new Error('No authentication');
 
-      const { error } = await supabase
-        .from('deal_interests')
-        .insert({
-          deal_id: selectedDeal.id,
-          investor_id: session.user.id,
-          commitment_amount: amount,
+      const response = await fetch('/api/deals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          dealId: selectedDeal.id,
+          commitmentAmount: amount,
           notes: interestNotes,
-          status: 'pending',
-        });
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit interest');
+      }
 
       toast({
         title: 'Interest Submitted Successfully',
@@ -236,15 +250,23 @@ export default function DealsPage() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('deals')
-        .select('*')
-        .in('deal_status', ['open', 'closing_soon', 'closed'])
-        .order('featured', { ascending: false })
-        .order('created_at', { ascending: false });
+      if (!token) {
+        navigate('/auth');
+        return;
+      }
 
-      if (error) throw error;
+      const response = await fetch('/api/deals', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      if (response.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (!response.ok) throw new Error('Failed to load deals');
+
+      const data = await response.json();
       setDeals(data || []);
     } catch (error: any) {
       toast({
@@ -261,11 +283,11 @@ export default function DealsPage() {
     let filtered = [...deals];
 
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(d => d.deal_status === filterStatus);
+      filtered = filtered.filter(d => d.dealStatus === filterStatus);
     }
 
     if (filterSector !== 'all') {
-      filtered = filtered.filter(d => d.industry_sector === filterSector);
+      filtered = filtered.filter(d => d.industrySector === filterSector);
     }
 
     if (filterStage !== 'all') {
@@ -275,7 +297,7 @@ export default function DealsPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(d => 
-        d.company_name.toLowerCase().includes(query) ||
+        d.companyName.toLowerCase().includes(query) ||
         d.title.toLowerCase().includes(query) ||
         d.description.toLowerCase().includes(query)
       );
@@ -390,7 +412,7 @@ export default function DealsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {deals.filter(d => d.deal_status === 'open').length}
+              {deals.filter(d => d.dealStatus === 'open').length}
             </div>
           </CardContent>
         </Card>
@@ -400,7 +422,7 @@ export default function DealsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {deals.filter(d => d.deal_status === 'closing_soon').length}
+              {deals.filter(d => d.dealStatus === 'closing_soon').length}
             </div>
           </CardContent>
         </Card>
@@ -410,7 +432,7 @@ export default function DealsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatAmount(deals.reduce((sum, d) => sum + d.deal_size, 0))}
+              {formatAmount(deals.reduce((sum, d) => sum + d.dealSize, 0))}
             </div>
           </CardContent>
         </Card>
@@ -428,7 +450,7 @@ export default function DealsPage() {
       ) : (
         <div className="space-y-4">
           {filteredDeals.map((deal) => {
-            const daysLeft = getDaysUntilClosing(deal.closing_date);
+            const daysLeft = getDaysUntilClosing(deal.closingDate);
             
             return (
               <Card key={deal.id} className={deal.featured ? 'border-primary' : ''}>
@@ -440,19 +462,19 @@ export default function DealsPage() {
                           <Badge className="bg-amber-500">Featured</Badge>
                         )}
                         <Badge variant={
-                          deal.deal_status === 'open' ? 'default' :
-                          deal.deal_status === 'closing_soon' ? 'secondary' : 'outline'
+                          deal.dealStatus === 'open' ? 'default' :
+                          deal.dealStatus === 'closing_soon' ? 'secondary' : 'outline'
                         }>
-                          {deal.deal_status.replace('_', ' ')}
+                          {deal.dealStatus.replace('_', ' ')}
                         </Badge>
                         <Badge variant="outline">{deal.stage}</Badge>
                       </div>
                       <CardTitle className="text-xl">{deal.title}</CardTitle>
                       <CardDescription className="text-base">
-                        {deal.company_name} • {deal.industry_sector}
+                        {deal.companyName} • {deal.industrySector}
                       </CardDescription>
                     </div>
-                    {daysLeft !== null && daysLeft > 0 && deal.deal_status !== 'closed' && (
+                    {daysLeft !== null && daysLeft > 0 && deal.dealStatus !== 'closed' && (
                       <div className="text-right">
                         <div className="text-sm text-muted-foreground">Closing in</div>
                         <div className="text-2xl font-bold text-primary">{daysLeft}d</div>
@@ -471,14 +493,14 @@ export default function DealsPage() {
                         <DollarSign className="h-4 w-4" />
                         Deal Size
                       </div>
-                      <div className="font-semibold">{formatAmount(deal.deal_size)}</div>
+                      <div className="font-semibold">{formatAmount(deal.dealSize)}</div>
                     </div>
                     <div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                         <TrendingUp className="h-4 w-4" />
                         Min Investment
                       </div>
-                      <div className="font-semibold">{formatAmount(deal.min_investment)}</div>
+                      <div className="font-semibold">{formatAmount(deal.minInvestment)}</div>
                     </div>
                     {deal.valuation && (
                       <div>
@@ -489,13 +511,13 @@ export default function DealsPage() {
                         <div className="font-semibold">{formatAmount(deal.valuation)}</div>
                       </div>
                     )}
-                    {deal.deal_lead && (
+                    {deal.dealLead && (
                       <div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                           <Users className="h-4 w-4" />
                           Lead
                         </div>
-                        <div className="font-semibold">{deal.deal_lead}</div>
+                        <div className="font-semibold">{deal.dealLead}</div>
                       </div>
                     )}
                   </div>
@@ -504,7 +526,7 @@ export default function DealsPage() {
                     <Button onClick={() => navigate(`/deals/${deal.slug}`)}>
                       View Details
                     </Button>
-                    {deal.deal_status === 'open' && (
+                    {deal.dealStatus === 'open' && (
                       expresssedInterests[deal.id] ? (
                         <Button variant="outline" disabled>
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -532,9 +554,9 @@ export default function DealsPage() {
             <DialogDescription>
               {selectedDeal && (
                 <>
-                  <span className="font-semibold">{selectedDeal.company_name}</span> - {selectedDeal.title}
+                  <span className="font-semibold">{selectedDeal.companyName}</span> - {selectedDeal.title}
                   <br />
-                  <span className="text-xs">Minimum Investment: {formatAmount(selectedDeal.min_investment)}</span>
+                  <span className="text-xs">Minimum Investment: {formatAmount(selectedDeal.minInvestment)}</span>
                 </>
               )}
             </DialogDescription>
@@ -548,11 +570,11 @@ export default function DealsPage() {
                 placeholder="Enter amount in rupees"
                 value={investmentAmount}
                 onChange={(e) => setInvestmentAmount(e.target.value)}
-                min={selectedDeal?.min_investment || 0}
+                min={selectedDeal?.minInvestment || 0}
               />
               {selectedDeal && (
                 <p className="text-xs text-muted-foreground">
-                  Minimum: {formatAmount(selectedDeal.min_investment)}
+                  Minimum: {formatAmount(selectedDeal.minInvestment)}
                 </p>
               )}
             </div>

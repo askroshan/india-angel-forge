@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,12 @@ import { Upload, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'luci
 
 interface KYCDocument {
   id: string;
-  document_type: 'pan' | 'aadhaar' | 'bank_statement' | 'income_proof';
-  file_path: string;
-  verification_status: 'pending' | 'verified' | 'rejected';
-  uploaded_at: string;
-  verified_at?: string;
-  rejection_reason?: string;
+  documentType: 'pan' | 'aadhaar' | 'bank_statement' | 'income_proof';
+  filePath: string;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  uploadedAt: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
 }
 
 interface DocumentRequirement {
@@ -68,35 +68,36 @@ const DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
 
 export default function KYCUpload() {
   const [documents, setDocuments] = useState<KYCDocument[]>([]);
-  const [investorId, setInvestorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   useEffect(() => {
     checkAuthAndLoadDocuments();
   }, []);
 
   const checkAuthAndLoadDocuments = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    if (!token) {
       navigate('/auth');
       return;
     }
 
     try {
-      // Get investor application ID
-      const { data: application, error: appError } = await supabase
-        .from('investor_applications')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .single();
+      // Load existing documents
+      const response = await fetch('/api/kyc/documents', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (appError || !application) {
+      if (response.status === 401) {
+        navigate('/auth');
+        return;
+      }
+
+      if (response.status === 404) {
         toast({
           title: 'Error',
           description: 'No investor application found. Please apply first.',
@@ -106,16 +107,11 @@ export default function KYCUpload() {
         return;
       }
 
-      setInvestorId(application.id);
+      if (!response.ok) {
+        throw new Error('Failed to load documents');
+      }
 
-      // Load existing documents
-      const { data: docs, error: docsError } = await supabase
-        .from('kyc_documents')
-        .select('*')
-        .eq('investor_id', application.id);
-
-      if (docsError) throw docsError;
-
+      const docs = await response.json();
       setDocuments(docs || []);
     } catch (error: any) {
       toast({
@@ -129,7 +125,7 @@ export default function KYCUpload() {
   };
 
   const handleFileUpload = async (docType: string, file: File) => {
-    if (!investorId) return;
+    if (!token) return;
 
     try {
       setUploading(docType);
@@ -144,28 +140,33 @@ export default function KYCUpload() {
         throw new Error('Only PDF and image files are allowed');
       }
 
-      // Upload to storage
-      const fileName = `${investorId}/${docType}_${Date.now()}.${file.name.split('.').pop()}`;
       setUploadProgress(30);
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('kyc-documents')
-        .upload(fileName, file);
+      // Upload using FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', docType);
 
-      if (uploadError) throw uploadError;
-      setUploadProgress(60);
+      const response = await fetch('/api/kyc/documents', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      // Save to database
-      const { error: dbError } = await supabase
-        .from('kyc_documents')
-        .insert({
-          investor_id: investorId,
-          document_type: docType,
-          file_path: uploadData.path,
-          verification_status: 'pending',
-        });
+      if (response.status === 401) {
+        navigate('/auth');
+        return;
+      }
 
-      if (dbError) throw dbError;
+      setUploadProgress(80);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload document');
+      }
+
       setUploadProgress(100);
 
       toast({
@@ -188,7 +189,7 @@ export default function KYCUpload() {
   };
 
   const getDocumentStatus = (docType: string) => {
-    return documents.find(d => d.document_type === docType);
+    return documents.find(d => d.documentType === docType);
   };
 
   const getStatusIcon = (status?: string) => {
@@ -219,7 +220,7 @@ export default function KYCUpload() {
 
   const completionPercentage = () => {
     const total = DOCUMENT_REQUIREMENTS.length;
-    const verified = documents.filter(d => d.verification_status === 'verified').length;
+    const verified = documents.filter(d => d.verificationStatus === 'verified').length;
     return Math.round((verified / total) * 100);
   };
 
@@ -245,7 +246,7 @@ export default function KYCUpload() {
         <CardHeader>
           <CardTitle>Verification Progress</CardTitle>
           <CardDescription>
-            {documents.filter(d => d.verification_status === 'verified').length} of{' '}
+            {documents.filter(d => d.verificationStatus === 'verified').length} of{' '}
             {DOCUMENT_REQUIREMENTS.length} documents verified
           </CardDescription>
         </CardHeader>
@@ -268,45 +269,45 @@ export default function KYCUpload() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {getStatusIcon(doc?.verification_status)}
+                    {getStatusIcon(doc?.verificationStatus)}
                     <div>
                       <CardTitle className="text-lg">{req.label}</CardTitle>
                       <CardDescription>{req.description}</CardDescription>
                     </div>
                   </div>
-                  {getStatusBadge(doc?.verification_status)}
+                  {getStatusBadge(doc?.verificationStatus)}
                 </div>
               </CardHeader>
               <CardContent>
-                {doc?.verification_status === 'rejected' && (
+                {doc?.verificationStatus === 'rejected' && (
                   <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Rejected:</strong> {doc.rejection_reason}
+                      <strong>Rejected:</strong> {doc.rejectionReason}
                     </AlertDescription>
                   </Alert>
                 )}
 
-                {doc?.verification_status === 'verified' && doc.verified_at && (
+                {doc?.verificationStatus === 'verified' && doc.verifiedAt && (
                   <Alert className="mb-4">
                     <CheckCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Verified on {new Date(doc.verified_at).toLocaleDateString()}
+                      Verified on {new Date(doc.verifiedAt).toLocaleDateString()}
                     </AlertDescription>
                   </Alert>
                 )}
 
-                {doc?.verification_status === 'pending' && (
+                {doc?.verificationStatus === 'pending' && (
                   <Alert className="mb-4">
                     <Clock className="h-4 w-4" />
                     <AlertDescription>
-                      Document uploaded on {new Date(doc.uploaded_at).toLocaleDateString()}.
+                      Document uploaded on {new Date(doc.uploadedAt).toLocaleDateString()}.
                       Awaiting review by compliance team.
                     </AlertDescription>
                   </Alert>
                 )}
 
-                {(!doc || doc.verification_status === 'rejected') && (
+                {(!doc || doc.verificationStatus === 'rejected') && (
                   <div>
                     <Label htmlFor={`upload-${req.type}`} className="cursor-pointer">
                       <div className="border-2 border-dashed rounded-lg p-6 hover:bg-accent hover:border-primary transition-colors">
@@ -347,13 +348,13 @@ export default function KYCUpload() {
                   </div>
                 )}
 
-                {doc && doc.verification_status !== 'rejected' && (
+                {doc && doc.verificationStatus !== 'rejected' && (
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       <span>Document uploaded</span>
                     </div>
-                    {doc.verification_status === 'pending' && (
+                    {doc.verificationStatus === 'pending' && (
                       <Button
                         variant="ghost"
                         size="sm"
