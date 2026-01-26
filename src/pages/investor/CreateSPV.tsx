@@ -1,459 +1,466 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card } from '@/components/ui/card';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, TrendingUp, DollarSign, Percent } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Clock, Building, TrendingUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { apiClient } from '@/api/client';
 
-interface DealInterest {
+/**
+ * Deal data structure
+ */
+interface Deal {
   id: string;
-  dealId: string;
-  status: string;
-  commitmentAmount: number;
-  spvId: string | null;
-  deal: {
-    title: string;
-    companyName: string;
-    targetAmount: number;
-  };
+  company_name: string;
+  sector: string;
+  funding_stage: string;
+  target_amount: number;
 }
 
+/**
+ * SPV response from API
+ */
 interface SPV {
   id: string;
-  name: string;
-  dealId: string;
-  leadInvestorId: string;
-  targetAmount: number;
-  carryPercentage: number;
-  description?: string;
+  spv_name: string;
+  deal_id: string;
+  lead_investor_id: string;
+  target_raise_amount: number;
+  carry_percentage: number;
+  hurdle_rate: number;
+  minimum_investment: number;
+  status: string;
 }
 
-interface FormData {
-  name: string;
-  targetAmount: string;
-  carryPercentage: string;
-  description: string;
+/**
+ * Funding stage labels
+ */
+const STAGE_LABELS: Record<string, string> = {
+  PRE_SEED: 'Pre-Seed',
+  SEED: 'Seed',
+  SERIES_A: 'Series A',
+  SERIES_B: 'Series B',
+  SERIES_C: 'Series C',
+  BRIDGE: 'Bridge',
+};
+
+/**
+ * Format a number as Indian currency (INR)
+ */
+function formatIndianCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-interface ValidationErrors {
-  name?: string;
-  targetAmount?: string;
-  carryPercentage?: string;
-}
-
+/**
+ * CreateSPV component - allows lead investors to create SPVs for deals
+ */
 export default function CreateSPV() {
-  const { interestId } = useParams<{ interestId: string }>();
-  const navigate = useNavigate();
-  const { token } = useAuth();
-  
-  const [loading, setLoading] = useState(true);
-  const [interest, setInterest] = useState<DealInterest | null>(null);
-  const [existingSPV, setExistingSPV] = useState<SPV | null>(null);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<ValidationErrors>({});
-  
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    targetAmount: '',
-    carryPercentage: '20',
-    description: '',
+  const queryClient = useQueryClient();
+  const [selectedDealId, setSelectedDealId] = useState<string>('');
+  const [spvName, setSpvName] = useState('');
+  const [targetRaiseAmount, setTargetRaiseAmount] = useState('');
+  const [carryPercentage, setCarryPercentage] = useState('');
+  const [hurdleRate, setHurdleRate] = useState('');
+  const [minimumInvestment, setMinimumInvestment] = useState('');
+  const [formError, setFormError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Fetch available deals
+  const { data: deals = [], isLoading, error } = useQuery<Deal[]>({
+    queryKey: ['deals'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/deals');
+      return response.data;
+    },
   });
 
-  useEffect(() => {
-    checkAccess();
-  }, [interestId]);
-
-  const checkAccess = async () => {
-    try {
-      if (!token) {
-        navigate('/auth');
-        return;
-      }
-
-      // Fetch deal interest - note: this endpoint needs to be created or use deals endpoint
-      // For now, we'll skip the deal interest check and just check for existing SPV
-      // In production, you'd need a /api/deals/interests/:id endpoint
+  // Create SPV mutation
+  const createSPVMutation = useMutation({
+    mutationFn: async (data: {
+      spv_name: string;
+      deal_id: string;
+      target_raise_amount: number;
+      carry_percentage: number;
+      hurdle_rate: number;
+      minimum_investment: number;
+    }) => {
+      const response = await apiClient.post('/api/spvs', data);
+      return response.data;
+    },
+    onSuccess: (data: SPV) => {
+      toast.success('SPV created successfully');
+      toast.success('You can now invite co-investors to join');
+      toast.success('Track allocation status from the SPV dashboard');
+      queryClient.invalidateQueries({ queryKey: ['spvs'] });
       
-      // Mock interest data for now - in production this would come from API
-      const mockInterest: DealInterest = {
-        id: interestId!,
-        dealId: 'deal-123',
-        status: 'accepted',
-        commitmentAmount: 5000000,
-        spvId: null,
-        deal: {
-          title: 'Series A Round',
-          companyName: 'TechCorp',
-          targetAmount: 50000000,
-        },
-      };
+      // Reset form
+      setSpvName('');
+      setSelectedDealId('');
+      setTargetRaiseAmount('');
+      setCarryPercentage('');
+      setHurdleRate('');
+      setMinimumInvestment('');
+      setFormError('');
+      setValidationErrors({});
+    },
+    onError: () => {
+      toast.error('Failed to create SPV');
+    },
+  });
 
-      setInterest(mockInterest);
-      setHasAccess(true);
-
-      // Pre-fill form with deal details
-      setFormData(prev => ({
-        ...prev,
-        name: `${mockInterest.deal.companyName} SPV ${new Date().getFullYear()}`,
-        targetAmount: mockInterest.deal.targetAmount?.toString() || '',
-      }));
-
-      // Check for existing SPV by fetching all SPVs
-      const response = await fetch('/api/spv', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const spvs = await response.json();
-        const existingSpv = spvs.find((s: SPV) => s.dealId === mockInterest.dealId);
-        if (existingSpv) {
-          setExistingSPV(existingSpv);
-        }
-      }
-
-    } catch (err) {
-      console.error('Error checking access:', err);
-      setHasAccess(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const selectedDeal = deals.find(deal => deal.id === selectedDealId);
 
   const validateForm = (): boolean => {
-    const newErrors: ValidationErrors = {};
+    const errors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'SPV name is required';
+    if (!spvName.trim()) {
+      errors.spvName = 'SPV name is required';
     }
 
-    const targetAmount = parseFloat(formData.targetAmount);
-    if (!formData.targetAmount || isNaN(targetAmount)) {
-      newErrors.targetAmount = 'Target amount is required';
-    } else if (targetAmount <= 0) {
-      newErrors.targetAmount = 'Target amount must be positive';
+    if (!selectedDealId) {
+      errors.deal = 'Please select a deal';
     }
 
-    const carryPercentage = parseFloat(formData.carryPercentage);
-    if (!formData.carryPercentage || isNaN(carryPercentage)) {
-      newErrors.carryPercentage = 'Carry percentage is required';
-    } else if (carryPercentage < 0 || carryPercentage > 30) {
-      newErrors.carryPercentage = 'Carry percentage must be between 0 and 30';
+    if (!targetRaiseAmount || parseFloat(targetRaiseAmount) <= 0) {
+      errors.targetRaiseAmount = 'Target raise amount is required';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!carryPercentage) {
+      errors.carryPercentage = 'Carry percentage is required';
+    } else {
+      const carry = parseFloat(carryPercentage);
+      if (carry < 0 || carry > 100) {
+        errors.carryPercentage = 'Carry percentage must be between 0 and 100';
+      }
+    }
+
+    if (!hurdleRate) {
+      errors.hurdleRate = 'Hurdle rate is required';
+    }
+
+    if (!minimumInvestment) {
+      errors.minimumInvestment = 'Minimum investment is required';
+    } else if (parseFloat(minimumInvestment) <= 0) {
+      errors.minimumInvestment = 'Minimum investment must be positive';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setFormError('');
+
     if (!validateForm()) {
+      setFormError('All fields are required. Please fill in all the details.');
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      if (!token || !interest) return;
-
-      // Create SPV
-      const response = await fetch('/api/spv', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          dealId: interest.dealId,
-          targetAmount: parseFloat(formData.targetAmount),
-          carryPercentage: parseFloat(formData.carryPercentage),
-          description: formData.description || null,
-        }),
-      });
-
-      if (!response.ok) {
-        setError('Failed to create SPV. Please try again.');
-        return;
-      }
-
-      // Update deal interest with SPV ID
-      await supabase
-        .from('deal_interests')
-        .update({ spv_id: spvData.id })
-        .eq('id', interestId);
-
-      setSuccess(true);
-      
-      // Navigate to SPV dashboard after short delay
-      setTimeout(() => {
-        navigate(`/investor/spv/${spvData.id}`);
-      }, 2000);
-
-    } catch (err) {
-      setError('An error occurred while creating SPV');
-    } finally {
-      setSubmitting(false);
-    }
+    createSPVMutation.mutate({
+      spv_name: spvName,
+      deal_id: selectedDealId,
+      target_raise_amount: parseFloat(targetRaiseAmount),
+      carry_percentage: parseFloat(carryPercentage),
+      hurdle_rate: parseFloat(hurdleRate),
+      minimum_investment: parseFloat(minimumInvestment),
+    });
   };
 
-  const handleChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field
-    if (errors[field as keyof ValidationErrors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 10000000) {
-      return `₹${(amount / 10000000).toFixed(2)} Cr`;
-    }
-    return `₹${(amount / 100000).toFixed(2)} L`;
-  };
-
-  if (loading) {
+  if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center">
-          <Clock className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Your interest must be accepted before you can create an SPV for this deal.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  // If SPV already exists
-  if (existingSPV) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="p-6">
-          <div className="space-y-6">
-            <Alert>
-              <Building className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-3">
-                  <p className="font-semibold">SPV Already Exists</p>
-                  <p>An SPV has already been created for this deal.</p>
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <div className="flex items-start gap-4">
-                <Building className="h-8 w-8 text-blue-600 mt-1" />
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-blue-900 mb-2">
-                    {existingSPV.name}
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-blue-700">Target Amount:</span>
-                      <span className="ml-2 font-semibold">
-                        {formatCurrency(existingSPV.target_amount)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Carry:</span>
-                      <span className="ml-2 font-semibold">
-                        {existingSPV.carry_percentage}%
-                      </span>
-                    </div>
-                  </div>
-                  {existingSPV.description && (
-                    <p className="mt-3 text-sm text-blue-800">
-                      {existingSPV.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <Button onClick={() => navigate(`/investor/spv/${existingSPV.id}`)}>
-                View SPV Dashboard
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/investor/pipeline')}>
-                Back to Pipeline
-              </Button>
-            </div>
-          </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <p className="text-red-500">Error loading deals</p>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Show creation form
   return (
     <div className="container mx-auto px-4 py-8">
-      <Card className="p-6 max-w-3xl mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Create SPV</h1>
-            <p className="text-muted-foreground">
-              {interest?.deal.companyName} - {interest?.deal.title}
-            </p>
-          </div>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Create Special Purpose Vehicle (SPV)</h1>
+        <p className="text-muted-foreground">
+          Create an SPV to pool investments from multiple investors for a specific deal
+        </p>
+      </div>
 
-          {success && (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                SPV created successfully! Redirecting to dashboard...
-              </AlertDescription>
-            </Alert>
-          )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Form */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>SPV Details</CardTitle>
+              <CardDescription>
+                Configure your Special Purpose Vehicle structure
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* SPV Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="spv-name">
+                    SPV Name
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="spv-name"
+                    type="text"
+                    placeholder="e.g., TechStartup SPV 2026"
+                    value={spvName}
+                    onChange={(e) => {
+                      setSpvName(e.target.value);
+                      setFormError('');
+                      setValidationErrors({});
+                    }}
+                    aria-label="SPV Name"
+                  />
+                  {validationErrors.spvName && (
+                    <p className="text-sm text-red-500">{validationErrors.spvName}</p>
+                  )}
+                </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+                {/* Deal Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="deal-select">
+                    Select Deal
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Select value={selectedDealId} onValueChange={setSelectedDealId}>
+                    <SelectTrigger id="deal-select" aria-label="Select Deal">
+                      <SelectValue placeholder="Choose a deal for this SPV" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deals.map(deal => (
+                        <SelectItem key={deal.id} value={deal.id}>
+                          {deal.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {validationErrors.deal && (
+                    <p className="text-sm text-red-500">{validationErrors.deal}</p>
+                  )}
+                </div>
 
-          {/* Deal Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Deal Information
-            </h3>
-            <div className="grid md:grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Company:</span>
-                <span className="ml-2 font-medium">{interest?.deal.companyName}</span>
+                {/* Selected Deal Info */}
+                {selectedDeal && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-blue-900 mb-2">Selected Deal</p>
+                    <div className="space-y-1 text-sm text-blue-800">
+                      <p><strong>Company:</strong> {selectedDeal.company_name}</p>
+                      <p><strong>Sector:</strong> {selectedDeal.sector}</p>
+                      <p><strong>Stage:</strong> {STAGE_LABELS[selectedDeal.funding_stage]}</p>
+                      <p><strong>Target:</strong> {formatIndianCurrency(selectedDeal.target_amount)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Target Raise Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="target-amount">
+                    Target Raise Amount (₹)
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="target-amount"
+                    type="number"
+                    placeholder="10000000"
+                    value={targetRaiseAmount}
+                    onChange={(e) => {
+                      setTargetRaiseAmount(e.target.value);
+                      setFormError('');
+                      setValidationErrors({});
+                    }}
+                    aria-label="Target Raise Amount"
+                  />
+                  {validationErrors.targetRaiseAmount && (
+                    <p className="text-sm text-red-500">{validationErrors.targetRaiseAmount}</p>
+                  )}
+                </div>
+
+                {/* Carry Percentage */}
+                <div className="space-y-2">
+                  <Label htmlFor="carry-percentage">
+                    Carry Percentage (%)
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="carry-percentage"
+                    type="number"
+                    placeholder="20"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={carryPercentage}
+                    onChange={(e) => {
+                      setCarryPercentage(e.target.value);
+                      setFormError('');
+                      setValidationErrors({});
+                    }}
+                    aria-label="Carry Percentage"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Percentage of profits that go to the SPV lead
+                  </p>
+                  {validationErrors.carryPercentage && (
+                    <p className="text-sm text-red-500">{validationErrors.carryPercentage}</p>
+                  )}
+                </div>
+
+                {/* Hurdle Rate */}
+                <div className="space-y-2">
+                  <Label htmlFor="hurdle-rate">
+                    Hurdle Rate (%)
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="hurdle-rate"
+                    type="number"
+                    placeholder="15"
+                    min="0"
+                    step="0.1"
+                    value={hurdleRate}
+                    onChange={(e) => {
+                      setHurdleRate(e.target.value);
+                      setFormError('');
+                      setValidationErrors({});
+                    }}
+                    aria-label="Hurdle Rate"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Minimum return threshold before carry is applied
+                  </p>
+                  {validationErrors.hurdleRate && (
+                    <p className="text-sm text-red-500">{validationErrors.hurdleRate}</p>
+                  )}
+                </div>
+
+                {/* Minimum Investment */}
+                <div className="space-y-2">
+                  <Label htmlFor="minimum-investment">
+                    Minimum Investment per Member (₹)
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="minimum-investment"
+                    type="number"
+                    placeholder="500000"
+                    value={minimumInvestment}
+                    onChange={(e) => {
+                      setMinimumInvestment(e.target.value);
+                      setFormError('');
+                      setValidationErrors({});
+                    }}
+                    aria-label="Minimum Investment"
+                  />
+                  {validationErrors.minimumInvestment && (
+                    <p className="text-sm text-red-500">{validationErrors.minimumInvestment}</p>
+                  )}
+                </div>
+
+                {/* Form Error */}
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-600">{formError}</p>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createSPVMutation.isPending}
+                >
+                  {createSPVMutation.isPending ? 'Creating SPV...' : 'Create SPV'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Info Sidebar */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">What is an SPV?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Users className="h-5 w-5 text-blue-500 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium mb-1">Pool Investments</p>
+                  <p className="text-xs text-muted-foreground">
+                    Combine capital from multiple investors into a single entity
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Deal Target:</span>
-                <span className="ml-2 font-medium">
-                  {interest && formatCurrency(interest.deal.targetAmount)}
-                </span>
+
+              <div className="flex items-start gap-3">
+                <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium mb-1">Lead Deal</p>
+                  <p className="text-xs text-muted-foreground">
+                    Act as the lead investor while sharing the opportunity
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* SPV Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">SPV Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="e.g., HealthTech SPV 2026"
-              className={errors.name ? 'border-red-500' : ''}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-600">{errors.name}</p>
-            )}
-          </div>
-
-          {/* Target Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="targetAmount">Target Amount (₹) *</Label>
-            <Input
-              id="targetAmount"
-              type="number"
-              value={formData.targetAmount}
-              onChange={(e) => handleChange('targetAmount', e.target.value)}
-              placeholder="50000000"
-              className={errors.targetAmount ? 'border-red-500' : ''}
-            />
-            {errors.targetAmount && (
-              <p className="text-sm text-red-600">{errors.targetAmount}</p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Total investment amount to be raised through this SPV
-            </p>
-          </div>
-
-          {/* Carry Percentage */}
-          <div className="space-y-2">
-            <Label htmlFor="carryPercentage">Carry Percentage (%) *</Label>
-            <Input
-              id="carryPercentage"
-              type="number"
-              min="0"
-              max="30"
-              step="0.5"
-              value={formData.carryPercentage}
-              onChange={(e) => handleChange('carryPercentage', e.target.value)}
-              className={errors.carryPercentage ? 'border-red-500' : ''}
-            />
-            {errors.carryPercentage && (
-              <p className="text-sm text-red-600">{errors.carryPercentage}</p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Percentage of profits allocated to the lead investor (typically 15-25%)
-            </p>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Brief description of the SPV structure and terms..."
-              rows={4}
-            />
-          </div>
-
-          {/* Info Alert */}
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-semibold">Important Information</p>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>You will be designated as the lead investor for this SPV</li>
-                  <li>You'll be responsible for inviting and managing co-investors</li>
-                  <li>Carry percentage applies to profits above the invested capital</li>
-                  <li>SPV formation typically takes 2-4 weeks for legal documentation</li>
-                </ul>
+              <div className="flex items-start gap-3">
+                <Percent className="h-5 w-5 text-purple-500 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium mb-1">Earn Carry</p>
+                  <p className="text-xs text-muted-foreground">
+                    Receive carried interest on returns above the hurdle rate
+                  </p>
+                </div>
               </div>
-            </AlertDescription>
-          </Alert>
+            </CardContent>
+          </Card>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4 pt-4">
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="flex-1"
-            >
-              {submitting ? 'Creating SPV...' : 'Create SPV'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/investor/pipeline')}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">How it Works</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">1.</span>
+                  <span>Create the SPV with terms and target amount</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">2.</span>
+                  <span>Invite co-investors to participate</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">3.</span>
+                  <span>Track commitments and allocations</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">4.</span>
+                  <span>Close SPV when target is reached</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-foreground">5.</span>
+                  <span>Complete investment in the deal</span>
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
