@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +26,7 @@ import { Clock, Plus, CheckCircle2, ListChecks } from 'lucide-react';
 
 interface ChecklistItem {
   id: string;
-  item_name: string;
+  itemName: string;
   completed: boolean;
   notes?: string;
   category?: string;
@@ -34,12 +34,13 @@ interface ChecklistItem {
 
 interface Deal {
   id: string;
-  company_name: string;
+  companyName: string;
 }
 
 export default function DueDiligenceChecklist() {
   const navigate = useNavigate();
   const { dealId } = useParams<{ dealId: string }>();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [deal, setDeal] = useState<Deal | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
@@ -47,7 +48,7 @@ export default function DueDiligenceChecklist() {
   const [saving, setSaving] = useState(false);
   
   const [newItem, setNewItem] = useState({
-    item_name: '',
+    itemName: '',
     category: 'General',
     notes: '',
   });
@@ -60,37 +61,42 @@ export default function DueDiligenceChecklist() {
 
   const fetchData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
       // Get deal info
-      const { data: dealData, error: dealError } = await supabase
-        .from('deals')
-        .select('id, company_name')
-        .eq('id', dealId)
-        .single();
+      const dealResponse = await fetch(`/api/deals/${dealId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (dealError) {
-        console.error('Error fetching deal:', dealError);
+      if (!dealResponse.ok) {
+        if (dealResponse.status === 401) {
+          navigate('/auth');
+        }
+        console.error('Error fetching deal');
         return;
       }
 
+      const dealData = await dealResponse.json();
       setDeal(dealData);
 
       // Get checklist items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('due_diligence_items')
-        .select('*')
-        .eq('deal_id', dealId);
+      const itemsResponse = await fetch(`/api/deals/${dealId}/due-diligence`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (itemsError) {
-        console.error('Error fetching items:', itemsError);
+      if (!itemsResponse.ok) {
+        console.error('Error fetching items');
         return;
       }
 
+      const itemsData = await itemsResponse.json();
       setItems(itemsData || []);
 
     } catch (err) {
@@ -101,7 +107,7 @@ export default function DueDiligenceChecklist() {
   };
 
   const handleAddItem = async () => {
-    if (!newItem.item_name || !dealId) {
+    if (!newItem.itemName || !dealId) {
       alert('Please enter item name');
       return;
     }
@@ -109,31 +115,38 @@ export default function DueDiligenceChecklist() {
     try {
       setSaving(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) {
+        navigate('/auth');
+        return;
+      }
 
-      const { data, error } = await supabase
-        .from('due_diligence_items')
-        .insert({
-          deal_id: dealId,
-          investor_id: session.user.id,
-          item_name: newItem.item_name,
+      const response = await fetch(`/api/deals/${dealId}/due-diligence`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemName: newItem.itemName,
           category: newItem.category,
           notes: newItem.notes,
-          completed: false,
-        })
-        .select();
+        }),
+      });
 
-      if (error) {
-        console.error('Error creating item:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+          return;
+        }
         alert('Failed to create item');
         return;
       }
 
-      setItems([...(data || []), ...items]);
+      const data = await response.json();
+      setItems([data, ...items]);
       setShowAddDialog(false);
       setNewItem({
-        item_name: '',
+        itemName: '',
         category: 'General',
         notes: '',
       });
@@ -148,13 +161,21 @@ export default function DueDiligenceChecklist() {
 
   const toggleCompletion = async (itemId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('due_diligence_items')
-        .update({ completed: !currentStatus })
-        .eq('id', itemId);
+      if (!token) return;
 
-      if (error) {
-        console.error('Error updating item:', error);
+      const response = await fetch(`/api/deals/${dealId}/due-diligence/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completed: !currentStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Error updating item');
         return;
       }
 
@@ -169,13 +190,19 @@ export default function DueDiligenceChecklist() {
 
   const updateNotes = async (itemId: string, notes: string) => {
     try {
-      const { error } = await supabase
-        .from('due_diligence_items')
-        .update({ notes })
-        .eq('id', itemId);
+      if (!token) return;
 
-      if (error) {
-        console.error('Error updating notes:', error);
+      const response = await fetch(`/api/deals/${dealId}/due-diligence/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (!response.ok) {
+        console.error('Error updating notes');
         return;
       }
 
@@ -225,7 +252,7 @@ export default function DueDiligenceChecklist() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold mb-2">Due Diligence Checklist</h1>
-          <p className="text-muted-foreground">{deal.company_name}</p>
+          <p className="text-muted-foreground">{deal.companyName}</p>
         </div>
 
         {/* Progress Card */}
@@ -258,8 +285,8 @@ export default function DueDiligenceChecklist() {
                   <Label htmlFor="item_name">Item Name *</Label>
                   <Input
                     id="item_name"
-                    value={newItem.item_name}
-                    onChange={(e) => setNewItem({ ...newItem, item_name: e.target.value })}
+                    value={newItem.itemName}
+                    onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
                     placeholder="Review Financial Statements"
                   />
                 </div>
@@ -332,7 +359,7 @@ export default function DueDiligenceChecklist() {
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className={`font-medium ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
-                        {item.item_name}
+                        {item.itemName}
                       </h3>
                       {item.completed && (
                         <CheckCircle2 className="h-5 w-5 text-green-600" />

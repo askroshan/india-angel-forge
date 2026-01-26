@@ -6,12 +6,13 @@ import { Clock, TrendingUp, DollarSign, BarChart3, PieChart } from 'lucide-react
 
 interface Deal {
   id: string;
-  companyName?: string;
-  valuation?: number;
-  amount: number;
-  status?: string;
-  industry?: string;
-  stage?: string;
+  companyName: string;
+  valuation: number;
+  investmentAmount: number;
+  status: string;
+  industry: string;
+  stage: string;
+  createdAt: string;
 }
 
 interface IndustryStats {
@@ -78,7 +79,7 @@ export default function DealAnalytics() {
   };
 
   const getTotalInvestment = (): number => {
-    return deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+    return deals.reduce((sum, deal) => sum + (deal.investmentAmount || 0), 0);
   };
 
   const getAverageDealSize = (): number => {
@@ -102,12 +103,12 @@ export default function DealAnalytics() {
       
       if (existing) {
         existing.count += 1;
-        existing.totalAmount += deal.amount || 0;
+        existing.totalAmount += deal.investmentAmount || 0;
       } else {
         industryMap.set(industry, {
           industry,
           count: 1,
-          totalAmount: deal.amount || 0,
+          totalAmount: deal.investmentAmount || 0,
         });
       }
     });
@@ -124,12 +125,12 @@ export default function DealAnalytics() {
       
       if (existing) {
         existing.count += 1;
-        existing.totalAmount += deal.amount || 0;
+        existing.totalAmount += deal.investmentAmount || 0;
       } else {
         stageMap.set(stage, {
           stage,
           count: 1,
-          totalAmount: deal.amount || 0,
+          totalAmount: deal.investmentAmount || 0,
         });
       }
     });

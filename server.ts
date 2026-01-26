@@ -5,6 +5,9 @@ import { prisma } from './src/lib/db.js';
 import { hashPassword, verifyPassword, generateToken, verifyToken, extractTokenFromHeader } from './src/lib/auth.js';
 import companyRoutes from './src/api/routes/company.js';
 import dealsRoutes from './src/api/routes/deals.js';
+import kycRoutes from './src/api/routes/kyc.js';
+import adminRoutes from './src/api/routes/admin.js';
+import complianceRoutes from './src/api/routes/compliance.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -174,6 +177,9 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/company', companyRoutes);
 app.use('/api/deals', dealsRoutes);
+app.use('/api/kyc', kycRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/compliance', complianceRoutes);
 
 // Start server
 app.listen(PORT, () => {
