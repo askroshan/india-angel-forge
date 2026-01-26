@@ -1,0 +1,111 @@
+# India Angel Forum - AI Context File
+# https://indiaangelforum.com/llms.txt
+# Last Updated: 26 January 2026
+
+## About India Angel Forum
+
+India Angel Forum is India's largest angel investing network connecting accredited investors with exceptional early-stage startups. We facilitate funding for high-potential companies through rigorous curation, transparent economics, and collaborative diligence.
+
+## Organization Details
+
+- **Operating Entity:** Kosansh Solutions Inc
+- **Registered Address:** 1320 Pepperhill Ln, Fort Worth, TX 76131, United States
+- **Jurisdiction:** Tarrant County, Texas, USA (corporate) | Republic of India (services)
+- **Website:** https://indiaangelforum.com
+
+## Key Statistics
+
+- **Capital Deployed:** ₹160+ Crore
+- **Active Members:** 400+ accredited angels
+- **Portfolio Companies:** 40+ startups
+- **Average IRR:** 27%
+- **SPVs Deployed (2024):** 40+
+
+## Services Offered
+
+### For Investors
+- Curated deal flow from top 1% of applications
+- Monthly investment forums
+- Due diligence resources and templates
+- SPV (Special Purpose Vehicle) formation and administration
+- Portfolio tracking and management tools
+- Quarterly sector summits
+- Pro-rata rights management
+
+### For Founders
+- Access to 400+ accredited angels
+- Structured fundraising process
+- Demo Day presentations
+- Investor relationship management
+- Founder support and mentorship
+
+## Membership Plans
+
+1. **Standard Member:** ₹60,000/year
+   - Full access to deal flow
+   - Forum participation
+   - Portfolio dashboard
+
+2. **Operator Angel:** ₹36,000/year
+   - 40% discount for active operators
+   - All Standard benefits
+   - Priority sector access
+
+3. **Family Office:** ₹2,50,000/year
+   - Up to 3 seats
+   - Dedicated relationship manager
+   - Custom deal sourcing
+
+## Investment Focus Areas
+
+- AI / Machine Learning
+- SaaS / Enterprise Software
+- FinTech
+- HealthTech
+- Consumer Technology
+- Deep Tech
+- Climate Tech
+
+## Contact
+
+For inquiries, please visit: https://indiaangelforum.com/contact
+
+## Legal Pages
+
+- Terms of Service: https://indiaangelforum.com/terms
+- Privacy Policy: https://indiaangelforum.com/privacy
+- Code of Conduct: https://indiaangelforum.com/code-of-conduct
+
+## Compliance
+
+- SEBI (Alternative Investment Funds) Regulations compliant
+- IT Act 2000 compliant
+- DPDP Act 2023 compliant
+- Grievance Officer: Roshan Shah
+
+## Important Disclaimers
+
+- India Angel Forum does NOT provide investment advice
+- All investment decisions are made solely by individual investors
+- Investing in early-stage startups involves substantial risk including complete loss of investment
+- Past performance is not indicative of future results
+- Information provided by founders has not been independently verified
+
+## Sitemap
+
+Main pages available at:
+- / (Home)
+- /founders (For Founders)
+- /investors (For Investors)
+- /portfolio (Portfolio Companies)
+- /events (Investment Events)
+- /about (About Us)
+- /contact (Contact)
+- /terms (Terms of Service)
+- /privacy (Privacy Policy)
+- /code-of-conduct (Code of Conduct)
+
+## Content Licensing
+
+© 2026 India Angel Forum. All rights reserved.
+Content may be referenced for informational purposes with proper attribution.

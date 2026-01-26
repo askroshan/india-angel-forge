@@ -144,7 +144,7 @@ export default function Events() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" variant="hero" asChild>
-                <Link to="/apply/investor">Become a Member</Link>
+                <Link to="/investors#plans">Become a Member</Link>
               </Button>
               <Button 
                 size="lg" 

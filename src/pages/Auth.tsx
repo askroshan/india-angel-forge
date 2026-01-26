@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -217,7 +217,14 @@ export default function Auth() {
               </Tabs>
             </CardContent>
             <CardFooter className="text-center text-sm text-muted-foreground">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
+              By continuing, you agree to our{' '}
+              <Link to="/terms" className="underline hover:text-accent">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="underline hover:text-accent">
+                Privacy Policy
+              </Link>.
             </CardFooter>
           </Card>
         </div>

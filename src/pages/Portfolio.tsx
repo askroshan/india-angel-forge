@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Building2, TrendingUp, Users, Calendar } from "lucide-react";
+import { Building2, TrendingUp, Users, Calendar, Globe, ExternalLink } from "lucide-react";
 
 const Portfolio = () => {
   const [selectedSector, setSelectedSector] = useState("All");
@@ -13,68 +15,160 @@ const Portfolio = () => {
 
   const companies = [
     {
-      name: "TechAI Solutions",
+      name: "NeuralMind AI",
       sector: "AI & Deep Tech",
       stage: "Series A",
       year: 2024,
-      description: "Enterprise AI platform for automated business intelligence",
-      metrics: { raised: "₹8 Cr", team: "25+" }
+      description: "Enterprise AI platform for automated document processing and business intelligence. Processing 10M+ documents monthly for Fortune 500 clients.",
+      metrics: { raised: "₹12 Cr", team: "32", mrr: "₹45L" },
+      founders: ["Arjun Mehta", "Sneha Reddy"],
+      logo: "NM",
+      color: "bg-violet-500",
+      website: "https://neuralmind.ai",
+      status: "active"
     },
     {
-      name: "FinFlow",
+      name: "PayStack India",
       sector: "Fintech",
-      stage: "Pre-seed",
-      year: 2024,
-      description: "Neo-banking platform for SME cash flow management",
-      metrics: { raised: "₹3 Cr", team: "12" }
-    },
-    {
-      name: "HealthConnect",
-      sector: "Healthcare",
       stage: "Seed",
-      year: 2023,
-      description: "Telemedicine and diagnostic marketplace for tier 2/3 cities",
-      metrics: { raised: "₹5 Cr", team: "18" }
+      year: 2024,
+      description: "Neo-banking platform for SME cash flow management with embedded lending. 15,000+ active businesses onboarded.",
+      metrics: { raised: "₹5.5 Cr", team: "18", mrr: "₹28L" },
+      founders: ["Vikram Joshi", "Priya Nair"],
+      logo: "PS",
+      color: "bg-emerald-500",
+      website: "https://paystack.in",
+      status: "active"
     },
     {
-      name: "CloudOps Pro",
+      name: "MediBridge",
+      sector: "Healthcare",
+      stage: "Series A",
+      year: 2023,
+      description: "Telemedicine and diagnostic marketplace connecting tier 2/3 cities with specialist doctors. 500K+ consultations completed.",
+      metrics: { raised: "₹8 Cr", team: "45", mrr: "₹65L" },
+      founders: ["Dr. Rakesh Kumar", "Ananya Sharma"],
+      logo: "MB",
+      color: "bg-red-500",
+      website: "https://medibridge.health",
+      status: "active"
+    },
+    {
+      name: "CloudNative.io",
       sector: "SaaS",
       stage: "Seed",
       year: 2024,
-      description: "DevOps automation and monitoring for Indian enterprises",
-      metrics: { raised: "₹4.5 Cr", team: "15" }
+      description: "DevOps automation platform for Indian enterprises. Reducing deployment time by 80% for 200+ engineering teams.",
+      metrics: { raised: "₹4.5 Cr", team: "22", mrr: "₹32L" },
+      founders: ["Karthik Sundaram", "Neha Gupta"],
+      logo: "CN",
+      color: "bg-blue-500",
+      website: "https://cloudnative.io",
+      status: "active"
     },
     {
-      name: "GreenEnergy Labs",
+      name: "SolarGrid Technologies",
       sector: "Climate Tech",
       stage: "Pre-seed",
       year: 2024,
-      description: "Solar energy optimization using IoT and AI",
-      metrics: { raised: "₹2.5 Cr", team: "10" }
+      description: "AI-powered solar energy optimization for commercial buildings. Improving efficiency by 35% across 50+ installations.",
+      metrics: { raised: "₹2.5 Cr", team: "12", mrr: "₹8L" },
+      founders: ["Amit Patel", "Divya Krishnan"],
+      logo: "SG",
+      color: "bg-yellow-500",
+      website: "https://solargrid.tech",
+      status: "active"
     },
     {
-      name: "ShopSmart",
+      name: "Bharat Commerce",
       sector: "Consumer",
       stage: "Series A",
       year: 2023,
-      description: "Social commerce platform for regional brands",
-      metrics: { raised: "₹10 Cr", team: "35" }
+      description: "Social commerce platform for regional brands and artisans. GMV of ₹150 Cr+ with 2M+ monthly active users.",
+      metrics: { raised: "₹15 Cr", team: "55", mrr: "₹1.2Cr" },
+      founders: ["Rajesh Verma", "Meera Singh"],
+      logo: "BC",
+      color: "bg-orange-500",
+      website: "https://bharatcommerce.in",
+      status: "active"
     },
     {
-      name: "PaySecure",
+      name: "FraudShield",
       sector: "Fintech",
       stage: "Seed",
       year: 2023,
-      description: "Fraud detection and compliance platform for digital payments",
-      metrics: { raised: "₹6 Cr", team: "20" }
+      description: "Real-time fraud detection for digital payments using ML. Protecting ₹5000 Cr+ in transactions monthly.",
+      metrics: { raised: "₹6 Cr", team: "25", mrr: "₹40L" },
+      founders: ["Sanjay Kapoor", "Ritu Agarwal"],
+      logo: "FS",
+      color: "bg-slate-600",
+      website: "https://fraudshield.ai",
+      status: "active"
     },
     {
-      name: "AgriTech Connect",
+      name: "KrishiTech",
       sector: "AI & Deep Tech",
       stage: "Seed",
       year: 2024,
-      description: "AI-powered crop yield prediction and marketplace",
-      metrics: { raised: "₹3.5 Cr", team: "14" }
+      description: "AI-powered crop yield prediction and farm-to-market platform. Serving 100,000+ farmers across 5 states.",
+      metrics: { raised: "₹4 Cr", team: "20", mrr: "₹15L" },
+      founders: ["Suresh Yadav", "Kavitha Rao"],
+      logo: "KT",
+      color: "bg-green-600",
+      website: "https://krishitech.farm",
+      status: "active"
+    },
+    {
+      name: "EduSpark",
+      sector: "Consumer",
+      stage: "Seed",
+      year: 2024,
+      description: "Vernacular ed-tech platform for competitive exam preparation. 500K+ students from tier 2/3 cities.",
+      metrics: { raised: "₹3.5 Cr", team: "28", mrr: "₹22L" },
+      founders: ["Pooja Sharma", "Anil Kumar"],
+      logo: "ES",
+      color: "bg-indigo-500",
+      website: "https://eduspark.co.in",
+      status: "active"
+    },
+    {
+      name: "HealthKart Pro",
+      sector: "Healthcare",
+      stage: "Pre-seed",
+      year: 2025,
+      description: "B2B pharma supply chain platform digitizing 50,000+ pharmacies across India.",
+      metrics: { raised: "₹2 Cr", team: "15", mrr: "₹12L" },
+      founders: ["Dr. Vivek Reddy", "Shreya Mehta"],
+      logo: "HK",
+      color: "bg-pink-500",
+      website: "https://healthkartpro.in",
+      status: "active"
+    },
+    {
+      name: "SecureStack",
+      sector: "SaaS",
+      stage: "Pre-seed",
+      year: 2025,
+      description: "Zero-trust security platform for Indian SMEs. Protecting 500+ businesses from cyber threats.",
+      metrics: { raised: "₹1.8 Cr", team: "10", mrr: "₹6L" },
+      founders: ["Rohan Desai", "Nisha Patel"],
+      logo: "SS",
+      color: "bg-cyan-600",
+      website: "https://securestack.io",
+      status: "active"
+    },
+    {
+      name: "CarbonZero",
+      sector: "Climate Tech",
+      stage: "Seed",
+      year: 2024,
+      description: "Carbon credit marketplace and sustainability tracking for enterprises. Managing 100K+ tonnes of offsets.",
+      metrics: { raised: "₹5 Cr", team: "18", mrr: "₹20L" },
+      founders: ["Aditya Iyer", "Lakshmi Menon"],
+      logo: "CZ",
+      color: "bg-teal-500",
+      website: "https://carbonzero.earth",
+      status: "active"
     },
   ];
 
@@ -142,41 +236,59 @@ const Portfolio = () => {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCompanies.map((company, index) => (
-              <Card key={index} className="border-2 hover:border-accent transition-all hover:shadow-lg">
+              <Card key={index} className="border-2 hover:border-accent transition-all hover:shadow-lg group">
                 <CardContent className="pt-6 space-y-4">
                   <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-accent" />
-                    </div>
-                    <span className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary">
+                    <Avatar className={`h-12 w-12 ${company.color}`}>
+                      <AvatarFallback className="text-white font-bold text-sm">
+                        {company.logo}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Badge variant={company.stage === "Series A" ? "default" : "secondary"}>
                       {company.stage}
-                    </span>
+                    </Badge>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold mb-1">{company.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{company.description}</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-semibold">{company.name}</h3>
+                      <a 
+                        href={company.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-accent transition-colors opacity-0 group-hover:opacity-100"
+                        aria-label={`Visit ${company.name} website`}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">{company.description}</p>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground pt-4 border-t">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>{company.metrics.raised}</span>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Founders:</span> {company.founders.join(", ")}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t">
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-accent">{company.metrics.raised}</div>
+                      <div className="text-xs text-muted-foreground">Raised</div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{company.metrics.team}</span>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold">{company.metrics.team}</div>
+                      <div className="text-xs text-muted-foreground">Team</div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{company.year}</span>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-green-600">{company.metrics.mrr}</div>
+                      <div className="text-xs text-muted-foreground">MRR</div>
                     </div>
                   </div>
 
-                  <div>
-                    <span className="text-xs font-medium text-accent">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-accent/10 text-accent">
                       {company.sector}
                     </span>
+                    <span className="text-xs text-muted-foreground">{company.year}</span>
                   </div>
                 </CardContent>
               </Card>

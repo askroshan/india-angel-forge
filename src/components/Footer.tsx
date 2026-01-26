@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Linkedin, Twitter, Mail } from "lucide-react";
+import { Linkedin, Twitter } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="bg-primary text-primary-foreground">
+    <footer className="bg-primary text-primary-foreground" role="contentinfo">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -14,15 +14,27 @@ const Footer = () => {
             <p className="text-sm text-primary-foreground/80">
               India's largest angel network connecting accredited investors with exceptional founders.
             </p>
+            <p className="text-xs text-primary-foreground/60">
+              A product of Kosansh Solutions Inc
+            </p>
             <div className="flex space-x-4">
-              <a href="#" className="hover:text-accent transition-colors">
+              <a 
+                href="https://linkedin.com/company/indiaangelforum" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-accent transition-colors"
+                aria-label="Follow us on LinkedIn"
+              >
                 <Linkedin className="h-5 w-5" />
               </a>
-              <a href="#" className="hover:text-accent transition-colors">
+              <a 
+                href="https://twitter.com/indiaangelforum" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-accent transition-colors"
+                aria-label="Follow us on Twitter"
+              >
                 <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-accent transition-colors">
-                <Mail className="h-5 w-5" />
               </a>
             </div>
           </div>
@@ -91,9 +103,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
-                  Contact
-                </a>
+                <Link to="/contact" className="hover:text-accent transition-colors">
+                  Contact Us
+                </Link>
               </li>
             </ul>
           </div>
@@ -101,18 +113,18 @@ const Footer = () => {
 
         <div className="mt-12 pt-8 border-t border-primary-foreground/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-sm text-primary-foreground/60">
-            © 2025 India Angel Forum. All rights reserved.
+            © {new Date().getFullYear()} India Angel Forum. All rights reserved.
           </p>
           <div className="flex space-x-6 text-sm text-primary-foreground/60">
-            <a href="#" className="hover:text-accent transition-colors">
+            <Link to="/terms" className="hover:text-accent transition-colors">
               Terms & Policies
-            </a>
-            <a href="#" className="hover:text-accent transition-colors">
+            </Link>
+            <Link to="/privacy" className="hover:text-accent transition-colors">
               Privacy Policy
-            </a>
-            <a href="#" className="hover:text-accent transition-colors">
+            </Link>
+            <Link to="/code-of-conduct" className="hover:text-accent transition-colors">
               Code of Conduct
-            </a>
+            </Link>
           </div>
         </div>
       </div>
