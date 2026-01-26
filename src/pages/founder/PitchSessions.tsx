@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,19 +20,17 @@ import {
 
 interface PitchSession {
   id: string;
-  scheduled_at: string;
-  duration_minutes: number;
+  scheduledDate: string;
+  duration: number;
   status: string;
-  meeting_link?: string;
+  meetingLink?: string;
   notes?: string;
-  investor: {
-    full_name: string;
-    email: string;
-  };
+  investorId: string;
 }
 
 export default function PitchSessions() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<PitchSession[]>([]);
@@ -41,10 +39,10 @@ export default function PitchSessions() {
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   
   const [scheduleData, setScheduleData] = useState({
-    investor_email: '',
-    scheduled_at: '',
-    duration_minutes: '30',
-    meeting_link: '',
+    investorId: '',
+    scheduledDate: '',
+    duration: '30',
+    meetingLink: '',
   });
   
   const [notes, setNotes] = useState('');
@@ -55,29 +53,26 @@ export default function PitchSessions() {
 
   const fetchSessions = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('pitch_sessions')
-        .select(`
-          *,
-          investor:investor_id(full_name, email)
-        `)
-        .eq('founder_id', session.user.id)
-        .order('scheduled_at', { ascending: false });
+      const response = await fetch('/api/pitch/sessions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching sessions:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
-      if (data) {
-        setSessions(data as any);
-      }
+      const data = await response.json();
+      setSessions(data || []);
 
     } catch (err) {
       console.error('Error:', err);
@@ -88,62 +83,57 @@ export default function PitchSessions() {
 
   const handleScheduleSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
 
-      // Find investor by email
-      const { data: investorData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', scheduleData.investor_email)
-        .single();
+      const response = await fetch('/api/pitch/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          investorId: scheduleData.investorId,
+          scheduledDate: scheduleData.scheduledDate,
+          duration: parseInt(scheduleData.duration),
+          meetingLink: scheduleData.meetingLink || null,
+        }),
+      });
 
-      if (!investorData) {
-        alert('Investor not found');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('pitch_sessions')
-        .insert({
-          founder_id: session.user.id,
-          investor_id: investorData.id,
-          scheduled_at: scheduleData.scheduled_at,
-          duration_minutes: parseInt(scheduleData.duration_minutes),
-          meeting_link: scheduleData.meeting_link || null,
-          status: 'scheduled',
-        });
-
-      if (error) {
-        console.error('Error scheduling session:', error);
+      if (!response.ok) {
+        alert('Failed to schedule session');
         return;
       }
 
       setShowScheduleDialog(false);
       setScheduleData({
-        investor_email: '',
-        scheduled_at: '',
-        duration_minutes: '30',
-        meeting_link: '',
+        investorId: '',
+        scheduledDate: '',
+        duration: '30',
+        meetingLink: '',
       });
       fetchSessions();
 
     } catch (err) {
       console.error('Error:', err);
+      alert('Failed to schedule session');
     }
   };
 
   const handleSaveNotes = async () => {
-    if (!selectedSession) return;
+    if (!selectedSession || !token) return;
 
     try {
-      const { error } = await supabase
-        .from('pitch_sessions')
-        .update({ notes })
-        .eq('id', selectedSession.id);
+      const response = await fetch(`/api/pitch/sessions/${selectedSession.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes }),
+      });
 
-      if (error) {
-        console.error('Error saving notes:', error);
+      if (!response.ok) {
+        alert('Failed to save notes');
         return;
       }
 
@@ -233,22 +223,21 @@ export default function PitchSessions() {
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="investor_email">Investor Email</Label>
+                  <Label htmlFor="investor_id">Investor ID</Label>
                   <Input
-                    id="investor_email"
-                    type="email"
-                    value={scheduleData.investor_email}
-                    onChange={(e) => setScheduleData({ ...scheduleData, investor_email: e.target.value })}
-                    placeholder="investor@example.com"
+                    id="investor_id"
+                    value={scheduleData.investorId}
+                    onChange={(e) => setScheduleData({ ...scheduleData, investorId: e.target.value })}
+                    placeholder="Investor User ID"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="scheduled_at">Date and Time</Label>
+                  <Label htmlFor="scheduled_date">Date and Time</Label>
                   <Input
-                    id="scheduled_at"
+                    id="scheduled_date"
                     type="datetime-local"
-                    value={scheduleData.scheduled_at}
-                    onChange={(e) => setScheduleData({ ...scheduleData, scheduled_at: e.target.value })}
+                    value={scheduleData.scheduledDate}
+                    onChange={(e) => setScheduleData({ ...scheduleData, scheduledDate: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -256,8 +245,8 @@ export default function PitchSessions() {
                   <Input
                     id="duration"
                     type="number"
-                    value={scheduleData.duration_minutes}
-                    onChange={(e) => setScheduleData({ ...scheduleData, duration_minutes: e.target.value })}
+                    value={scheduleData.duration}
+                    onChange={(e) => setScheduleData({ ...scheduleData, duration: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -265,8 +254,8 @@ export default function PitchSessions() {
                   <Input
                     id="meeting_link"
                     type="url"
-                    value={scheduleData.meeting_link}
-                    onChange={(e) => setScheduleData({ ...scheduleData, meeting_link: e.target.value })}
+                    value={scheduleData.meetingLink}
+                    onChange={(e) => setScheduleData({ ...scheduleData, meetingLink: e.target.value })}
                     placeholder="https://meet.google.com/..."
                   />
                 </div>
@@ -288,7 +277,7 @@ export default function PitchSessions() {
                   <div className="space-y-3 flex-1">
                     <div className="flex items-center gap-3">
                       <h3 className="text-lg font-semibold">
-                        {session.investor.full_name || session.investor.email}
+                        Investor {session.investorId}
                       </h3>
                       {getStatusBadge(session.status)}
                     </div>
@@ -296,19 +285,19 @@ export default function PitchSessions() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {formatDateTime(session.scheduled_at)}
+                        {formatDateTime(session.scheduledDate)}
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        {session.duration_minutes} minutes
+                        {session.duration} minutes
                       </div>
                     </div>
 
-                    {session.meeting_link && (
+                    {session.meetingLink && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(session.meeting_link, '_blank')}
+                        onClick={() => window.open(session.meetingLink, '_blank')}
                       >
                         <Video className="h-4 w-4 mr-2" />
                         Join Meeting
@@ -332,7 +321,7 @@ export default function PitchSessions() {
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-3">
                         <h3 className="text-lg font-semibold">
-                          {session.investor.full_name || session.investor.email}
+                          Investor {session.investorId}
                         </h3>
                         {getStatusBadge(session.status)}
                       </div>
@@ -340,11 +329,11 @@ export default function PitchSessions() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          {formatDateTime(session.scheduled_at)}
+                          {formatDateTime(session.scheduledDate)}
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          {session.duration_minutes} minutes
+                          {session.duration} minutes
                         </div>
                       </div>
                     </div>

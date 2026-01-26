@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,21 +18,23 @@ import {
 
 interface PitchMaterial {
   id: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  file_path: string;
-  uploaded_at: string;
+  title: string;
+  materialType: string;
+  filePath: string;
+  fileSize: number;
+  uploadedAt: string;
 }
 
 export default function PitchMaterials() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [materials, setMaterials] = useState<PitchMaterial[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [title, setTitle] = useState('');
 
   useEffect(() => {
     fetchMaterials();
@@ -40,26 +42,26 @@ export default function PitchMaterials() {
 
   const fetchMaterials = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!token) {
         navigate('/auth');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('pitch_materials')
-        .select('*')
-        .eq('founder_id', session.user.id)
-        .order('uploaded_at', { ascending: false });
+      const response = await fetch('/api/pitch/materials', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching materials:', error);
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/auth');
+        }
         return;
       }
 
-      if (data) {
-        setMaterials(data);
-      }
+      const data = await response.json();
+      setMaterials(data || []);
 
     } catch (err) {
       console.error('Error:', err);
@@ -75,50 +77,33 @@ export default function PitchMaterials() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !token) return;
 
     try {
       setUploading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('materialType', selectedFile.type);
+      formData.append('title', title || selectedFile.name);
+      formData.append('description', '');
 
-      // Upload to storage
-      const filePath = `${session.user.id}/${Date.now()}-${selectedFile.name}`;
-      const { data: storageData, error: storageError } = await supabase.storage
-        .from('pitch-materials')
-        .upload(filePath, selectedFile);
+      const response = await fetch('/api/pitch/materials', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      if (storageError) {
-        console.error('Storage error:', storageError);
+      if (!response.ok) {
         alert('Failed to upload file');
-        return;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('pitch-materials')
-        .getPublicUrl(filePath);
-
-      // Save metadata to database
-      const { error: dbError } = await supabase
-        .from('pitch_materials')
-        .insert({
-          founder_id: session.user.id,
-          file_name: selectedFile.name,
-          file_type: selectedFile.type,
-          file_size: selectedFile.size,
-          file_path: filePath,
-        });
-
-      if (dbError) {
-        console.error('Database error:', dbError);
-        alert('Failed to save file metadata');
         return;
       }
 
       setShowUploadDialog(false);
       setSelectedFile(null);
+      setTitle('');
       fetchMaterials();
 
     } catch (err) {
@@ -131,54 +116,29 @@ export default function PitchMaterials() {
 
   const handleDownload = async (material: PitchMaterial) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('pitch-materials')
-        .download(material.file_path);
-
-      if (error) {
-        console.error('Download error:', error);
-        alert('Failed to download file');
-        return;
-      }
-
-      // Create download link
-      const url = window.URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = material.file_name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
+      window.open(`/uploads/${material.filePath}`, '_blank');
     } catch (err) {
       console.error('Error:', err);
+      alert('Failed to download file');
     }
   };
 
   const handleDelete = async (material: PitchMaterial) => {
-    if (!confirm(`Are you sure you want to delete ${material.file_name}?`)) {
+    if (!confirm(`Are you sure you want to delete ${material.title}?`)) {
       return;
     }
 
     try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('pitch-materials')
-        .remove([material.file_path]);
+      if (!token) return;
 
-      if (storageError) {
-        console.error('Storage error:', storageError);
-      }
+      const response = await fetch(`/api/pitch/materials/${material.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('pitch_materials')
-        .delete()
-        .eq('id', material.id);
-
-      if (dbError) {
-        console.error('Database error:', dbError);
+      if (!response.ok) {
         alert('Failed to delete file');
         return;
       }
@@ -190,8 +150,8 @@ export default function PitchMaterials() {
     }
   };
 
-  const getFileIcon = (fileType: string) => {
-    if (fileType.includes('pdf')) {
+  const getFileIcon = (materialType: string) => {
+    if (materialType.includes('pdf')) {
       return <FileText className="h-8 w-8 text-red-500" />;
     } else if (fileType.includes('sheet') || fileType.includes('excel')) {
       return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
@@ -253,6 +213,15 @@ export default function PitchMaterials() {
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Pitch Deck Q1 2026"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="file">Choose File</Label>
                   <Input
                     id="file"
@@ -286,20 +255,20 @@ export default function PitchMaterials() {
                 <div className="space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      {getFileIcon(material.file_type)}
+                      {getFileIcon(material.materialType)}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate" title={material.file_name}>
-                          {material.file_name}
+                        <h3 className="font-semibold truncate" title={material.title}>
+                          {material.title}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {formatFileSize(material.file_size)}
+                          {formatFileSize(material.fileSize)}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="text-sm text-muted-foreground">
-                    Uploaded: {formatDate(material.uploaded_at)}
+                    Uploaded: {formatDate(material.uploadedAt)}
                   </div>
 
                   <div className="flex gap-2">
