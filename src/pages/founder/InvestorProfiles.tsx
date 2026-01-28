@@ -60,8 +60,7 @@ export default function InvestorProfiles() {
   const { data: investors = [], isLoading, error } = useQuery<InvestorProfile[]>({
     queryKey: ['investors'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/investors');
-      return response.data;
+      return await apiClient.get<InvestorProfile[]>('/api/investors');
     },
   });
 

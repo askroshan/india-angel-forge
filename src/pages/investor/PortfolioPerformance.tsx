@@ -65,8 +65,8 @@ const PortfolioPerformance = () => {
   const { data: performanceData, isLoading, error } = useQuery<PerformanceData>({
     queryKey: ['portfolio-performance'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/portfolio/performance');
-      return response.data;
+      const response = await apiClient.get<PerformanceData>('/api/portfolio/performance');
+      return response;
     },
   });
 

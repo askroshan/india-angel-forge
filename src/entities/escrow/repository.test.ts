@@ -166,16 +166,19 @@ describe('EscrowRepository', () => {
   describe('getEscrowAccountByDeal', () => {
     it('should fetch escrow account for a deal', async () => {
       mockApiClient.list.mockResolvedValue({ 
-        data: [mockEscrowAccount], 
+        data: {
+          data: [mockEscrowAccount],
+          total: 1,
+          page: 1,
+          pageSize: 1,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 1,
       });
 
       const result = await repository.getEscrowAccountByDeal('deal-456');
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('escrow_accounts', { dealId: 'deal-456' });
+      expect(mockApiClient.list).toHaveBeenCalledWith('escrow_accounts', { filters: { dealId: 'deal-456' } });
       expect(result.data).toEqual(mockEscrowAccount);
     });
   });
@@ -183,7 +186,7 @@ describe('EscrowRepository', () => {
   describe('activateEscrowAccount', () => {
     it('should activate a pending escrow account', async () => {
       const pendingEscrow = { ...mockEscrowAccount, status: 'pending-setup' as const };
-      mockApiClient.get.mockResolvedValue({ data: pendingEscrow, error: null });
+      mockApiClient.get.mockResolvedValue(pendingEscrow);
       
       const activeEscrow = { ...pendingEscrow, status: 'active' as const };
       mockApiClient.update.mockResolvedValue({ data: activeEscrow, error: null });
@@ -199,7 +202,7 @@ describe('EscrowRepository', () => {
     });
 
     it('should not activate an already active escrow', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockEscrowAccount, error: null }); // Already active
+      mockApiClient.get.mockResolvedValue(mockEscrowAccount); // Already active
 
       const result = await repository.activateEscrowAccount('escrow-123', {
         accountNumber: '1234567890',
@@ -214,7 +217,7 @@ describe('EscrowRepository', () => {
 
   describe('createVirtualAccount', () => {
     it('should create a VA for an investor commitment', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockEscrowAccount, error: null });
+      mockApiClient.get.mockResolvedValue(mockEscrowAccount);
       mockApiClient.create.mockResolvedValue({ data: mockVirtualAccount, error: null });
 
       const input: CreateVirtualAccountInput = {
@@ -237,7 +240,7 @@ describe('EscrowRepository', () => {
 
     it('should fail if escrow account is not active', async () => {
       const pendingEscrow = { ...mockEscrowAccount, status: 'pending-setup' as const };
-      mockApiClient.get.mockResolvedValue({ data: pendingEscrow, error: null });
+      mockApiClient.get.mockResolvedValue(pendingEscrow);
 
       const input: CreateVirtualAccountInput = {
         escrowAccountId: 'escrow-123',
@@ -256,11 +259,14 @@ describe('EscrowRepository', () => {
   describe('getVirtualAccountByCommitment', () => {
     it('should fetch VA for a commitment', async () => {
       mockApiClient.list.mockResolvedValue({ 
-        data: [mockVirtualAccount], 
+        data: {
+          data: [mockVirtualAccount],
+          total: 1,
+          page: 1,
+          pageSize: 1,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 1,
       });
 
       const result = await repository.getVirtualAccountByCommitment('commitment-012');
@@ -271,7 +277,7 @@ describe('EscrowRepository', () => {
 
   describe('recordPayment', () => {
     it('should record payment and update VA status', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockVirtualAccount, error: null });
+      mockApiClient.get.mockResolvedValue(mockVirtualAccount);
       
       const paidVA = { 
         ...mockVirtualAccount, 
@@ -298,7 +304,7 @@ describe('EscrowRepository', () => {
 
     it('should fail for expired VA', async () => {
       const expiredVA = { ...mockVirtualAccount, status: 'expired' as VirtualAccountStatus };
-      mockApiClient.get.mockResolvedValue({ data: expiredVA, error: null });
+      mockApiClient.get.mockResolvedValue(expiredVA);
 
       const result = await repository.recordPayment({
         virtualAccountId: 'va-123',
@@ -318,7 +324,7 @@ describe('EscrowRepository', () => {
         status: 'payment-received' as VirtualAccountStatus,
         receivedAmount: 500000,
       };
-      mockApiClient.get.mockResolvedValue({ data: paidVA, error: null });
+      mockApiClient.get.mockResolvedValue(paidVA);
       
       const verifiedVA = { ...paidVA, status: 'verified' as VirtualAccountStatus };
       mockApiClient.update.mockResolvedValue({ data: verifiedVA, error: null });
@@ -334,7 +340,7 @@ describe('EscrowRepository', () => {
         status: 'payment-received' as VirtualAccountStatus,
         receivedAmount: 400000, // Less than expected 500000
       };
-      mockApiClient.get.mockResolvedValue({ data: mismatchedVA, error: null });
+      mockApiClient.get.mockResolvedValue(mismatchedVA);
 
       const result = await repository.verifyPayment('va-123', 'admin-456');
 
@@ -359,27 +365,33 @@ describe('EscrowRepository', () => {
       };
 
       mockApiClient.list.mockResolvedValue({ 
-        data: [mockTransaction], 
+        data: {
+          data: [mockTransaction],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 20,
       });
 
       const result = await repository.getPaymentTransactions('va-123');
 
-      expect(result.data).toHaveLength(1);
+      expect(result.data?.data).toHaveLength(1);
     });
   });
 
   describe('getDealEscrowSummary', () => {
     it('should return summary of all escrow funds for a deal', async () => {
       mockApiClient.list.mockResolvedValueOnce({ 
-        data: [mockEscrowAccount], 
+        data: {
+          data: [mockEscrowAccount],
+          total: 1,
+          page: 1,
+          pageSize: 1,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 1,
       });
 
       const virtualAccounts = [
@@ -387,11 +399,14 @@ describe('EscrowRepository', () => {
         { ...mockVirtualAccount, id: 'va-456', receivedAmount: 1000000, status: 'verified' },
       ];
       mockApiClient.list.mockResolvedValueOnce({ 
-        data: virtualAccounts, 
+        data: {
+          data: virtualAccounts,
+          total: 2,
+          page: 1,
+          pageSize: 20,
+          hasMore: false,
+        },
         error: null,
-        total: 2,
-        page: 1,
-        pageSize: 20,
       });
 
       const result = await repository.getDealEscrowSummary('deal-456');
@@ -404,10 +419,7 @@ describe('EscrowRepository', () => {
 
   describe('createDisbursement', () => {
     it('should create disbursement request', async () => {
-      mockApiClient.get.mockResolvedValue({ 
-        data: { ...mockEscrowAccount, currentBalance: 5000000 }, 
-        error: null 
-      });
+      mockApiClient.get.mockResolvedValue({ ...mockEscrowAccount, currentBalance: 5000000 });
       
       mockApiClient.create.mockResolvedValue({ 
         data: { id: 'disbursement-123', status: 'pending' }, 
@@ -432,10 +444,7 @@ describe('EscrowRepository', () => {
     });
 
     it('should fail if disbursement exceeds balance', async () => {
-      mockApiClient.get.mockResolvedValue({ 
-        data: { ...mockEscrowAccount, currentBalance: 1000000 }, 
-        error: null 
-      });
+      mockApiClient.get.mockResolvedValue({ ...mockEscrowAccount, currentBalance: 1000000 });
 
       const result = await repository.createDisbursement({
         escrowAccountId: 'escrow-123',

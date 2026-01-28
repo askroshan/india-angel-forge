@@ -84,33 +84,36 @@ export default function ExpressInterest() {
   const { data: deal, isLoading, error } = useQuery<Deal>({
     queryKey: ['deal', dealId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/deals/${dealId}`);
-      return response.data;
+      const data = await apiClient.get<Deal>(`/api/deals/${dealId}`);
+      return data;
     },
     enabled: !!dealId,
   });
 
   // Submit interest mutation
   const submitInterestMutation = useMutation({
-    mutationFn: async (data: { deal_id: string; investment_amount: number }) => {
-      const response = await apiClient.post('/api/deal-interests', data);
-      return response.data;
+    mutationFn: async (interestData: { deal_id: string; investment_amount: number }) => {
+      const result = await apiClient.post<DealInterest>('/api/deal-interests', interestData);
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      return result.data as DealInterest;
     },
     onSuccess: (data: DealInterest) => {
       setSubmitted(true);
       toast.success('Interest submitted successfully');
       
       // Show additional success messages based on response
-      if (data.sponsor_notified) {
+      if ((data as DealInterest & { sponsor_notified?: boolean }).sponsor_notified) {
         toast.success('Deal sponsor has been notified');
       }
-      if (data.data_room_access) {
+      if ((data as DealInterest & { data_room_access?: boolean }).data_room_access) {
         toast.success('You now have access to the data room');
       }
       toast.success('Deal added to your pipeline');
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Failed to submit interest';
+    onError: (error: unknown) => {
+      const message = (error as Error)?.message || 'Failed to submit interest';
       setFormError(message);
       toast.error(message);
     },

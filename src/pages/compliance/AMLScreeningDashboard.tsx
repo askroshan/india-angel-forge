@@ -18,6 +18,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +39,7 @@ interface AMLScreening {
   screeningStatus: 'pending' | 'clear' | 'flagged' | 'rejected';
   screeningProvider?: string;
   matchScore?: number;
-  screeningResults?: any;
+  screeningResults?: Record<string, unknown>;
   flaggedReasons?: string[];
   reviewedBy?: string;
   reviewedAt?: string;
@@ -73,16 +74,19 @@ export default function AMLScreeningDashboard() {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!accessDenied) {
       fetchScreenings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessDenied]);
 
   useEffect(() => {
     filterScreenings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenings, filterStatus, searchQuery]);
 
   const checkAccess = async () => {
@@ -117,10 +121,11 @@ export default function AMLScreeningDashboard() {
 
       const data = await response.json();
       setScreenings(data || []);
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load AML screenings',
+        description: err.message || 'Failed to load AML screenings',
         variant: 'destructive',
       });
     } finally {
@@ -174,10 +179,11 @@ export default function AMLScreeningDashboard() {
       });
 
       fetchScreenings();
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to initiate screening',
+        description: err.message || 'Failed to initiate screening',
         variant: 'destructive',
       });
     }
@@ -241,10 +247,11 @@ export default function AMLScreeningDashboard() {
 
       handleCloseDialog();
       fetchScreenings();
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update screening',
+        description: err.message || 'Failed to update screening',
         variant: 'destructive',
       });
     }

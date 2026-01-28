@@ -69,10 +69,12 @@ const DealPipeline = () => {
 
   useEffect(() => {
     checkAccessAndLoadPipeline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     filterInterests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interests, statusFilter]);
 
   const checkAccessAndLoadPipeline = async () => {
@@ -106,7 +108,7 @@ const DealPipeline = () => {
       if (acceptedWithSPV.length > 0) {
         await fetchSPVDetails(acceptedWithSPV.map((i: DealInterest) => i.spvId!));
       }
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to load deal pipeline',
@@ -320,8 +322,8 @@ const DealPipeline = () => {
         <div className="space-y-4">
           {filteredInterests.map((interest) => {
             const deal = interest.deal;
-            const daysLeft = getDaysUntilClosing(deal.closing_date);
-            const spv = interest.spv_id ? spvDetails[interest.spv_id] : null;
+            const daysLeft = getDaysUntilClosing(deal.closingDate);
+            const spv = interest.spvId ? spvDetails[interest.spvId] : null;
 
             return (
               <Card key={interest.id}>
@@ -331,7 +333,7 @@ const DealPipeline = () => {
                       <div className="flex items-center gap-3 mb-2">
                         <CardTitle className="text-xl">{deal.title}</CardTitle>
                         {getStatusBadge(interest.status)}
-                        {getDealStatusBadge(deal.deal_status)}
+                        {getDealStatusBadge(deal.dealStatus)}
                       </div>
                       <CardDescription className="text-base">
                         {deal.companyName}

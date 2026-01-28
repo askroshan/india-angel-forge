@@ -112,9 +112,7 @@ describe('US-MODERATOR-003: Manage Content Flags', () => {
     window.confirm = vi.fn(() => true);
 
     // Default mock implementation
-    vi.mocked(apiClient.apiClient.get).mockResolvedValue({
-      data: mockFlags,
-    });
+    vi.mocked(apiClient.apiClient.get).mockResolvedValue(mockFlags);
   });
 
   const renderComponent = () => {
@@ -137,7 +135,7 @@ describe('US-MODERATOR-003: Manage Content Flags', () => {
     });
 
     it('should display empty state when no flags exist', async () => {
-      vi.mocked(apiClient.apiClient.get).mockResolvedValueOnce({ data: [] });
+      vi.mocked(apiClient.apiClient.get).mockResolvedValueOnce([]);
 
       renderComponent();
 
@@ -191,9 +189,10 @@ describe('US-MODERATOR-003: Manage Content Flags', () => {
     it('should allow removing inappropriate content', async () => {
       const user = userEvent.setup();
       
-      vi.mocked(apiClient.apiClient.delete).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.apiClient.delete).mockResolvedValueOnce({ data: null, error: null });
       vi.mocked(apiClient.apiClient.patch).mockResolvedValueOnce({
         data: { ...mockFlags[0], status: 'REVIEWED', resolution: 'REMOVED' },
+        error: null,
       });
 
       renderComponent();

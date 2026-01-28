@@ -46,6 +46,7 @@ export default function ApplicationStatus() {
 
   useEffect(() => {
     fetchApplication();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchApplication = async () => {

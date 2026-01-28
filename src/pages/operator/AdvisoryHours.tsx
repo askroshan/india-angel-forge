@@ -89,8 +89,7 @@ const AdvisoryHours = () => {
   } = useQuery<TimeEntry[]>({
     queryKey: ['advisory-hours', user?.id],
     queryFn: async () => {
-      const response = await apiClient.get('/api/operator/advisory-hours');
-      return response.data;
+      return await apiClient.get<TimeEntry[]>('/api/operator/advisory-hours');
     },
   });
 
@@ -101,8 +100,7 @@ const AdvisoryHours = () => {
   } = useQuery<HoursSummary>({
     queryKey: ['advisory-hours-summary', user?.id],
     queryFn: async () => {
-      const response = await apiClient.get('/api/operator/advisory-hours/summary');
-      return response.data;
+      return await apiClient.get<HoursSummary>('/api/operator/advisory-hours/summary');
     },
   });
 
@@ -110,6 +108,7 @@ const AdvisoryHours = () => {
   const logHoursMutation = useMutation({
     mutationFn: async (data: LogHoursFormData) => {
       const response = await apiClient.post('/api/operator/advisory-hours', data);
+      if (response.error) throw new Error(response.error.message);
       return response.data;
     },
     onSuccess: () => {

@@ -49,8 +49,7 @@ export default function ContentModeration() {
   const { data: allFlags = [], isLoading, error } = useQuery<ContentFlag[]>({
     queryKey: ['content-flags'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/moderator/flags');
-      return response.data;
+      return await apiClient.get<ContentFlag[]>('/api/moderator/flags');
     },
   });
 
@@ -61,7 +60,7 @@ export default function ContentModeration() {
   // Remove content mutation
   const removeContentMutation = useMutation({
     mutationFn: async ({ flagId, contentType, contentId }: { flagId: string; contentType: string; contentId: string }) => {
-      await apiClient.delete(`/api/moderator/content/${contentType.toLowerCase()}/${contentId}`);
+      await apiClient.delete('moderator-content', `${contentType.toLowerCase()}/${contentId}`);
       return apiClient.patch(`/api/moderator/flags/${flagId}`, {
         status: 'REVIEWED',
         resolution: 'REMOVED',
@@ -120,11 +119,10 @@ export default function ContentModeration() {
   // Mark as false positive mutation
   const markFalsePositiveMutation = useMutation({
     mutationFn: async (flagId: string) => {
-      const response = await apiClient.patch(`/api/moderator/flags/${flagId}`, {
+      return await apiClient.patch<ContentFlag>(`/api/moderator/flags/${flagId}`, {
         status: 'REVIEWED',
         resolution: 'FALSE_POSITIVE',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-flags'] });

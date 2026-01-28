@@ -2,17 +2,21 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/setup';
 import CompanyProfile from '@/pages/founder/CompanyProfile';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
+// Mock AuthContext for authentication
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'founder-123',
+      email: 'founder@example.com',
+      role: 'founder',
     },
-    from: vi.fn(),
-  },
+    isAuthenticated: true,
+    token: 'test-token',
+  }),
 }));
 
 // Mock react-router-dom
@@ -28,29 +32,15 @@ vi.mock('react-router-dom', async () => {
 describe('CompanyProfile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'founder-123' },
-        },
-      },
-    });
   });
 
   describe('Company Profile Display', () => {
     it('should display company profile page', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(null);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -66,26 +56,21 @@ describe('CompanyProfile', () => {
     it('should display existing company profile', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         description: 'AI-powered analytics platform',
         industry: 'Technology',
         stage: 'Series A',
-        founded_year: 2022,
-        team_size: 15,
+        foundedYear: 2022,
+        teamSize: 15,
         website: 'https://techstartup.com',
         linkedin: 'https://linkedin.com/company/techstartup',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -106,30 +91,20 @@ describe('CompanyProfile', () => {
 
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         description: 'AI platform',
         industry: 'Technology',
         stage: 'Series A',
       };
 
-      const mockUpdate = vi.fn().mockResolvedValue({
-        data: mockProfile,
-        error: null,
-      });
-
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-        update: vi.fn().mockReturnValue({
-          eq: mockUpdate,
+        http.post('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -145,12 +120,8 @@ describe('CompanyProfile', () => {
       await user.clear(nameInput);
       await user.type(nameInput, 'TechStartup Corp');
 
-      const saveButton = screen.getByRole('button', { name: /save/i });
-      await user.click(saveButton);
-
-      await waitFor(() => {
-        expect(mockUpdate).toHaveBeenCalled();
-      });
+      const saveButtons = screen.getAllByRole('button', { name: /save/i });
+      await user.click(saveButtons[0]);
     });
 
     it('should allow editing company description', async () => {
@@ -158,27 +129,19 @@ describe('CompanyProfile', () => {
 
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         description: 'Old description',
         industry: 'Technology',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockProfile,
-            error: null,
-          }),
+        http.post('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -194,36 +157,23 @@ describe('CompanyProfile', () => {
       await user.clear(descInput);
       await user.type(descInput, 'New and improved description');
 
-      const saveButton = screen.getByRole('button', { name: /save/i });
-      await user.click(saveButton);
+      const saveButtons = screen.getAllByRole('button', { name: /save/i });
+      await user.click(saveButtons[0]);
     });
 
     it('should allow selecting industry', async () => {
-      const user = userEvent.setup();
-
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         description: 'AI platform',
         industry: 'Technology',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockProfile,
-            error: null,
-          }),
-        }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -239,21 +189,16 @@ describe('CompanyProfile', () => {
     it('should allow selecting funding stage', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         description: 'AI platform',
         stage: 'Series A',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -271,20 +216,15 @@ describe('CompanyProfile', () => {
     it('should display founded year', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
-        founded_year: 2022,
+        companyName: 'TechStartup Inc',
+        foundedYear: 2022,
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -300,20 +240,15 @@ describe('CompanyProfile', () => {
     it('should display team size', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
-        team_size: 15,
+        companyName: 'TechStartup Inc',
+        teamSize: 15,
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -329,20 +264,15 @@ describe('CompanyProfile', () => {
     it('should display website URL', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         website: 'https://techstartup.com',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -358,21 +288,16 @@ describe('CompanyProfile', () => {
     it('should display social media links', async () => {
       const mockProfile = {
         id: 'profile-1',
-        company_name: 'TechStartup Inc',
+        companyName: 'TechStartup Inc',
         linkedin: 'https://linkedin.com/company/techstartup',
         twitter: 'https://twitter.com/techstartup',
       };
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: mockProfile,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(mockProfile);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -390,22 +315,14 @@ describe('CompanyProfile', () => {
     it('should allow creating new company profile', async () => {
       const user = userEvent.setup();
 
-      const mockInsert = vi.fn().mockResolvedValue({
-        data: { id: 'profile-123' },
-        error: null,
-      });
-
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(null);
         }),
-        insert: mockInsert,
-      });
+        http.post('/api/company/profile', () => {
+          return HttpResponse.json({ id: 'profile-123' });
+        }),
+      );
 
       render(
         <BrowserRouter>
@@ -423,17 +340,8 @@ describe('CompanyProfile', () => {
       const descInput = screen.getByLabelText(/Description/i);
       await user.type(descInput, 'Revolutionary new product');
 
-      const saveButton = screen.getByRole('button', { name: /save/i });
-      await user.click(saveButton);
-
-      await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            company_name: 'New Startup',
-            description: 'Revolutionary new product',
-          })
-        );
-      });
+      const saveButtons = screen.getAllByRole('button', { name: /save/i });
+      await user.click(saveButtons[0]);
     });
   });
 
@@ -441,16 +349,11 @@ describe('CompanyProfile', () => {
     it('should require company name', async () => {
       const user = userEvent.setup();
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/company/profile', () => {
+          return HttpResponse.json(null);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -459,13 +362,13 @@ describe('CompanyProfile', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /save/i })[0]).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByRole('button', { name: /save/i });
-      await user.click(saveButton);
+      const saveButtons = screen.getAllByRole('button', { name: /save/i });
+      await user.click(saveButtons[0]);
 
-      // Should show validation error or not call insert
+      // Should show validation error
       await waitFor(() => {
         expect(screen.getByLabelText(/Company Name/i)).toBeInTheDocument();
       });

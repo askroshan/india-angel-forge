@@ -139,7 +139,8 @@ describe('DealRepository', () => {
 
   describe('getById', () => {
     it('should fetch a deal by ID', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null });
+      // GET returns data directly
+      mockApiClient.get.mockResolvedValue(mockDeal);
 
       const result = await repository.getById('deal-123');
 
@@ -149,15 +150,13 @@ describe('DealRepository', () => {
     });
 
     it('should return error for non-existent deal', async () => {
-      mockApiClient.get.mockResolvedValue({ 
-        data: null, 
-        error: { message: 'Deal not found', code: 'NOT_FOUND' } 
-      });
+      // GET throws on error
+      mockApiClient.get.mockRejectedValue(new Error('Deal not found'));
 
       const result = await repository.getById('invalid-id');
 
       expect(result.data).toBeNull();
-      expect(result.error?.code).toBe('NOT_FOUND');
+      expect(result.error).not.toBeNull();
     });
   });
 
@@ -173,7 +172,7 @@ describe('DealRepository', () => {
 
       const result = await repository.list();
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('deals', {});
+      expect(mockApiClient.list).toHaveBeenCalledWith('deals', { filters: {} });
       expect(result.data).toHaveLength(1);
     });
 
@@ -188,7 +187,7 @@ describe('DealRepository', () => {
 
       const result = await repository.list({ status: 'live' });
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('deals', { status: 'live' });
+      expect(mockApiClient.list).toHaveBeenCalledWith('deals', { filters: { status: 'live' } });
     });
 
     it('should filter deals by investment vehicle', async () => {
@@ -202,7 +201,7 @@ describe('DealRepository', () => {
 
       const result = await repository.list({ investmentVehicle: 'spv' });
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('deals', { investmentVehicle: 'spv' });
+      expect(mockApiClient.list).toHaveBeenCalledWith('deals', { filters: { investmentVehicle: 'spv' } });
     });
   });
 
@@ -254,7 +253,7 @@ describe('DealRepository', () => {
 
   describe('updateStatus', () => {
     it('should transition deal from draft to live', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null });
+      mockApiClient.get.mockResolvedValue(mockDeal);
       const liveDeal = { ...mockDeal, status: 'live' as DealStatus, publishedAt: expect.any(String) };
       mockApiClient.update.mockResolvedValue({ data: liveDeal, error: null });
 
@@ -265,7 +264,7 @@ describe('DealRepository', () => {
     });
 
     it('should reject invalid status transition', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null }); // Draft status
+      mockApiClient.get.mockResolvedValue(mockDeal); // Draft status
 
       const result = await repository.updateStatus('deal-123', 'funded'); // Invalid: draft -> funded
 
@@ -275,7 +274,7 @@ describe('DealRepository', () => {
     });
 
     it('should set publishedAt when transitioning to live', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null });
+      mockApiClient.get.mockResolvedValue(mockDeal);
       mockApiClient.update.mockResolvedValue({ 
         data: { ...mockDeal, status: 'live', publishedAt: '2026-01-25T00:00:00Z' }, 
         error: null 
@@ -293,7 +292,7 @@ describe('DealRepository', () => {
 
   describe('delete', () => {
     it('should delete a draft deal', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null }); // Draft status
+      mockApiClient.get.mockResolvedValue(mockDeal); // Draft status
       mockApiClient.delete.mockResolvedValue({ data: null, error: null });
 
       const result = await repository.delete('deal-123');
@@ -304,7 +303,7 @@ describe('DealRepository', () => {
 
     it('should not delete a live deal', async () => {
       const liveDeal = { ...mockDeal, status: 'live' as DealStatus };
-      mockApiClient.get.mockResolvedValue({ data: liveDeal, error: null });
+      mockApiClient.get.mockResolvedValue(liveDeal);
 
       const result = await repository.delete('deal-123');
 
@@ -327,24 +326,27 @@ describe('DealRepository', () => {
       };
 
       mockApiClient.list.mockResolvedValue({ 
-        data: [mockCommitment], 
+        data: {
+          data: [mockCommitment],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 20,
       });
 
       const result = await repository.getCommitments('deal-123');
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('deal_commitments', { dealId: 'deal-123' });
-      expect(result.data).toHaveLength(1);
+      expect(mockApiClient.list).toHaveBeenCalledWith('deal_commitments', { filters: { dealId: 'deal-123' } });
+      expect(result.data?.data).toHaveLength(1);
     });
   });
 
   describe('addCommitment', () => {
     it('should add a commitment to a live deal', async () => {
       const liveDeal = { ...mockDeal, status: 'live' as DealStatus };
-      mockApiClient.get.mockResolvedValue({ data: liveDeal, error: null });
+      mockApiClient.get.mockResolvedValue(liveDeal);
       
       const mockCommitment: DealCommitment = {
         id: 'commitment-123',
@@ -366,7 +368,7 @@ describe('DealRepository', () => {
 
     it('should reject commitment below minimum', async () => {
       const liveDeal = { ...mockDeal, status: 'live' as DealStatus, minCommitment: 500000 };
-      mockApiClient.get.mockResolvedValue({ data: liveDeal, error: null });
+      mockApiClient.get.mockResolvedValue(liveDeal);
 
       const result = await repository.addCommitment('deal-123', 'investor-456', 100000); // Below 5L min
 
@@ -375,7 +377,7 @@ describe('DealRepository', () => {
     });
 
     it('should reject commitment when deal is not live', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockDeal, error: null }); // Draft status
+      mockApiClient.get.mockResolvedValue(mockDeal); // Draft status
 
       const result = await repository.addCommitment('deal-123', 'investor-456', 500000);
 
@@ -420,11 +422,14 @@ describe('DealRepository', () => {
       ];
 
       mockApiClient.list.mockResolvedValue({ 
-        data: commitments, 
+        data: {
+          data: commitments,
+          total: 3,
+          page: 1,
+          pageSize: 20,
+          hasMore: false,
+        },
         error: null,
-        total: 3,
-        page: 1,
-        pageSize: 20,
       });
 
       const result = await repository.calculateDealMetrics('deal-123');

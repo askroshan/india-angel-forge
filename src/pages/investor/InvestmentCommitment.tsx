@@ -51,6 +51,7 @@ export default function InvestmentCommitment() {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interestId]);
 
   const checkAccess = async () => {
@@ -60,21 +61,19 @@ export default function InvestmentCommitment() {
         return;
       }
 
-      // Fetch deal interest
-      const { data: interestData, error: interestError } = await supabase
-        .from('deal_interests')
-        .select('*, deal:deal_id(title, company_name)')
-        .eq('id', interestId)
-        .eq('investor_id', session.user.id)
-        .single();
+      // Fetch deal interest using API
+      const interestResponse = await fetch(`/api/deal-interests/${interestId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (interestError || !interestData) {
+      if (!interestResponse.ok) {
         setHasAccess(false);
         setLoading(false);
         return;
       }
 
-      setInterest(interestData as any);
+      const interestData = await interestResponse.json();
+      setInterest(interestData);
 
       // Check if interest is accepted
       if (interestData.status !== 'accepted') {
@@ -86,27 +85,25 @@ export default function InvestmentCommitment() {
       setHasAccess(true);
 
       // Fetch SPV details if available
-      if (interestData.spv_id) {
-        const { data: spvData } = await supabase
-          .from('spvs')
-          .select('*')
-          .eq('id', interestData.spv_id)
-          .single();
-
-        if (spvData) {
+      if (interestData.spvId) {
+        const spvResponse = await fetch(`/api/spv/${interestData.spvId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (spvResponse.ok) {
+          const spvData = await spvResponse.json();
           setSpv(spvData);
         }
       }
 
       // Check for existing commitment
-      const { data: commitmentData } = await supabase
-        .from('investment_commitments')
-        .select('*')
-        .eq('interest_id', interestId)
-        .single();
-
-      if (commitmentData) {
-        setCommitment(commitmentData);
+      const commitmentResponse = await fetch(`/api/commitments?interestId=${interestId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (commitmentResponse.ok) {
+        const commitmentData = await commitmentResponse.json();
+        if (commitmentData) {
+          setCommitment(commitmentData);
+        }
       }
 
     } catch (err) {
@@ -127,21 +124,27 @@ export default function InvestmentCommitment() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) {
+        navigate('/auth');
+        return;
+      }
 
-      // Create commitment record
-      const { error: insertError } = await supabase
-        .from('investment_commitments')
-        .insert({
-          interest_id: interestId,
-          investor_id: session.user.id,
-          spv_id: interest?.spv_id,
-          amount: interest?.commitment_amount,
+      // Create commitment record via API
+      const response = await fetch('/api/commitments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          interestId: interestId,
+          spvId: interest?.spvId,
+          amount: interest?.commitmentAmount,
           status: 'pending_payment',
-        });
+        }),
+      });
 
-      if (insertError) {
+      if (!response.ok) {
         setError('Failed to submit commitment');
         return;
       }
@@ -199,7 +202,7 @@ export default function InvestmentCommitment() {
             <div>
               <h1 className="text-3xl font-bold mb-2">Investment Commitment</h1>
               <p className="text-muted-foreground">
-                {interest?.deal.company_name} - {interest?.deal.title}
+                {interest?.deal.companyName} - {interest?.deal.title}
               </p>
             </div>
 
@@ -222,9 +225,9 @@ export default function InvestmentCommitment() {
                   <div className="space-y-2">
                     <p className="font-semibold text-green-800">Status: Paid</p>
                     <p className="text-green-700">Your payment has been confirmed.</p>
-                    {commitment.payment_reference && (
+                    {commitment.paymentReference && (
                       <p className="text-sm text-green-600">
-                        Payment Reference: {commitment.payment_reference}
+                        Payment Reference: {commitment.paymentReference}
                       </p>
                     )}
                   </div>
@@ -248,18 +251,18 @@ export default function InvestmentCommitment() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Carry:</span>
-                        <span>{spv.carry_percentage}%</span>
+                        <span>{spv.carryPercentage}%</span>
                       </div>
                     </>
                   )}
                 </div>
               </div>
 
-              {commitment.status === 'pending_payment' && commitment.wire_instructions && (
+              {commitment.status === 'pending_payment' && commitment.wireInstructions && (
                 <div>
                   <h3 className="font-semibold mb-2">Wire Transfer Instructions</h3>
                   <div className="bg-gray-50 p-4 rounded-lg text-sm whitespace-pre-line">
-                    {commitment.wire_instructions}
+                    {commitment.wireInstructions}
                   </div>
                 </div>
               )}
@@ -290,7 +293,7 @@ export default function InvestmentCommitment() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Investment Commitment</h1>
             <p className="text-muted-foreground">
-              {interest?.deal.company_name} - {interest?.deal.title}
+              {interest?.deal.companyName} - {interest?.deal.title}
             </p>
           </div>
 
@@ -319,11 +322,11 @@ export default function InvestmentCommitment() {
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-blue-700">Target Amount:</span>
-                      <span className="ml-2 font-semibold">{formatCurrency(spv.target_amount)}</span>
+                      <span className="ml-2 font-semibold">{formatCurrency(spv.targetAmount)}</span>
                     </div>
                     <div>
                       <span className="text-blue-700">Carry:</span>
-                      <span className="ml-2 font-semibold">{spv.carry_percentage}%</span>
+                      <span className="ml-2 font-semibold">{spv.carryPercentage}%</span>
                     </div>
                   </div>
                 </div>
@@ -337,7 +340,7 @@ export default function InvestmentCommitment() {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Investment Amount:</span>
                 <span className="text-2xl font-bold">
-                  {interest && formatCurrency(interest.commitment_amount)}
+                  {interest && formatCurrency(interest.commitmentAmount)}
                 </span>
               </div>
               <div className="text-sm text-muted-foreground">

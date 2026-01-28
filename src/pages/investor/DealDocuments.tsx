@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,12 @@ interface DealDocument {
   fileType: string;
   uploadedBy: string;
   createdAt: string;
+  // Additional fields used in the component
+  file_name?: string;
+  file_path?: string;
+  document_type?: string;
+  file_size?: number;
+  uploaded_at?: string;
 }
 
 const DealDocuments = () => {
@@ -41,14 +48,15 @@ const DealDocuments = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   useEffect(() => {
     checkAccessAndLoadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealId]);
 
   const checkAccessAndLoadDocuments = async () => {
-    if (!token) {
+    if (!token || !user) {
       navigate('/auth');
       return;
     }
@@ -63,7 +71,7 @@ const DealDocuments = () => {
       return;
     }
 
-    await checkInterest(session.user.id);
+    await checkInterest(user.id);
   };
 
   const checkInterest = async (userId: string) => {
@@ -103,7 +111,7 @@ const DealDocuments = () => {
       if (error) throw error;
 
       setDocuments(data || []);
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to load documents',
@@ -129,7 +137,7 @@ const DealDocuments = () => {
           description: 'Opening document in new tab',
         });
       }
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Download Failed',
         description: err.message || 'Failed to download document',

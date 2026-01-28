@@ -26,26 +26,31 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { testUsers, createMockSession } from '../fixtures/testData';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/setup';
 
 import InvestorDirectory from '@/pages/founder/InvestorDirectory';
+
+// Mock AuthContext for authentication
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'founder-123',
+      email: 'founder@example.com',
+      role: 'founder',
+    },
+    isAuthenticated: true,
+    token: 'test-token',
+  }),
+}));
 
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe('US-FOUNDER-003: Access Investor Profiles', () => {
-  const founder = testUsers.founder;
-  const mockSession = createMockSession(founder);
-
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    } as any);
   });
 
   describe('Investor Directory', () => {
@@ -54,38 +59,22 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
         {
           id: 'investor-001',
           email: 'investor1@example.com',
-          full_name: 'John Investor',
-          investor_profile: {
-            focus_areas: ['HealthTech', 'FinTech'],
-            ticket_size_min: 1000000,
-            ticket_size_max: 10000000
-          }
+          fullName: 'John Investor',
+          createdAt: '2024-01-15T10:00:00Z',
         },
         {
           id: 'investor-002',
           email: 'investor2@example.com',
-          full_name: 'Jane Investor',
-          investor_profile: {
-            focus_areas: ['EdTech', 'SaaS'],
-            ticket_size_min: 500000,
-            ticket_size_max: 5000000
-          }
+          fullName: 'Jane Investor',
+          createdAt: '2024-01-16T10:00:00Z',
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: mockInvestors,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
+      server.use(
+        http.get('/api/admin/investors', () => {
+          return HttpResponse.json(mockInvestors);
+        }),
+      );
 
       renderWithRouter(<InvestorDirectory />);
 
@@ -95,156 +84,107 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
       });
     });
 
-    it('should show investor focus areas', async () => {
+    it('should show investor email', async () => {
       const mockInvestors = [
         {
           id: 'investor-001',
           email: 'investor@example.com',
-          full_name: 'Test Investor',
-          investor_profile: {
-            focus_areas: ['HealthTech', 'AI'],
-            ticket_size_min: 1000000,
-            ticket_size_max: 10000000
-          }
+          fullName: 'Test Investor',
+          createdAt: '2024-01-15T10:00:00Z',
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: mockInvestors,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
+      server.use(
+        http.get('/api/admin/investors', () => {
+          return HttpResponse.json(mockInvestors);
+        }),
+      );
 
       renderWithRouter(<InvestorDirectory />);
 
       await waitFor(() => {
-        expect(screen.getByText(/HealthTech/i)).toBeInTheDocument();
-        expect(screen.getByText(/AI/i)).toBeInTheDocument();
+        expect(screen.getByText(/investor@example.com/i)).toBeInTheDocument();
       });
     });
 
-    it('should display ticket size range', async () => {
-      const mockInvestors = [
-        {
-          id: 'investor-001',
-          email: 'investor@example.com',
-          full_name: 'Test Investor',
-          investor_profile: {
-            focus_areas: ['Tech'],
-            ticket_size_min: 1000000,
-            ticket_size_max: 10000000
-          }
-        }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: mockInvestors,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
+    it('should display empty state when no investors', async () => {
+      server.use(
+        http.get('/api/admin/investors', () => {
+          return HttpResponse.json([]);
+        }),
+      );
 
       renderWithRouter(<InvestorDirectory />);
 
       await waitFor(() => {
-        expect(screen.getByText(/0\.10 Cr/i)).toBeInTheDocument();
-        expect(screen.getByText(/1\.00 Cr/i)).toBeInTheDocument();
+        expect(screen.getByText(/No investors available/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Search and Filter', () => {
-    it('should allow searching by name', async () => {
+  describe('Search Investors', () => {
+    it('should filter investors by search query', async () => {
       const user = userEvent.setup();
       
       const mockInvestors = [
         {
           id: 'investor-001',
+          fullName: 'John Investor',
           email: 'john@example.com',
-          full_name: 'John Investor',
-          investor_profile: {
-            focus_areas: ['Tech'],
-            ticket_size_min: 1000000,
-            ticket_size_max: 10000000
-          }
+          createdAt: '2024-01-15T10:00:00Z',
+        },
+        {
+          id: 'investor-002',
+          fullName: 'Jane Smith',
+          email: 'jane@example.com',
+          createdAt: '2024-01-16T10:00:00Z',
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: mockInvestors,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
+      server.use(
+        http.get('/api/admin/investors', () => {
+          return HttpResponse.json(mockInvestors);
+        }),
+      );
 
       renderWithRouter(<InvestorDirectory />);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/search investors/i)).toBeInTheDocument();
+        expect(screen.getByText(/John Investor/i)).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/search investors/i);
+      const searchInput = screen.getByPlaceholderText(/Search investors/i);
       await user.type(searchInput, 'John');
 
-      expect(searchInput).toHaveValue('John');
+      await waitFor(() => {
+        expect(screen.getByText(/John Investor/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Jane Smith/i)).not.toBeInTheDocument();
+      });
     });
+  });
 
-    it('should filter by focus area', async () => {
-      const user = userEvent.setup();
-      
+  describe('Investor Details', () => {
+    it('should show investor member since date', async () => {
       const mockInvestors = [
         {
           id: 'investor-001',
-          email: 'investor@example.com',
-          full_name: 'Test Investor',
-          investor_profile: {
-            focus_areas: ['HealthTech'],
-            ticket_size_min: 1000000,
-            ticket_size_max: 10000000
-          }
+          fullName: 'Test Investor',
+          email: 'test@investor.com',
+          createdAt: '2024-01-15T10:00:00Z',
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({
-              data: mockInvestors,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
-      });
+      server.use(
+        http.get('/api/admin/investors', () => {
+          return HttpResponse.json(mockInvestors);
+        }),
+      );
 
       renderWithRouter(<InvestorDirectory />);
 
       await waitFor(() => {
-        expect(screen.getByText(/HealthTech/i)).toBeInTheDocument();
+        expect(screen.getByText(/Test Investor/i)).toBeInTheDocument();
+        expect(screen.getByText(/Member since/i)).toBeInTheDocument();
       });
     });
   });

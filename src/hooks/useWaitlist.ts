@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { Event } from "./useEvents";
 
 export interface WaitlistEntry {
   id: string;
@@ -26,30 +27,9 @@ export function useWaitlistPosition(eventId: string) {
     queryFn: async () => {
       if (!user) return null;
       
-      const { data, error } = await supabase
-        .from('event_waitlist')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .eq('status', 'waiting')
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      if (!data) return null;
-
-      // Calculate position
-      const { count } = await supabase
-        .from('event_waitlist')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'waiting')
-        .lt('created_at', data.created_at);
-
-      return {
-        ...data,
-        position: (count || 0) + 1
-      } as WaitlistEntry;
+      return await apiClient.get<WaitlistEntry | null>(
+        `/api/events/${eventId}/waitlist/position`
+      );
     },
     enabled: !!user && !!eventId,
   });
@@ -59,14 +39,10 @@ export function useWaitlistCount(eventId: string) {
   return useQuery({
     queryKey: ['waitlist-count', eventId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('event_waitlist')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'waiting');
-
-      if (error) throw error;
-      return count || 0;
+      const response = await apiClient.get<{ count: number }>(
+        `/api/events/${eventId}/waitlist/count`
+      );
+      return response?.count || 0;
     },
     enabled: !!eventId,
   });
@@ -92,27 +68,21 @@ export function useJoinWaitlist() {
     }) => {
       if (!user) throw new Error('Must be logged in to join waitlist');
 
-      const { data, error } = await supabase
-        .from('event_waitlist')
-        .insert({
-          event_id: eventId,
-          user_id: user.id,
-          full_name: fullName,
-          email,
-          phone: phone || null,
-          company: company || null,
-        })
-        .select()
-        .single();
+      const response = await apiClient.post<WaitlistEntry>(`/api/events/${eventId}/waitlist`, {
+        full_name: fullName,
+        email,
+        phone: phone || null,
+        company: company || null,
+      });
 
-      if (error) {
-        if (error.code === '23505') {
+      if (response.error) {
+        if (response.error.message?.includes('already on the waitlist')) {
           throw new Error('You are already on the waitlist for this event');
         }
-        throw error;
+        throw new Error(response.error.message || 'Failed to join waitlist');
       }
 
-      return data;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitlist-position'] });
@@ -130,12 +100,7 @@ export function useLeaveWaitlist() {
 
   return useMutation({
     mutationFn: async (waitlistId: string) => {
-      const { error } = await supabase
-        .from('event_waitlist')
-        .delete()
-        .eq('id', waitlistId);
-
-      if (error) throw error;
+      await apiClient.delete('event_waitlist', waitlistId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitlist-position'] });
@@ -154,17 +119,9 @@ export function useMyWaitlistEntries() {
   return useQuery({
     queryKey: ['my-waitlist', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('event_waitlist')
-        .select(`
-          *,
-          events:event_id (*)
-        `)
-        .eq('user_id', user!.id)
-        .eq('status', 'waiting');
-
-      if (error) throw error;
-      return data;
+      return await apiClient.get<(WaitlistEntry & { events: Event })[]>(
+        '/api/events/my-waitlist'
+      );
     },
     enabled: !!user,
   });

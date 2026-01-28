@@ -72,8 +72,8 @@ export default function BrowseDeals() {
   const { data: deals = [], isLoading, error } = useQuery<Deal[]>({
     queryKey: ['deals'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/deals');
-      return response.data;
+      const data = await apiClient.get<Deal[]>('/api/deals');
+      return data ?? [];
     },
   });
 

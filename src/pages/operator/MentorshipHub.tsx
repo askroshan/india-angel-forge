@@ -65,8 +65,7 @@ const MentorshipHub = () => {
   } = useQuery<Mentorship[]>({
     queryKey: ['mentorships', user?.id],
     queryFn: async () => {
-      const response = await apiClient.get('/api/operator/mentorships');
-      return response.data;
+      return await apiClient.get<Mentorship[]>('/api/operator/mentorships');
     },
   });
 
@@ -78,10 +77,9 @@ const MentorshipHub = () => {
     queryKey: ['mentorship-sessions', activeMentorship?.id],
     queryFn: async () => {
       if (!activeMentorship) return [];
-      const response = await apiClient.get(
+      return await apiClient.get<Session[]>(
         `/api/operator/mentorships/${activeMentorship.id}/sessions`
       );
-      return response.data;
     },
     enabled: !!activeMentorship,
   });
@@ -89,10 +87,9 @@ const MentorshipHub = () => {
   // Accept mentorship mutation
   const acceptMutation = useMutation({
     mutationFn: async (mentorshipId: string) => {
-      const response = await apiClient.patch(`/api/operator/mentorships/${mentorshipId}`, {
+      return await apiClient.patch<Mentorship>(`/api/operator/mentorships/${mentorshipId}`, {
         status: 'ACTIVE',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mentorships'] });
@@ -106,10 +103,9 @@ const MentorshipHub = () => {
   // Decline mentorship mutation
   const declineMutation = useMutation({
     mutationFn: async (mentorshipId: string) => {
-      const response = await apiClient.patch(`/api/operator/mentorships/${mentorshipId}`, {
+      return await apiClient.patch<Mentorship>(`/api/operator/mentorships/${mentorshipId}`, {
         status: 'DECLINED',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mentorships'] });
@@ -123,10 +119,9 @@ const MentorshipHub = () => {
   // End mentorship mutation
   const endMutation = useMutation({
     mutationFn: async (mentorshipId: string) => {
-      const response = await apiClient.patch(`/api/operator/mentorships/${mentorshipId}`, {
+      return await apiClient.patch<Mentorship>(`/api/operator/mentorships/${mentorshipId}`, {
         status: 'ENDED',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mentorships'] });

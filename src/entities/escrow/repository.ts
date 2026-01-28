@@ -63,21 +63,32 @@ export class EscrowRepository {
    * Get escrow account by ID
    */
   async getEscrowAccount(id: string): Promise<ApiResponse<EscrowAccount>> {
-    return this.apiClient.get<EscrowAccount>('escrow_accounts', id);
+    try {
+      const data = await this.apiClient.get<EscrowAccount>('escrow_accounts', id);
+      return { data, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { 
+          message: error instanceof Error ? error.message : 'Failed to fetch escrow account', 
+          code: 'FETCH_ERROR' 
+        } 
+      };
+    }
   }
 
   /**
    * Get escrow account by deal ID
    */
   async getEscrowAccountByDeal(dealId: string): Promise<ApiResponse<EscrowAccount | null>> {
-    const response = await this.apiClient.list<EscrowAccount>('escrow_accounts', { dealId });
+    const response = await this.apiClient.list<EscrowAccount>('escrow_accounts', { filters: { dealId } });
     
     if (response.error) {
       return { data: null, error: response.error };
     }
 
     return { 
-      data: response.data && response.data.length > 0 ? response.data[0] : null, 
+      data: response.data?.data && response.data.data.length > 0 ? response.data.data[0] : null, 
       error: null 
     };
   }
@@ -148,21 +159,32 @@ export class EscrowRepository {
    * Get virtual account by ID
    */
   async getVirtualAccount(id: string): Promise<ApiResponse<VirtualAccount>> {
-    return this.apiClient.get<VirtualAccount>('virtual_accounts', id);
+    try {
+      const data = await this.apiClient.get<VirtualAccount>('virtual_accounts', id);
+      return { data, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { 
+          message: error instanceof Error ? error.message : 'Failed to fetch virtual account', 
+          code: 'FETCH_ERROR' 
+        } 
+      };
+    }
   }
 
   /**
    * Get virtual account by commitment ID
    */
   async getVirtualAccountByCommitment(commitmentId: string): Promise<ApiResponse<VirtualAccount | null>> {
-    const response = await this.apiClient.list<VirtualAccount>('virtual_accounts', { commitmentId });
+    const response = await this.apiClient.list<VirtualAccount>('virtual_accounts', { filters: { commitmentId } });
     
     if (response.error) {
       return { data: null, error: response.error };
     }
 
     return { 
-      data: response.data && response.data.length > 0 ? response.data[0] : null, 
+      data: response.data?.data && response.data.data.length > 0 ? response.data.data[0] : null, 
       error: null 
     };
   }
@@ -170,8 +192,8 @@ export class EscrowRepository {
   /**
    * Get all virtual accounts for a deal
    */
-  async getVirtualAccountsByDeal(dealId: string): Promise<PaginatedResponse<VirtualAccount>> {
-    return this.apiClient.list<VirtualAccount>('virtual_accounts', { dealId });
+  async getVirtualAccountsByDeal(dealId: string): Promise<ApiResponse<PaginatedResponse<VirtualAccount>>> {
+    return this.apiClient.list<VirtualAccount>('virtual_accounts', { filters: { dealId } });
   }
 
   // ============== Payment Operations ==============
@@ -206,7 +228,7 @@ export class EscrowRepository {
       dealId: va.dealId,
       amount: input.amount,
       paymentMode: input.paymentMode,
-      status: 'received',
+      status: 'received' as const,
       utrNumber: input.utrNumber,
       senderAccountNumber: input.senderAccountNumber,
       senderIfscCode: input.senderIfscCode,
@@ -267,8 +289,8 @@ export class EscrowRepository {
   /**
    * Get payment transactions for a virtual account
    */
-  async getPaymentTransactions(vaId: string): Promise<PaginatedResponse<PaymentTransaction>> {
-    return this.apiClient.list<PaymentTransaction>('payment_transactions', { virtualAccountId: vaId });
+  async getPaymentTransactions(vaId: string): Promise<ApiResponse<PaginatedResponse<PaymentTransaction>>> {
+    return this.apiClient.list<PaymentTransaction>('payment_transactions', { filters: { virtualAccountId: vaId } });
   }
 
   // ============== Disbursement Operations ==============
@@ -322,8 +344,8 @@ export class EscrowRepository {
   /**
    * Get disbursements for a deal
    */
-  async getDisbursements(dealId: string): Promise<PaginatedResponse<Disbursement>> {
-    return this.apiClient.list<Disbursement>('disbursements', { dealId });
+  async getDisbursements(dealId: string): Promise<ApiResponse<PaginatedResponse<Disbursement>>> {
+    return this.apiClient.list<Disbursement>('disbursements', { filters: { dealId } });
   }
 
   // ============== Summary & Reporting ==============
@@ -346,24 +368,24 @@ export class EscrowRepository {
       return { data: null, error: vasResponse.error };
     }
 
-    const vas = vasResponse.data || [];
+    const vas = vasResponse.data?.data || [];
 
     // Calculate summary
     const summary: DealEscrowSummary = {
       escrowAccountId: escrow.id,
-      totalExpected: vas.reduce((sum, va) => sum + va.expectedAmount, 0),
-      totalReceived: vas.reduce((sum, va) => sum + va.receivedAmount, 0),
+      totalExpected: vas.reduce((sum: number, va: VirtualAccount) => sum + va.expectedAmount, 0),
+      totalReceived: vas.reduce((sum: number, va: VirtualAccount) => sum + va.receivedAmount, 0),
       totalVerified: vas
-        .filter(va => va.status === 'verified' || va.status === 'transferred')
-        .reduce((sum, va) => sum + va.receivedAmount, 0),
+        .filter((va: VirtualAccount) => va.status === 'verified' || va.status === 'transferred')
+        .reduce((sum: number, va: VirtualAccount) => sum + va.receivedAmount, 0),
       totalTransferred: vas
-        .filter(va => va.status === 'transferred')
-        .reduce((sum, va) => sum + va.receivedAmount, 0),
+        .filter((va: VirtualAccount) => va.status === 'transferred')
+        .reduce((sum: number, va: VirtualAccount) => sum + va.receivedAmount, 0),
       totalRefunded: vas
-        .filter(va => va.status === 'refunded')
-        .reduce((sum, va) => sum + va.receivedAmount, 0),
+        .filter((va: VirtualAccount) => va.status === 'refunded')
+        .reduce((sum: number, va: VirtualAccount) => sum + va.receivedAmount, 0),
       vaCount: vas.length,
-      paidVaCount: vas.filter(va => va.receivedAmount > 0).length,
+      paidVaCount: vas.filter((va: VirtualAccount) => va.receivedAmount > 0).length,
     };
 
     return { data: summary, error: null };

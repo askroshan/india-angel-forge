@@ -111,8 +111,8 @@ export default function UploadPitchDeck() {
   const { data: documents = [], isLoading, error } = useQuery<DealDocument[]>({
     queryKey: ['deal-documents'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/deal-documents');
-      return response.data;
+      const response = await apiClient.get<DealDocument[]>('/api/deal-documents');
+      return response;
     },
   });
 
@@ -121,8 +121,8 @@ export default function UploadPitchDeck() {
     queryKey: ['document-views', selectedDocument?.id],
     queryFn: async () => {
       if (!selectedDocument) return [];
-      const response = await apiClient.get(`/api/document-views/${selectedDocument.id}`);
-      return response.data;
+      const response = await apiClient.get<DocumentViewer[]>(`/api/document-views/${selectedDocument.id}`);
+      return response;
     },
     enabled: !!selectedDocument && isViewersDialogOpen,
   });
@@ -134,11 +134,7 @@ export default function UploadPitchDeck() {
       formData.append('file', data.file);
       formData.append('document_type', data.documentType);
       
-      const response = await apiClient.post('/api/deal-documents', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post<DealDocument>('/api/deal-documents', formData);
       return response.data;
     },
     onSuccess: () => {
@@ -158,11 +154,7 @@ export default function UploadPitchDeck() {
       const formData = new FormData();
       formData.append('file', data.file);
       
-      const response = await apiClient.put(`/api/deal-documents/${data.documentId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.put<DealDocument>(`/api/deal-documents/${data.documentId}`, formData);
       return response.data;
     },
     onSuccess: () => {

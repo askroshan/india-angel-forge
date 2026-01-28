@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -83,7 +83,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
   describe('Page Display', () => {
     it('should display deal details on the page', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -94,7 +94,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
     });
 
     it('should display express interest form', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -105,7 +105,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
     });
 
     it('should display minimum investment requirement', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -118,7 +118,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
   describe('Investment Amount Input', () => {
     it('should allow user to enter investment amount', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -135,10 +135,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should validate amount is not below minimum', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
-      vi.mocked(apiClient.post).mockRejectedValue({
-        response: { data: { message: 'Investment amount below minimum' } }
-      });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -150,12 +147,16 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
       await user.clear(input);
       await user.type(input, '100000');
 
-      const submitButton = screen.getByRole('button', { name: /Submit Interest/i });
-      await user.click(submitButton);
+      // Submit the form using fireEvent
+      const form = input.closest('form');
+      if (form) {
+        fireEvent.submit(form);
+      }
 
-      // The client-side validation should show the error immediately
-      const errorElement = await screen.findByText(/Investment amount below minimum/i, {}, { timeout: 3000 });
-      expect(errorElement).toBeInTheDocument();
+      // The client-side validation should show the error
+      await waitFor(() => {
+        expect(screen.getByText(/Investment amount below minimum/i)).toBeInTheDocument();
+      }, { timeout: 1000 });
       
       // API should not have been called due to client-side validation
       expect(apiClient.post).not.toHaveBeenCalled();
@@ -163,7 +164,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should validate amount is required', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
 
       renderWithProviders(<ExpressInterest />);
 
@@ -183,7 +184,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
   describe('Submit Interest', () => {
     it('should submit interest with valid amount', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockResolvedValue({ 
         data: { 
           id: 'interest-1',
@@ -191,7 +192,8 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
           investor_id: 'investor-1',
           investment_amount: 1000000,
           status: 'interested'
-        } 
+        },
+        error: null
       });
 
       renderWithProviders(<ExpressInterest />);
@@ -217,7 +219,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should show success message after submission', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockResolvedValue({ 
         data: { 
           id: 'interest-1',
@@ -225,7 +227,8 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
           investor_id: 'investor-1',
           investment_amount: 1000000,
           status: 'interested'
-        } 
+        },
+        error: null
       });
 
       renderWithProviders(<ExpressInterest />);
@@ -249,7 +252,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should notify deal sponsor', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockResolvedValue({ 
         data: { 
           id: 'interest-1',
@@ -258,7 +261,8 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
           investment_amount: 1000000,
           status: 'interested',
           sponsor_notified: true
-        } 
+        },
+        error: null
       });
 
       renderWithProviders(<ExpressInterest />);
@@ -281,7 +285,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should mention data room access', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockResolvedValue({ 
         data: { 
           id: 'interest-1',
@@ -290,7 +294,8 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
           investment_amount: 1000000,
           status: 'interested',
           data_room_access: true
-        } 
+        },
+        error: null
       });
 
       renderWithProviders(<ExpressInterest />);
@@ -313,7 +318,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should mention deal added to pipeline', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockResolvedValue({ 
         data: { 
           id: 'interest-1',
@@ -321,7 +326,8 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
           investor_id: 'investor-1',
           investment_amount: 1000000,
           status: 'interested'
-        } 
+        },
+        error: null
       });
 
       renderWithProviders(<ExpressInterest />);
@@ -356,7 +362,7 @@ describe('US-INVESTOR-004: Express Interest in Deal', () => {
 
     it('should handle submission error gracefully', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDeal });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDeal);
       vi.mocked(apiClient.post).mockRejectedValue({
         response: { data: { message: 'Failed to submit interest' } }
       });

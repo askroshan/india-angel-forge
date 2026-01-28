@@ -57,8 +57,8 @@ export function useEvents(filter?: 'upcoming' | 'past' | 'all') {
       const params = new URLSearchParams();
       if (filter) params.append('filter', filter);
       
-      const response = await apiClient.get<Event[]>(`/api/events?${params.toString()}`);
-      return response;
+      const data = await apiClient.get<Event[]>(`/api/events?${params.toString()}`);
+      return data || [];
     },
   });
 }
@@ -67,35 +67,31 @@ export function useEvent(slug: string) {
   return useQuery({
     queryKey: ['event', slug],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('slug', slug)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data as Event | null;
-    },
-    entry {
-        const response = await apiClient.get<Event>(`/api/events/${slug}`);
-        return response;
-      } catch (error: any) {
-        if (error.response?.status === 404) return null;
+      try {
+        return await apiClient.get<Event>(`/api/events/${slug}`);
+      } catch (error: unknown) {
+        const err = error as { response?: { status: number } };
+        if (err.response?.status === 404) return null;
         throw error;
       }
+    },
+    enabled: !!slug,
+  });
+}
+
+export function useEventRegistrations(eventId?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
     queryKey: ['event-registrations', eventId, user?.id],
     queryFn: async () => {
-      let query = supabase
-        .from('event_registrations')
-        .select('*');
-
-      if (eventId) {
-        query = query.eq('event_id', eventId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as EventRegistration[];
+      const params = new URLSearchParams();
+      if (eventId) params.append('event_id', eventId);
+      
+      const data = await apiClient.get<EventRegistration[]>(
+        `/api/events/registrations?${params.toString()}`
+      );
+      return data || [];
     },
     enabled: !!user,
   });
@@ -107,10 +103,10 @@ export function useMyRegistrations() {
   return useQuery({
     queryKey: ['my-registrations', user?.id],
     queryFn: async () => {
-      const response = await apiClient.get<(EventRegistration & { events: Event })[]>(
+      const data = await apiClient.get<(EventRegistration & { events: Event })[]>(
         '/api/events/my-registrations'
       );
-      return response;
+      return data || [];
     },
     enabled: !!user,
   });
@@ -157,8 +153,9 @@ export function useRegisterForEvent() {
       queryClient.invalidateQueries({ queryKey: ['my-registrations'] });
       toast.success('Successfully registered! Check your email for confirmation.');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || error.message || 'Failed to register';
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const message = err.response?.data?.message || err.message || 'Failed to register';
       toast.error(message);
     },
   });
@@ -169,7 +166,7 @@ export function useCancelRegistration() {
 
   return useMutation({
     mutationFn: async (registrationId: string) => {
-      await apiClient.delete(`/api/events/registrations/${registrationId}`);
+      await apiClient.delete('event_registrations', registrationId);
       return registrationId;
     },
     onSuccess: () => {
@@ -189,10 +186,10 @@ export function useRegistrationCount(eventId: string) {
   return useQuery({
     queryKey: ['registration-count', eventId],
     queryFn: async () => {
-      const response = await apiClient.get<{ count: number }>(
+      const data = await apiClient.get<{ count: number }>(
         `/api/events/${eventId}/registration-count`
       );
-      return response.count;
+      return data?.count || 0;
     },
     enabled: !!eventId,
   });

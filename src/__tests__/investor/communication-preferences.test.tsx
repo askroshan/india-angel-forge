@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import CommunicationPreferences from '@/pages/investor/CommunicationPreferences';
-import * as apiClient from '@/api/client';
+import { apiClient } from '@/api/client';
 
 // Mock API client
 vi.mock('@/api/client', () => ({
@@ -67,7 +67,7 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
     vi.clearAllMocks();
 
     // Default mock implementation
-    (apiClient.apiClient.get as any).mockResolvedValue({ data: mockPreferences });
+    vi.mocked(apiClient.get).mockResolvedValue(mockPreferences);
   });
 
   const renderComponent = () => {
@@ -84,16 +84,18 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
     it('should display communication preferences page', async () => {
       renderComponent();
 
-      expect(screen.getByText('Communication Preferences')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Communication Preferences')).toBeInTheDocument();
+      });
       
       await waitFor(() => {
-        expect(screen.getByText(/new deal/i)).toBeInTheDocument();
-        expect(screen.getByText(/portfolio updates/i)).toBeInTheDocument();
+        expect(screen.getByText('New Deal Notifications')).toBeInTheDocument();
+        expect(screen.getByText('Portfolio Updates')).toBeInTheDocument();
       });
     });
 
     it('should display error when loading preferences fails', async () => {
-      (apiClient.apiClient.get as any).mockRejectedValueOnce(new Error('Failed to load'));
+      vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('Failed to load'));
 
       renderComponent();
 
@@ -108,34 +110,35 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/new deal/i)).toBeInTheDocument();
+        expect(screen.getByText('New Deal Notifications')).toBeInTheDocument();
       });
 
-      // Check for email and in-app toggles
-      const emailLabel = screen.getByText(/email.*new deal|new deal.*email/i);
-      const inAppLabel = screen.getByText(/in-app.*new deal|new deal.*in-app/i);
-      
-      expect(emailLabel).toBeInTheDocument();
-      expect(inAppLabel).toBeInTheDocument();
+      // Check for email and in-app toggles using label text
+      expect(screen.getByText('Email notifications for new deals')).toBeInTheDocument();
+      expect(screen.getByText('In-app notifications for new deals')).toBeInTheDocument();
     });
 
     it('should allow toggling new deal email notifications', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/new deal/i)).toBeInTheDocument();
+        expect(screen.getByText('New Deal Notifications')).toBeInTheDocument();
       });
 
-      // Find email toggle for new deals and click it
-      const emailToggles = screen.getAllByRole('checkbox');
-      await user.click(emailToggles[0]); // First checkbox for new deal email
+      // Find email toggle using id
+      const emailToggle = screen.getByRole('switch', { name: /email notifications for new deals/i });
+      await user.click(emailToggle);
+
+      // Click save button to trigger API call
+      const saveButton = screen.getByRole('button', { name: /save preferences/i });
+      await user.click(saveButton);
 
       await waitFor(() => {
-        expect(apiClient.apiClient.put).toHaveBeenCalledWith(
+        expect(apiClient.put).toHaveBeenCalledWith(
           '/api/preferences',
           expect.objectContaining({
             new_deal_notifications: expect.any(Object),
@@ -150,37 +153,44 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/portfolio updates/i)).toBeInTheDocument();
+        expect(screen.getByText('Portfolio Updates')).toBeInTheDocument();
       });
 
-      // Should show frequency selector
-      expect(screen.getByText(/frequency/i)).toBeInTheDocument();
+      // Should show frequency label (lowercase 'f')
+      await waitFor(() => {
+        expect(screen.getByText('Update frequency')).toBeInTheDocument();
+      });
     });
 
     it('should allow changing portfolio update frequency', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/portfolio updates/i)).toBeInTheDocument();
+        expect(screen.getByText('Portfolio Updates')).toBeInTheDocument();
       });
 
-      // Find and click frequency dropdown
-      const frequencyButton = screen.getByRole('combobox', { name: /frequency|portfolio.*frequency/i });
-      await user.click(frequencyButton);
+      // Find and click frequency dropdown using label
+      const frequencySelect = screen.getByRole('combobox', { name: /update frequency/i });
+      await user.click(frequencySelect);
 
       await waitFor(() => {
-        expect(screen.getByRole('option', { name: /daily/i })).toBeInTheDocument();
+        const dailyOption = screen.getByRole('option', { name: /daily/i });
+        expect(dailyOption).toBeInTheDocument();
       });
 
       const dailyOption = screen.getByRole('option', { name: /daily/i });
       await user.click(dailyOption);
 
+      // Click save button
+      const saveButton = screen.getByRole('button', { name: /save preferences/i });
+      await user.click(saveButton);
+
       await waitFor(() => {
-        expect(apiClient.apiClient.put).toHaveBeenCalled();
+        expect(apiClient.put).toHaveBeenCalled();
       });
     });
   });
@@ -190,27 +200,32 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/message.*notification/i)).toBeInTheDocument();
+        expect(screen.getByText('Message Notifications')).toBeInTheDocument();
       });
     });
 
     it('should allow toggling message notifications', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/message.*notification/i)).toBeInTheDocument();
+        expect(screen.getByText('Message Notifications')).toBeInTheDocument();
       });
 
-      const toggles = screen.getAllByRole('checkbox');
-      // Find message notification toggle (index depends on layout)
-      await user.click(toggles[4]);
+      // Find all switches and click one of them
+      const switches = screen.getAllByRole('switch');
+      // Message notification switches should be after the first two (new deal email/inapp)
+      await user.click(switches[2]);
+
+      // Click save button
+      const saveButton = screen.getByRole('button', { name: /save preferences/i });
+      await user.click(saveButton);
 
       await waitFor(() => {
-        expect(apiClient.apiClient.put).toHaveBeenCalled();
+        expect(apiClient.put).toHaveBeenCalled();
       });
     });
   });
@@ -230,7 +245,7 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
     it('should allow changing reminder hours', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
@@ -248,7 +263,7 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(apiClient.apiClient.put).toHaveBeenCalled();
+        expect(apiClient.put).toHaveBeenCalled();
       });
     });
   });
@@ -258,53 +273,49 @@ describe('US-INVESTOR-016: Set Communication Preferences', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/digest.*email/i)).toBeInTheDocument();
+        expect(screen.getByText('Digest Emails')).toBeInTheDocument();
       });
     });
 
     it('should allow enabling/disabling digest emails', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/digest.*email/i)).toBeInTheDocument();
+        expect(screen.getByText('Digest Emails')).toBeInTheDocument();
       });
 
-      const digestToggle = screen.getAllByRole('checkbox').find(
-        cb => cb.getAttribute('name')?.includes('digest') || 
-              cb.closest('div')?.textContent?.toLowerCase().includes('digest')
-      );
-      
-      if (digestToggle) {
-        await user.click(digestToggle);
+      // Find digest toggle by label
+      const digestToggle = screen.getByRole('switch', { name: /enable digest emails/i });
+      await user.click(digestToggle);
 
-        await waitFor(() => {
-          expect(apiClient.apiClient.put).toHaveBeenCalled();
-        });
-      }
+      // Click save button
+      const saveButton = screen.getByRole('button', { name: /save preferences/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(apiClient.put).toHaveBeenCalled();
+      });
     });
 
     it('should allow changing digest frequency', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.put as any).mockResolvedValueOnce({ data: { success: true } });
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true }, error: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/digest.*email/i)).toBeInTheDocument();
+        expect(screen.getByText('Digest Emails')).toBeInTheDocument();
       });
 
       // Find digest frequency dropdown
-      const frequencyDropdowns = screen.getAllByRole('combobox');
-      const digestFrequency = frequencyDropdowns.find(
-        dd => dd.getAttribute('name')?.includes('digest')
-      ) || frequencyDropdowns[frequencyDropdowns.length - 1];
-
-      await user.click(digestFrequency);
+      const frequencySelects = screen.getAllByRole('combobox');
+      // Digest frequency should be the last select
+      await user.click(frequencySelects[frequencySelects.length - 1]);
 
       await waitFor(() => {
         const options = screen.getAllByRole('option');

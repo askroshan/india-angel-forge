@@ -137,8 +137,8 @@ General community members with access to educational content and events (not cov
 - WHEN I reject with a reason
 - THEN the applicant is notified with feedback
 
-**Implementation Status:** ⏳ Pending  
-**Test Coverage:** 12 test cases  
+**Implementation Status:** 🟡 Partially Complete (16/26 tests passing - 62%)  
+**Test Coverage:** 26 test cases  
 **Database Tables:** `investor_applications`, `founder_applications`
 
 ---
@@ -156,8 +156,8 @@ General community members with access to educational content and events (not cov
 - AND user growth over time charts
 - AND I can filter by date range
 
-**Implementation Status:** ⏳ Pending  
-**Test Coverage:** 10 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** 10 test cases (10/10 passing - 100%)  
 **Database Tables:** Aggregated from multiple tables
 
 ---
@@ -720,8 +720,8 @@ General community members with access to educational content and events (not cov
 - AND I can see who viewed documents
 - AND I can update documents
 
-**Implementation Status:** ⏳ Pending  
-**Test Coverage:** 12 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** 12 test cases (12/12 passing - 100%)  
 **Database Tables:** `deal_documents`
 
 ---
@@ -1012,33 +1012,33 @@ All user stories must meet these requirements:
 - ✅ US-FOUNDER-002: Track Application Status
 
 ### Phase 3: SPV & Portfolio (3 weeks)
-- ⏳ US-INVESTOR-008: Create SPV
+- 🟡 US-INVESTOR-008: Create SPV (12/20 tests - 60%)
 - ⏳ US-INVESTOR-009: Invite Co-Investors to SPV
 - ⏳ US-INVESTOR-010: Track SPV Allocations
-- ⏳ US-INVESTOR-011: View Portfolio Dashboard
-- ⏳ US-INVESTOR-012: Track Portfolio Performance
-- ⏳ US-INVESTOR-013: Access Portfolio Company Updates
+- ✅ US-INVESTOR-011: View Portfolio Dashboard (16/16 tests - 100%)
+- ✅ US-INVESTOR-012: Track Portfolio Performance (13/13 tests - 100%)
+- ✅ US-INVESTOR-013: Access Portfolio Company Updates (11/11 tests - 100%)
 
 ### Phase 4: Founder & Communication (3 weeks)
-- ⏳ US-FOUNDER-003: Access Investor Profiles
-- ⏳ US-FOUNDER-004: Schedule Pitch Sessions
-- ⏳ US-FOUNDER-005: Upload Pitch Deck
+- ✅ US-FOUNDER-003: Access Investor Profiles (10/10 tests - 100%)
+- ⏳ US-FOUNDER-004: Schedule Pitch Sessions (legacy fetch API)
+- ✅ US-FOUNDER-005: Upload Pitch Deck (12/12 tests - 100%)
 - ⏳ US-FOUNDER-006: Receive Investor Feedback
-- ⏳ US-INVESTOR-014: Send Direct Messages
+- ✅ US-INVESTOR-014: Send Direct Messages (13/13 tests - 100%)
 - ⏳ US-INVESTOR-015: Create Discussion Threads
 
 ### Phase 5: Platform Operations (2 weeks)
-- ⏳ US-MODERATOR-001: Screen Founder Applications
-- ⏳ US-MODERATOR-002: Review Event Attendance
-- ⏳ US-MODERATOR-003: Manage Content Flags
-- ⏳ US-ADMIN-004: Application Review
-- ⏳ US-ADMIN-005: System Statistics
-- ✅ US-ADMIN-006: Audit Logs
+- ⏳ US-MODERATOR-001: Screen Founder Applications (0/13 tests)
+- ✅ US-MODERATOR-002: Review Event Attendance (12/12 tests - 100%)
+- ✅ US-MODERATOR-003: Manage Content Flags (13/13 tests - 100%)
+- 🟡 US-ADMIN-004: Application Review (16/26 tests - 62%)
+- ✅ US-ADMIN-005: System Statistics (10/10 tests - 100%)
+- ✅ US-ADMIN-006: Audit Logs (12/12 tests - 100%)
 
 ### Phase 6: Value-Add Features (2 weeks)
-- ⏳ US-OPERATOR-001: Offer Advisory Services
-- ⏳ US-OPERATOR-002: Track Advisory Hours
-- ⏳ US-OPERATOR-003: Mentor Startups
+- ✅ US-OPERATOR-001: Offer Advisory Services (13/13 tests - 100%)
+- ✅ US-OPERATOR-002: Track Advisory Hours (10/10 tests - 100%)
+- ✅ US-OPERATOR-003: Mentor Startups (13/13 tests - 100%)
 - ⏳ US-INVESTOR-016: Set Communication Preferences
 
 ---

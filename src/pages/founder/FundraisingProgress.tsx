@@ -46,6 +46,7 @@ export default function FundraisingProgress() {
   const [rounds, setRounds] = useState<FundraisingRound[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasCompanyProfile, setHasCompanyProfile] = useState(true);
   
   const [newRound, setNewRound] = useState({
     roundName: '',
@@ -57,6 +58,7 @@ export default function FundraisingProgress() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -78,6 +80,7 @@ export default function FundraisingProgress() {
           navigate('/auth');
         } else if (response.status === 404) {
           // No company profile yet
+          setHasCompanyProfile(false);
           setLoading(false);
           return;
         }
@@ -192,7 +195,7 @@ export default function FundraisingProgress() {
     );
   }
 
-  if (!companyId) {
+  if (!hasCompanyProfile) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -286,8 +289,8 @@ export default function FundraisingProgress() {
                   <Input
                     id="target_close_date"
                     type="date"
-                    value={newRound.target_close_date}
-                    onChange={(e) => setNewRound({ ...newRound, target_close_date: e.target.value })}
+                    value={newRound.targetCloseDate}
+                    onChange={(e) => setNewRound({ ...newRound, targetCloseDate: e.target.value })}
                   />
                 </div>
 

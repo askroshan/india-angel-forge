@@ -54,8 +54,7 @@ export default function AdvisoryProfile() {
   const { data: profile, isLoading: profileLoading, error: profileError } = useQuery<AdvisoryProfile | null>({
     queryKey: ['advisory-profile'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/operator/advisory-profile');
-      return response.data;
+      return await apiClient.get<AdvisoryProfile | null>('/api/operator/advisory-profile');
     },
   });
 
@@ -63,8 +62,7 @@ export default function AdvisoryProfile() {
   const { data: allRequests = [], isLoading: requestsLoading } = useQuery<AdvisoryRequest[]>({
     queryKey: ['advisory-requests'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/operator/advisory-requests');
-      return response.data;
+      return await apiClient.get<AdvisoryRequest[]>('/api/operator/advisory-requests');
     },
     enabled: !!profile,
   });
@@ -76,10 +74,9 @@ export default function AdvisoryProfile() {
   // Accept request mutation
   const acceptRequestMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      const response = await apiClient.patch(`/api/operator/advisory-requests/${requestId}`, {
+      return await apiClient.patch<AdvisoryRequest>(`/api/operator/advisory-requests/${requestId}`, {
         status: 'ACCEPTED',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['advisory-requests'] });
@@ -93,10 +90,9 @@ export default function AdvisoryProfile() {
   // Decline request mutation
   const declineRequestMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      const response = await apiClient.patch(`/api/operator/advisory-requests/${requestId}`, {
+      return await apiClient.patch<AdvisoryRequest>(`/api/operator/advisory-requests/${requestId}`, {
         status: 'DECLINED',
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['advisory-requests'] });

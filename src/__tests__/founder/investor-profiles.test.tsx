@@ -98,7 +98,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
 
   describe('Page Display', () => {
     it('should display investor directory for approved founders', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -108,7 +108,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display list of investors', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -122,7 +122,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
 
   describe('Investor Information Display', () => {
     it('should display investment focus for each investor', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -137,7 +137,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display investment stages for each investor', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -152,7 +152,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display check size range for each investor', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -163,7 +163,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display notable investments', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -174,7 +174,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display operator background when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -187,7 +187,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
 
   describe('Filter Functionality', () => {
     it('should display filter by sector dropdown', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 
@@ -197,7 +197,7 @@ describe('US-FOUNDER-003: Access Investor Profiles', () => {
     });
 
     it('should display filter by check size dropdown', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockInvestors });
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestors);
 
       renderWithProviders(<InvestorProfiles />);
 

@@ -98,10 +98,10 @@ describe('US-OPERATOR-002: Track Advisory Hours', () => {
     // Default mock implementations
     vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
       if (url === '/api/operator/advisory-hours') {
-        return Promise.resolve({ data: mockTimeEntries });
+        return Promise.resolve(mockTimeEntries);
       }
       if (url === '/api/operator/advisory-hours/summary') {
-        return Promise.resolve({ data: mockSummary });
+        return Promise.resolve(mockSummary);
       }
       return Promise.reject(new Error('Not found'));
     });
@@ -129,10 +129,10 @@ describe('US-OPERATOR-002: Track Advisory Hours', () => {
     it('should display empty state when no hours logged', async () => {
       vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
         if (url === '/api/operator/advisory-hours') {
-          return Promise.resolve({ data: [] });
+          return Promise.resolve([]);
         }
         if (url === '/api/operator/advisory-hours/summary') {
-          return Promise.resolve({ data: { total_hours: 0, by_company: [], by_topic: [], current_month_hours: 0, last_month_hours: 0 } });
+          return Promise.resolve({ total_hours: 0, by_company: [], by_topic: [], current_month_hours: 0, last_month_hours: 0 });
         }
         return Promise.reject(new Error('Not found'));
       });

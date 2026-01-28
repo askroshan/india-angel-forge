@@ -88,10 +88,10 @@ describe('US-OPERATOR-001: Offer Advisory Services', () => {
     // Default mock implementations
     vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
       if (url === '/api/operator/advisory-profile') {
-        return Promise.resolve({ data: mockProfile });
+        return Promise.resolve(mockProfile);
       }
       if (url === '/api/operator/advisory-requests') {
-        return Promise.resolve({ data: mockRequests });
+        return Promise.resolve(mockRequests);
       }
       return Promise.reject(new Error('Not found'));
     });
@@ -120,7 +120,7 @@ describe('US-OPERATOR-001: Offer Advisory Services', () => {
       // Override the default mock to return null for profile
       vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
         if (url === '/api/operator/advisory-profile') {
-          return Promise.resolve({ data: null });
+          return Promise.resolve(null);
         }
         return Promise.reject(new Error('Not found'));
       });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -104,12 +104,12 @@ describe('US-MODERATOR-002: Review Event Attendance', () => {
     vi.clearAllMocks();
 
     // Default mock implementation
-    (apiClient.apiClient.get as any).mockImplementation((url: string) => {
+    (apiClient.apiClient.get as Mock).mockImplementation((url: string) => {
       if (url === '/api/moderator/events/event-1') {
-        return Promise.resolve({ data: mockEvent });
+        return Promise.resolve(mockEvent);
       }
       if (url === '/api/moderator/events/event-1/registrations') {
-        return Promise.resolve({ data: mockRegistrations });
+        return Promise.resolve(mockRegistrations);
       }
       return Promise.reject(new Error('Not found'));
     });
@@ -189,7 +189,7 @@ describe('US-MODERATOR-002: Review Event Attendance', () => {
     it('should allow marking attendee as attended', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.patch as any).mockResolvedValueOnce({
+      (apiClient.apiClient.patch as Mock).mockResolvedValueOnce({
         data: { ...mockRegistrations[2], attendance_status: 'ATTENDED' },
       });
 
@@ -214,7 +214,7 @@ describe('US-MODERATOR-002: Review Event Attendance', () => {
     it('should allow marking registrant as no-show', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.patch as any).mockResolvedValueOnce({
+      (apiClient.apiClient.patch as Mock).mockResolvedValueOnce({
         data: { ...mockRegistrations[2], attendance_status: 'NO_SHOW' },
       });
 
@@ -281,7 +281,7 @@ describe('US-MODERATOR-002: Review Event Attendance', () => {
 
   describe('Error Handling', () => {
     it('should display error message when loading event fails', async () => {
-      (apiClient.apiClient.get as any).mockRejectedValueOnce(new Error('Failed to load'));
+      (apiClient.apiClient.get as Mock).mockRejectedValueOnce(new Error('Failed to load'));
 
       renderComponent();
 
@@ -293,7 +293,7 @@ describe('US-MODERATOR-002: Review Event Attendance', () => {
     it('should handle attendance update error gracefully', async () => {
       const user = userEvent.setup();
       
-      (apiClient.apiClient.patch as any).mockRejectedValueOnce(new Error('Update failed'));
+      (apiClient.apiClient.patch as Mock).mockRejectedValueOnce(new Error('Update failed'));
 
       renderComponent();
 

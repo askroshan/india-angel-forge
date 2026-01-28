@@ -2,16 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import DealAnalytics from '@/pages/investor/DealAnalytics';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
-    },
-    from: vi.fn(),
-  },
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'investor-1', email: 'investor@example.com', role: 'INVESTOR' },
+    token: 'mock-token',
+    isAuthenticated: true,
+  }),
 }));
 
 // Mock useNavigate
@@ -27,28 +25,14 @@ vi.mock('react-router-dom', async () => {
 describe('DealAnalytics', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Mock auth session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'investor-1' },
-        },
-      },
-    });
   });
 
   describe('Analytics Dashboard', () => {
     it('should display deal analytics page', async () => {
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: [],
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -65,33 +49,28 @@ describe('DealAnalytics', () => {
       const mockDeals = [
         {
           id: 'deal-1',
-          company_name: 'TechStartup Inc',
+          companyName: 'TechStartup Inc',
           valuation: 50000000,
-          amount: 5000000,
+          investmentAmount: 5000000,
           status: 'active',
           industry: 'Technology',
           stage: 'Series A',
         },
         {
           id: 'deal-2',
-          company_name: 'FinTech Co',
+          companyName: 'FinTech Co',
           valuation: 30000000,
-          amount: 3000000,
+          investmentAmount: 3000000,
           status: 'active',
           industry: 'FinTech',
           stage: 'Seed',
         },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -102,8 +81,9 @@ describe('DealAnalytics', () => {
       await waitFor(() => {
         // Should show total deals count
         expect(screen.getByText('2')).toBeInTheDocument();
-        // Should show total investment
-        expect(screen.getByText(/₹8Cr/i)).toBeInTheDocument();
+        // Should show total investment - 5M + 3M = 8M = 80 Lakhs
+        // formatAmount: 8000000 >= 100000 → ₹80.0L
+        expect(screen.getByText(/₹80\.0L/i)).toBeInTheDocument();
       });
     });
   });
@@ -113,36 +93,31 @@ describe('DealAnalytics', () => {
       const mockDeals = [
         {
           id: 'deal-1',
-          company_name: 'TechCo',
+          companyName: 'TechCo',
           industry: 'Technology',
           valuation: 50000000,
-          amount: 5000000,
+          investmentAmount: 5000000,
         },
         {
           id: 'deal-2',
-          company_name: 'FinTechCo',
+          companyName: 'FinTechCo',
           industry: 'FinTech',
           valuation: 30000000,
-          amount: 3000000,
+          investmentAmount: 3000000,
         },
         {
           id: 'deal-3',
-          company_name: 'TechCo2',
+          companyName: 'TechCo2',
           industry: 'Technology',
           valuation: 40000000,
-          amount: 4000000,
+          investmentAmount: 4000000,
         },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -160,20 +135,15 @@ describe('DealAnalytics', () => {
 
     it('should display deal count by industry', async () => {
       const mockDeals = [
-        { id: '1', industry: 'Technology', amount: 5000000 },
-        { id: '2', industry: 'Technology', amount: 4000000 },
-        { id: '3', industry: 'FinTech', amount: 3000000 },
+        { id: '1', industry: 'Technology', investmentAmount: 5000000 },
+        { id: '2', industry: 'Technology', investmentAmount: 4000000 },
+        { id: '3', industry: 'FinTech', investmentAmount: 3000000 },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -195,29 +165,24 @@ describe('DealAnalytics', () => {
         {
           id: 'deal-1',
           stage: 'Seed',
-          amount: 3000000,
+          investmentAmount: 3000000,
         },
         {
           id: 'deal-2',
           stage: 'Series A',
-          amount: 5000000,
+          investmentAmount: 5000000,
         },
         {
           id: 'deal-3',
           stage: 'Seed',
-          amount: 2000000,
+          investmentAmount: 2000000,
         },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -236,24 +201,19 @@ describe('DealAnalytics', () => {
         {
           id: 'deal-1',
           stage: 'Seed',
-          amount: 3000000,
+          investmentAmount: 3000000,
         },
         {
           id: 'deal-2',
           stage: 'Series A',
-          amount: 5000000,
+          investmentAmount: 5000000,
         },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -262,9 +222,9 @@ describe('DealAnalytics', () => {
       );
 
       await waitFor(() => {
-        // Check for formatted amounts
-        expect(screen.getByText(/₹3Cr/i)).toBeInTheDocument();
-        expect(screen.getByText(/₹5Cr/i)).toBeInTheDocument();
+        // Check for formatted amounts - 3000000 = 30L, 5000000 = 50L
+        expect(screen.getByText(/₹30\.0L/i)).toBeInTheDocument();
+        expect(screen.getByText(/₹50\.0L/i)).toBeInTheDocument();
       });
     });
   });
@@ -272,19 +232,14 @@ describe('DealAnalytics', () => {
   describe('Average Metrics', () => {
     it('should display average deal size', async () => {
       const mockDeals = [
-        { id: '1', amount: 4000000 },
-        { id: '2', amount: 6000000 },
+        { id: '1', investmentAmount: 4000000 },
+        { id: '2', investmentAmount: 6000000 },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -293,26 +248,21 @@ describe('DealAnalytics', () => {
       );
 
       await waitFor(() => {
-        // Average of 4Cr and 6Cr = 5Cr
-        expect(screen.getByText(/₹5Cr/i)).toBeInTheDocument();
+        // Average of 4M and 6M = 5M = 50L - component uses formatAmount with decimal
+        expect(screen.getByText(/₹50\.0L/i)).toBeInTheDocument();
       });
     });
 
     it('should display average valuation', async () => {
       const mockDeals = [
-        { id: '1', valuation: 40000000, amount: 4000000 },
-        { id: '2', valuation: 60000000, amount: 6000000 },
+        { id: '1', valuation: 40000000, investmentAmount: 4000000 },
+        { id: '2', valuation: 60000000, investmentAmount: 6000000 },
       ];
 
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: mockDeals,
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDeals),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>
@@ -321,23 +271,18 @@ describe('DealAnalytics', () => {
       );
 
       await waitFor(() => {
-        // Average of 40Cr and 60Cr = 50Cr
-        expect(screen.getByText(/₹50Cr/i)).toBeInTheDocument();
+        // Average valuation: (40M + 60M)/2 = 50M = 5Cr - component uses formatAmount with decimal
+        expect(screen.getByText(/₹5\.0Cr/i)).toBeInTheDocument();
       });
     });
   });
 
   describe('Empty State', () => {
     it('should display empty state when no deals exist', async () => {
-      const mockFrom = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: [],
-            error: null,
-          }),
-        }),
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
       });
-      (supabase.from as any).mockImplementation(mockFrom);
 
       render(
         <BrowserRouter>

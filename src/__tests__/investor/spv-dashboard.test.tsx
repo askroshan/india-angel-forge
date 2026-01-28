@@ -29,26 +29,31 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { testUsers, createMockSession } from '../fixtures/testData';
 
 import SPVDashboard from '@/pages/investor/SPVDashboard';
+
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'investor-1', email: 'investor@example.com', role: 'INVESTOR' },
+    token: 'mock-token',
+    isAuthenticated: true,
+  }),
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate, useParams: () => ({ spvId: 'spv-001' }) };
+});
 
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe('US-INVESTOR-010: Track SPV Allocations', () => {
-  const leadInvestor = testUsers.standard_investor;
-  const mockSession = createMockSession(leadInvestor);
-
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    } as any);
   });
 
   describe('SPV Dashboard', () => {
@@ -56,44 +61,32 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV 2026',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000,
-        carry_percentage: 20,
-        status: 'forming'
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: [
+          {
+            id: 'member-001',
+            spvId: 'spv-001',
+            investorId: 'inv-1',
+            commitmentAmount: 5000000,
+            status: 'confirmed',
+            investorName: 'John Investor',
+            investorEmail: 'john@example.com'
+          }
+        ]
       };
 
-      const mockMembers = [
-        {
-          id: 'member-001',
-          commitment_amount: 5000000,
-          status: 'confirmed',
-          investor: { full_name: 'John Investor', email: 'john@example.com' }
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
@@ -108,40 +101,32 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000,
-        carry_percentage: 20
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: [
+          {
+            id: 'member-001',
+            spvId: 'spv-001',
+            investorId: 'inv-1',
+            commitmentAmount: 25000000,
+            status: 'confirmed',
+            investorName: 'Investor 1',
+            investorEmail: 'inv1@example.com'
+          }
+        ]
       };
 
-      const mockMembers = [
-        {
-          id: 'member-001',
-          commitment_amount: 25000000,
-          status: 'confirmed',
-          investor: { full_name: 'Investor 1', email: 'inv1@example.com' }
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
@@ -155,51 +140,49 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: [
+          {
+            id: 'member-001',
+            spvId: 'spv-001',
+            investorId: 'inv-1',
+            commitmentAmount: 10000000,
+            status: 'confirmed',
+            investorName: 'Investor 1',
+            investorEmail: 'inv1@example.com'
+          },
+          {
+            id: 'member-002',
+            spvId: 'spv-001',
+            investorId: 'inv-2',
+            commitmentAmount: 5000000,
+            status: 'confirmed',
+            investorName: 'Investor 2',
+            investorEmail: 'inv2@example.com'
+          }
+        ]
       };
 
-      const mockMembers = [
-        {
-          id: 'member-001',
-          commitment_amount: 10000000,
-          status: 'confirmed',
-          investor: { full_name: 'Investor 1', email: 'inv1@example.com' }
-        },
-        {
-          id: 'member-002',
-          commitment_amount: 5000000,
-          status: 'confirmed',
-          investor: { full_name: 'Investor 2', email: 'inv2@example.com' }
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
 
       await waitFor(() => {
-        expect(screen.getByText(/1\.50 Cr/i)).toBeInTheDocument();
+        // Amount appears both in stats card and progress bar
+        const amounts = screen.getAllByText(/1\.50 Cr/i);
+        expect(amounts.length).toBeGreaterThan(0);
       });
     });
 
@@ -207,42 +190,35 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: [
+          { id: 'member-001', spvId: 'spv-001', investorId: 'inv-1', commitmentAmount: 5000000, status: 'confirmed', investorName: 'Inv 1', investorEmail: 'inv1@example.com' },
+          { id: 'member-002', spvId: 'spv-001', investorId: 'inv-2', commitmentAmount: 5000000, status: 'confirmed', investorName: 'Inv 2', investorEmail: 'inv2@example.com' },
+          { id: 'member-003', spvId: 'spv-001', investorId: 'inv-3', commitmentAmount: 5000000, status: 'confirmed', investorName: 'Inv 3', investorEmail: 'inv3@example.com' }
+        ]
       };
 
-      const mockMembers = [
-        { id: 'member-001', commitment_amount: 5000000, status: 'confirmed', investor: { full_name: 'Inv 1', email: 'inv1@example.com' } },
-        { id: 'member-002', commitment_amount: 5000000, status: 'confirmed', investor: { full_name: 'Inv 2', email: 'inv2@example.com' } },
-        { id: 'member-003', commitment_amount: 5000000, status: 'confirmed', investor: { full_name: 'Inv 3', email: 'inv3@example.com' } }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
 
       await waitFor(() => {
-        expect(screen.getByText(/3/)).toBeInTheDocument();
+        // Check that all 3 members are rendered
+        expect(screen.getByText(/Inv 1/i)).toBeInTheDocument();
+        expect(screen.getByText(/Inv 2/i)).toBeInTheDocument();
+        expect(screen.getByText(/Inv 3/i)).toBeInTheDocument();
       });
     });
   });
@@ -252,45 +228,40 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: [
+          {
+            id: 'member-001',
+            spvId: 'spv-001',
+            investorId: 'inv-1',
+            commitmentAmount: 5000000,
+            status: 'confirmed',
+            investorName: 'Confirmed Investor',
+            investorEmail: 'confirmed@example.com'
+          }
+        ]
       };
 
-      const mockMembers = [
-        {
-          id: 'member-001',
-          commitment_amount: 5000000,
-          status: 'confirmed',
-          investor: { full_name: 'Confirmed Investor', email: 'confirmed@example.com' }
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-      ];
-
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockMembers,
-              error: null,
-            }),
-          } as any;
-        }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
 
       await waitFor(() => {
-        expect(screen.getByText(/confirmed/i)).toBeInTheDocument();
+        // Multiple "Confirmed" elements exist: badge on member card and header badge
+        const confirmedElements = screen.getAllByText(/confirmed/i);
+        expect(confirmedElements.length).toBeGreaterThan(0);
       });
     });
   });
@@ -300,36 +271,30 @@ describe('US-INVESTOR-010: Track SPV Allocations', () => {
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        lead_investor_id: leadInvestor.id,
-        target_amount: 50000000
+        dealId: 'deal-001',
+        leadInvestorId: 'investor-1',
+        targetAmount: 50000000,
+        carryPercentage: 20,
+        status: 'forming',
+        members: []
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spv_members') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/spv/spv-001')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
         }
-        return {} as any;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<SPVDashboard />);
 
       await waitFor(() => {
-        expect(screen.getByText(/invite co-investors/i)).toBeInTheDocument();
+        // Multiple invite buttons may exist (header + empty state)
+        const inviteButtons = screen.getAllByText(/invite co-investors/i);
+        expect(inviteButtons.length).toBeGreaterThan(0);
       });
     });
   });

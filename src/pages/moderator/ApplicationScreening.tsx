@@ -80,8 +80,8 @@ const ApplicationScreening = () => {
   const { data: applications = [], isLoading, error } = useQuery<Application[]>({
     queryKey: ['moderator-applications'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/moderator/applications');
-      return response.data;
+      const data = await apiClient.get<Application[]>('/api/moderator/applications');
+      return data ?? [];
     },
   });
 
@@ -89,8 +89,8 @@ const ApplicationScreening = () => {
   const { data: notes = [] } = useQuery<ScreeningNote[]>({
     queryKey: ['screening-notes', selectedApplication?.id],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/moderator/applications/${selectedApplication?.id}/screening-notes`);
-      return response.data;
+      const data = await apiClient.get<ScreeningNote[]>(`/api/moderator/applications/${selectedApplication?.id}/screening-notes`);
+      return data ?? [];
     },
     enabled: !!selectedApplication,
   });
@@ -98,11 +98,11 @@ const ApplicationScreening = () => {
   // Approve application mutation
   const approveApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      const response = await apiClient.patch(`/api/moderator/applications/${applicationId}`, {
+      const data = await apiClient.patch(`/api/moderator/applications/${applicationId}`, {
         status: 'APPROVED',
         notify_founder: true,
       });
-      return response.data;
+      return data;
     },
     onSuccess: () => {
       toast.success('Application approved successfully');
@@ -116,13 +116,13 @@ const ApplicationScreening = () => {
 
   // Decline application mutation
   const declineApplicationMutation = useMutation({
-    mutationFn: async (data: { applicationId: string; feedback: string }) => {
-      const response = await apiClient.patch(`/api/moderator/applications/${data.applicationId}`, {
+    mutationFn: async (declineData: { applicationId: string; feedback: string }) => {
+      const result = await apiClient.patch(`/api/moderator/applications/${declineData.applicationId}`, {
         status: 'DECLINED',
-        feedback: data.feedback,
+        feedback: declineData.feedback,
         notify_founder: true,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       toast.success('Application declined');
@@ -138,11 +138,11 @@ const ApplicationScreening = () => {
 
   // Request more info mutation
   const requestMoreInfoMutation = useMutation({
-    mutationFn: async (data: { applicationId: string; message: string }) => {
-      const response = await apiClient.post(`/api/moderator/applications/${data.applicationId}/request-info`, {
-        message: data.message,
+    mutationFn: async (requestData: { applicationId: string; message: string }) => {
+      const result = await apiClient.post(`/api/moderator/applications/${requestData.applicationId}/request-info`, {
+        message: requestData.message,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       toast.success('Information request sent to founder');
@@ -157,11 +157,11 @@ const ApplicationScreening = () => {
 
   // Add screening notes mutation
   const addScreeningNotesMutation = useMutation({
-    mutationFn: async (data: { applicationId: string; notes: string }) => {
-      const response = await apiClient.post(`/api/moderator/applications/${data.applicationId}/screening-notes`, {
-        notes: data.notes,
+    mutationFn: async (notesData: { applicationId: string; notes: string }) => {
+      const result = await apiClient.post(`/api/moderator/applications/${notesData.applicationId}/screening-notes`, {
+        notes: notesData.notes,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       toast.success('Notes saved');

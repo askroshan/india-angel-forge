@@ -57,6 +57,7 @@ export default function DueDiligenceChecklist() {
     if (dealId) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealId]);
 
   const fetchData = async () => {

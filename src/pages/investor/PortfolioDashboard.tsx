@@ -76,8 +76,8 @@ const PortfolioDashboard = () => {
   const { data: companies = [], isLoading, error } = useQuery<PortfolioCompany[]>({
     queryKey: ['portfolio-companies'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/portfolio/companies');
-      return response.data;
+      const response = await apiClient.get<PortfolioCompany[]>('/api/portfolio/companies');
+      return response;
     },
   });
 

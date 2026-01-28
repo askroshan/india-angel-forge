@@ -52,8 +52,7 @@ export default function EventAttendance() {
   const { data: event, isLoading: eventLoading, error: eventError } = useQuery<Event>({
     queryKey: ['moderator-event', eventId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/moderator/events/${eventId}`);
-      return response.data;
+      return await apiClient.get<Event>(`/api/moderator/events/${eventId}`);
     },
   });
 
@@ -61,8 +60,7 @@ export default function EventAttendance() {
   const { data: registrations = [], isLoading: registrationsLoading } = useQuery<Registration[]>({
     queryKey: ['moderator-event-registrations', eventId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/moderator/events/${eventId}/registrations`);
-      return response.data;
+      return await apiClient.get<Registration[]>(`/api/moderator/events/${eventId}/registrations`);
     },
     enabled: !!eventId,
   });
@@ -70,11 +68,10 @@ export default function EventAttendance() {
   // Update attendance mutation
   const updateAttendanceMutation = useMutation({
     mutationFn: async ({ registrationId, status }: { registrationId: string; status: string }) => {
-      const response = await apiClient.patch(
+      return await apiClient.patch<Registration>(
         `/api/moderator/events/${eventId}/registrations/${registrationId}`,
         { attendance_status: status }
       );
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['moderator-event', eventId] });

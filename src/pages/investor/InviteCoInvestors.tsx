@@ -95,8 +95,8 @@ export default function InviteCoInvestors() {
   const { data: spv, isLoading: loadingSPV, error: spvError } = useQuery<SPV>({
     queryKey: ['spv', spvId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/spvs/${spvId}`);
-      return response.data;
+      const data = await apiClient.get<SPV>(`/api/spvs/${spvId}`);
+      return data;
     },
     enabled: !!spvId,
   });
@@ -105,23 +105,24 @@ export default function InviteCoInvestors() {
   const { data: members = [], isLoading: loadingMembers } = useQuery<SPVMember[]>({
     queryKey: ['spv-members', spvId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/spvs/${spvId}/members`);
-      return response.data;
+      const data = await apiClient.get<SPVMember[]>(`/api/spvs/${spvId}/members`);
+      return data ?? [];
     },
     enabled: !!spvId,
   });
 
   // Send invitation mutation
   const sendInvitationMutation = useMutation({
-    mutationFn: async (data: {
+    mutationFn: async (inviteData: {
       spv_id: string;
       investor_email: string;
       commitment_deadline: string;
     }) => {
-      const response = await apiClient.post('/api/spv-invitations', data);
-      return response.data;
+      const result = await apiClient.post<Invitation>('/api/spv-invitations', inviteData);
+      if (result.error) throw new Error(result.error.message);
+      return result.data as Invitation;
     },
-    onSuccess: (data: Invitation) => {
+    onSuccess: () => {
       toast.success('Invitation sent successfully');
       toast.success('Investor will receive email with SPV details');
       queryClient.invalidateQueries({ queryKey: ['spv-members', spvId] });
@@ -138,11 +139,12 @@ export default function InviteCoInvestors() {
 
   // Adjust allocations mutation
   const adjustAllocationsMutation = useMutation({
-    mutationFn: async (data: { spv_id: string; allocations: Record<string, number> }) => {
-      const response = await apiClient.put(`/api/spvs/${data.spv_id}/allocations`, {
-        allocations: data.allocations,
+    mutationFn: async (allocData: { spv_id: string; allocations: Record<string, number> }) => {
+      const result = await apiClient.put<{ success: boolean }>(`/api/spvs/${allocData.spv_id}/allocations`, {
+        allocations: allocData.allocations,
       });
-      return response.data;
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
     },
     onSuccess: () => {
       toast.success('Allocations adjusted successfully');

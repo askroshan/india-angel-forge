@@ -77,14 +77,14 @@ export default function CreateSPV() {
   const { data: deals = [], isLoading, error } = useQuery<Deal[]>({
     queryKey: ['deals'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/deals');
-      return response.data;
+      const data = await apiClient.get<Deal[]>('/api/deals');
+      return data ?? [];
     },
   });
 
   // Create SPV mutation
   const createSPVMutation = useMutation({
-    mutationFn: async (data: {
+    mutationFn: async (formData: {
       spv_name: string;
       deal_id: string;
       target_raise_amount: number;
@@ -92,10 +92,11 @@ export default function CreateSPV() {
       hurdle_rate: number;
       minimum_investment: number;
     }) => {
-      const response = await apiClient.post('/api/spvs', data);
-      return response.data;
+      const result = await apiClient.post<SPV>('/api/spvs', formData);
+      if (result.error) throw new Error(result.error.message);
+      return result.data as SPV;
     },
-    onSuccess: (data: SPV) => {
+    onSuccess: () => {
       toast.success('SPV created successfully');
       toast.success('You can now invite co-investors to join');
       toast.success('Track allocation status from the SPV dashboard');

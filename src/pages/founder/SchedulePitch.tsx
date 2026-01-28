@@ -79,8 +79,7 @@ export default function SchedulePitch() {
   const { data: investors = [], isLoading, error } = useQuery<InterestedInvestor[]>({
     queryKey: ['interested-investors'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/interested-investors');
-      return response.data;
+      return await apiClient.get<InterestedInvestor[]>('/api/interested-investors');
     },
   });
 
@@ -114,8 +113,9 @@ export default function SchedulePitch() {
       // Refetch investors list
       queryClient.invalidateQueries({ queryKey: ['interested-investors'] });
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Failed to schedule meeting';
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err?.response?.data?.message || 'Failed to schedule meeting';
       setFormError(message);
       toast.error(message);
     },

@@ -32,7 +32,7 @@ interface AuditLog {
   action: string;
   resourceType: string;
   resourceId?: string;
-  details: any;
+  details: Record<string, unknown>;
   createdAt: string;
   userName?: string;
   userEmail?: string;
@@ -87,10 +87,12 @@ const AuditLogs = () => {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     filterLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logs, actionFilter, searchQuery, startDate, endDate]);
 
   const checkAccess = async () => {
@@ -133,7 +135,7 @@ const AuditLogs = () => {
 
       const data = await response.json();
       setLogs(data || []);
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to load audit logs',
@@ -204,7 +206,7 @@ const AuditLogs = () => {
     });
   };
 
-  const formatDetails = (details: any) => {
+  const formatDetails = (details: Record<string, unknown>) => {
     if (!details || Object.keys(details).length === 0) return null;
 
     return (

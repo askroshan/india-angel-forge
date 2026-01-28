@@ -26,6 +26,7 @@ export default function InvestorUpdates() {
 
   useEffect(() => {
     fetchUpdates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUpdates = async () => {

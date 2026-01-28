@@ -51,8 +51,8 @@ const CommunicationPreferences = () => {
   const { data, isLoading, error } = useQuery<Preferences>({
     queryKey: ['communication-preferences'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/preferences');
-      return response.data;
+      const prefs = await apiClient.get<Preferences>('/api/preferences');
+      return prefs;
     },
   });
 
@@ -66,8 +66,8 @@ const CommunicationPreferences = () => {
   // Save preferences mutation
   const savePreferencesMutation = useMutation({
     mutationFn: async (updatedPreferences: Preferences) => {
-      const response = await apiClient.put('/api/preferences', updatedPreferences);
-      return response.data;
+      const result = await apiClient.put('/api/preferences', updatedPreferences);
+      return result;
     },
     onSuccess: () => {
       toast.success('Preferences saved successfully');
@@ -85,11 +85,23 @@ const CommunicationPreferences = () => {
   const updatePreference = <K extends keyof Preferences>(
     key: K,
     value: Partial<Preferences[K]>
-  ) => {
+  ): void => {
     setPreferences(prev => ({
       ...prev,
       [key]: { ...prev[key], ...value },
     }));
+  };
+
+  // Type-safe frequency update helpers
+  type PortfolioFrequency = 'daily' | 'weekly' | 'monthly' | 'never';
+  type DigestFrequency = 'daily' | 'weekly' | 'never';
+
+  const updatePortfolioFrequency = (value: PortfolioFrequency) => {
+    updatePreference('portfolio_updates', { frequency: value });
+  };
+
+  const updateDigestFrequency = (value: DigestFrequency) => {
+    updatePreference('digest_emails', { frequency: value });
   };
 
   if (isLoading) {
@@ -202,9 +214,7 @@ const CommunicationPreferences = () => {
               <Label htmlFor="portfolio-frequency">Update frequency</Label>
               <Select
                 value={preferences.portfolio_updates.frequency}
-                onValueChange={(value: any) =>
-                  updatePreference('portfolio_updates', { frequency: value })
-                }
+                onValueChange={(value) => updatePortfolioFrequency(value as PortfolioFrequency)}
               >
                 <SelectTrigger id="portfolio-frequency" aria-label="Portfolio update frequency">
                   <SelectValue />
@@ -343,9 +353,7 @@ const CommunicationPreferences = () => {
                 <Label htmlFor="digest-frequency">Digest frequency</Label>
                 <Select
                   value={preferences.digest_emails.frequency}
-                  onValueChange={(value: any) =>
-                    updatePreference('digest_emails', { frequency: value })
-                  }
+                  onValueChange={(value) => updateDigestFrequency(value as DigestFrequency)}
                 >
                   <SelectTrigger id="digest-frequency" name="digest-frequency" aria-label="Digest frequency">
                     <SelectValue />

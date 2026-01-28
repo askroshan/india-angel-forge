@@ -127,7 +127,7 @@ export default function ApplicationReview() {
   // Approve application mutation
   const approveApplication = useMutation({
     mutationFn: async (applicationId: string) => {
-      return await apiClient.patch(`/api/admin/applications/${applicationId}/approve`, {});
+      return await apiClient.patch<{ email_sent?: boolean }>(`/api/admin/applications/${applicationId}/approve`, {});
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
@@ -144,7 +144,7 @@ export default function ApplicationReview() {
   // Reject application mutation
   const rejectApplication = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      return await apiClient.patch(`/api/admin/applications/${id}/reject`, { reason });
+      return await apiClient.patch<{ notification_sent?: boolean }>(`/api/admin/applications/${id}/reject`, { reason });
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });

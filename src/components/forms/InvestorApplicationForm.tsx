@@ -10,7 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { Loader2 } from "lucide-react";
 
 const investorApplicationSchema = z.object({
@@ -104,10 +104,11 @@ export function InvestorApplicationForm() {
         motivation: values.motivation,
       };
 
-      // Submit via edge function for server-side validation and rate limiting
-      const { data, error } = await supabase.functions.invoke("submit-investor-application", {
-        body: submissionData,
-      });
+      // Submit via API for server-side validation and rate limiting
+      const { data, error } = await apiClient.post<{ error?: string; details?: string[] }>(
+        '/api/applications/investor',
+        submissionData
+      );
 
       if (error) throw error;
       

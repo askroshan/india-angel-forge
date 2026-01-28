@@ -72,6 +72,7 @@ const Membership = () => {
     if (user) {
       fetchSubscription();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleManageSubscription = async () => {

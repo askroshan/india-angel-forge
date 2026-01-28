@@ -84,8 +84,8 @@ const Discussions = () => {
   const { data: discussions = [], isLoading: discussionsLoading, error: discussionsError } = useQuery<Discussion[]>({
     queryKey: ['discussions'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/discussions');
-      return response.data;
+      const data = await apiClient.get<Discussion[]>('/api/discussions');
+      return data ?? [];
     },
   });
 
@@ -93,17 +93,17 @@ const Discussions = () => {
   const { data: replies = [] } = useQuery<Reply[]>({
     queryKey: ['discussion-replies', selectedDiscussionId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/discussions/${selectedDiscussionId}/replies`);
-      return response.data;
+      const data = await apiClient.get<Reply[]>(`/api/discussions/${selectedDiscussionId}/replies`);
+      return data ?? [];
     },
     enabled: !!selectedDiscussionId,
   });
 
   // Create discussion mutation
   const createDiscussionMutation = useMutation({
-    mutationFn: async (data: { title: string; description: string; tags: string[] }) => {
-      const response = await apiClient.post('/api/discussions', data);
-      return response.data;
+    mutationFn: async (formData: { title: string; description: string; tags: string[] }) => {
+      const result = await apiClient.post('/api/discussions', formData);
+      return result;
     },
     onSuccess: () => {
       toast.success('Discussion created successfully');
@@ -120,11 +120,11 @@ const Discussions = () => {
 
   // Post reply mutation
   const postReplyMutation = useMutation({
-    mutationFn: async (data: { discussion_id: string; content: string }) => {
-      const response = await apiClient.post(`/api/discussions/${data.discussion_id}/replies`, {
-        content: data.content,
+    mutationFn: async (replyData: { discussion_id: string; content: string }) => {
+      const result = await apiClient.post(`/api/discussions/${replyData.discussion_id}/replies`, {
+        content: replyData.content,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       setReplyText('');
@@ -138,11 +138,11 @@ const Discussions = () => {
 
   // Vote on discussion mutation
   const voteDiscussionMutation = useMutation({
-    mutationFn: async (data: { discussion_id: string; vote: number }) => {
-      const response = await apiClient.post(`/api/discussions/${data.discussion_id}/vote`, {
-        vote: data.vote,
+    mutationFn: async (voteData: { discussion_id: string; vote: number }) => {
+      const result = await apiClient.post(`/api/discussions/${voteData.discussion_id}/vote`, {
+        vote: voteData.vote,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['discussions'] });
@@ -151,11 +151,11 @@ const Discussions = () => {
 
   // Vote on reply mutation
   const voteReplyMutation = useMutation({
-    mutationFn: async (data: { discussion_id: string; reply_id: string; vote: number }) => {
-      const response = await apiClient.post(`/api/discussions/${data.discussion_id}/replies/${data.reply_id}/vote`, {
-        vote: data.vote,
+    mutationFn: async (voteData: { discussion_id: string; reply_id: string; vote: number }) => {
+      const result = await apiClient.post(`/api/discussions/${voteData.discussion_id}/replies/${voteData.reply_id}/vote`, {
+        vote: voteData.vote,
       });
-      return response.data;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['discussion-replies', selectedDiscussionId] });
@@ -164,9 +164,9 @@ const Discussions = () => {
 
   // Mark best answer mutation
   const markBestAnswerMutation = useMutation({
-    mutationFn: async (data: { discussion_id: string; reply_id: string }) => {
-      const response = await apiClient.patch(`/api/discussions/${data.discussion_id}/replies/${data.reply_id}/best-answer`, {});
-      return response.data;
+    mutationFn: async (answerData: { discussion_id: string; reply_id: string }) => {
+      const result = await apiClient.patch(`/api/discussions/${answerData.discussion_id}/replies/${answerData.reply_id}/best-answer`, {});
+      return result;
     },
     onSuccess: () => {
       toast.success('Marked as best answer');

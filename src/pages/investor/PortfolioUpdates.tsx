@@ -113,8 +113,8 @@ const PortfolioUpdates = () => {
   const { data: updates = [], isLoading, error } = useQuery<Update[]>({
     queryKey: ['portfolio-updates'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/portfolio/updates');
-      return response.data;
+      const response = await apiClient.get<Update[]>('/api/portfolio/updates');
+      return response;
     },
   });
 
@@ -122,8 +122,8 @@ const PortfolioUpdates = () => {
   const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: ['update-comments', expandedUpdate],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/portfolio/updates/${expandedUpdate}/comments`);
-      return response.data;
+      const response = await apiClient.get<Comment[]>(`/api/portfolio/updates/${expandedUpdate}/comments`);
+      return response;
     },
     enabled: !!expandedUpdate,
   });
@@ -131,9 +131,10 @@ const PortfolioUpdates = () => {
   // Post comment mutation
   const postCommentMutation = useMutation({
     mutationFn: async ({ updateId, commentText }: { updateId: string; commentText: string }) => {
-      const response = await apiClient.post(`/api/portfolio/updates/${updateId}/comments`, {
+      const response = await apiClient.post<Comment>(`/api/portfolio/updates/${updateId}/comments`, {
         comment_text: commentText,
       });
+      if (response.error) throw new Error(response.error.message);
       return response.data;
     },
     onSuccess: (_, variables) => {

@@ -126,7 +126,7 @@ export default function AccreditationVerification() {
   // Approve application mutation
   const approveApplication = useMutation({
     mutationFn: async ({ id, expiry_date }: { id: string; expiry_date: string }) => {
-      return await apiClient.patch(`/api/compliance/accreditation/${id}/approve`, { expiry_date });
+      return await apiClient.patch<{ certificate_sent?: boolean }>(`/api/compliance/accreditation/${id}/approve`, { expiry_date });
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['accreditation-applications'] });

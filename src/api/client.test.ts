@@ -160,10 +160,10 @@ describe('ApiClient', () => {
         method: 'GET',
         headers: expect.any(Object),
       });
-      expect(result.data).toEqual(mockData);
+      expect(result).toEqual(mockData);
     });
 
-    it('should return error for non-existent record', async () => {
+    it('should throw error for non-existent record', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
@@ -173,9 +173,7 @@ describe('ApiClient', () => {
         }),
       });
 
-      const result = await client.get('users', 'nonexistent');
-
-      expect(result.error?.code).toBe('NOT_FOUND');
+      await expect(client.get('users', 'nonexistent')).rejects.toThrow('Record not found');
     });
   });
 
@@ -327,23 +325,19 @@ describe('ApiClient', () => {
   });
 
   describe('error handling', () => {
-    it('should handle network errors', async () => {
+    it('should throw error on network errors', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-      const result = await client.get('users', '123');
-
-      expect(result.error?.message).toBe('Network error');
+      await expect(client.get('users', '123')).rejects.toThrow('Network error');
     });
 
-    it('should handle malformed JSON responses', async () => {
+    it('should throw error on malformed JSON responses', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON')),
       });
 
-      const result = await client.get('users', '123');
-
-      expect(result.error).not.toBeNull();
+      await expect(client.get('users', '123')).rejects.toThrow('Invalid JSON');
     });
   });
 });

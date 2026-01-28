@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
 })
 
 // File filter
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Allow common document and image types
   const allowedMimeTypes = [
     'application/pdf',

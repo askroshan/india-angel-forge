@@ -84,8 +84,8 @@ const TrackSPVAllocations = () => {
   const { data: spv, isLoading: isLoadingSPV, error: spvError } = useQuery<SPV>({
     queryKey: ['spv', spvId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/spvs/${spvId}`);
-      return response.data;
+      const data = await apiClient.get<SPV>(`/api/spvs/${spvId}`);
+      return data;
     },
     enabled: !!spvId,
   });
@@ -94,8 +94,8 @@ const TrackSPVAllocations = () => {
   const { data: members = [], isLoading: isLoadingMembers } = useQuery<SPVMember[]>({
     queryKey: ['spv-members', spvId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/spvs/${spvId}/members`);
-      return response.data;
+      const data = await apiClient.get<SPVMember[]>(`/api/spvs/${spvId}/members`);
+      return data ?? [];
     },
     enabled: !!spvId,
   });
@@ -103,10 +103,11 @@ const TrackSPVAllocations = () => {
   // Mark payment as received mutation
   const markPaymentMutation = useMutation({
     mutationFn: async ({ memberId, paymentStatus }: { memberId: string; paymentStatus: string }) => {
-      const response = await apiClient.put(`/api/spv-members/${memberId}/payment`, {
+      const result = await apiClient.put<{ success: boolean }>(`/api/spv-members/${memberId}/payment`, {
         payment_status: paymentStatus,
       });
-      return response.data;
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
     },
     onSuccess: () => {
       toast.success('Payment marked as received');
@@ -121,8 +122,9 @@ const TrackSPVAllocations = () => {
   // Remove member mutation
   const removeMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
-      const response = await apiClient.delete(`/api/spv-members/${memberId}`);
-      return response.data;
+      const result = await apiClient.delete('spv-members', memberId);
+      if (result.error) throw new Error(result.error.message);
+      return result;
     },
     onSuccess: () => {
       toast.success('Member removed successfully');
@@ -139,10 +141,11 @@ const TrackSPVAllocations = () => {
   // Adjust allocation mutation
   const adjustAllocationMutation = useMutation({
     mutationFn: async ({ memberId, newAmount }: { memberId: string; newAmount: number }) => {
-      const response = await apiClient.put(`/api/spv-members/${memberId}/allocation`, {
+      const result = await apiClient.put<{ success: boolean }>(`/api/spv-members/${memberId}/allocation`, {
         commitment_amount: newAmount,
       });
-      return response.data;
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
     },
     onSuccess: () => {
       toast.success('Allocation adjusted successfully');

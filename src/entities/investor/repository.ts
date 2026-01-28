@@ -42,21 +42,32 @@ export class InvestorRepository {
    * Get an investor by ID
    */
   async getById(id: string): Promise<ApiResponse<Investor>> {
-    return this.apiClient.get<Investor>('investors', id);
+    try {
+      const data = await this.apiClient.get<Investor>('investors', id);
+      return { data, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { 
+          message: error instanceof Error ? error.message : 'Failed to fetch investor', 
+          code: 'FETCH_ERROR' 
+        } 
+      };
+    }
   }
 
   /**
    * Get an investor by user ID
    */
   async getByUserId(userId: string): Promise<ApiResponse<Investor | null>> {
-    const response = await this.apiClient.list<Investor>('investors', { userId });
+    const response = await this.apiClient.list<Investor>('investors', { filters: { userId } });
     
     if (response.error) {
       return { data: null, error: response.error };
     }
 
     return { 
-      data: response.data && response.data.length > 0 ? response.data[0] : null, 
+      data: response.data?.data && response.data.data.length > 0 ? response.data.data[0] : null, 
       error: null 
     };
   }
@@ -64,8 +75,8 @@ export class InvestorRepository {
   /**
    * List investors with optional filters
    */
-  async list(filters: InvestorFilters = {}): Promise<PaginatedResponse<Investor>> {
-    return this.apiClient.list<Investor>('investors', filters);
+  async list(filters: InvestorFilters = {}): Promise<ApiResponse<PaginatedResponse<Investor>>> {
+    return this.apiClient.list<Investor>('investors', { filters: filters as Record<string, unknown> });
   }
 
   /**
@@ -270,8 +281,8 @@ export class InvestorRepository {
   /**
    * Get KYC documents for an investor
    */
-  async getKYCDocuments(investorId: string): Promise<PaginatedResponse<KYCDocument>> {
-    return this.apiClient.list<KYCDocument>('kyc_documents', { investorId });
+  async getKYCDocuments(investorId: string): Promise<ApiResponse<PaginatedResponse<KYCDocument>>> {
+    return this.apiClient.list<KYCDocument>('kyc_documents', { filters: { investorId } });
   }
 
   /**

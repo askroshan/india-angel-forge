@@ -132,11 +132,52 @@ export class ApiClient implements IApiClient {
   }
 
   // Generic CRUD methods
-  async get<T>(table: string, id: string): Promise<ApiResponse<T>> {
-    return this.request<T>(`${this.baseUrl}/${table}/${id}`, {
+  async get<T>(tableOrUrl: string, id?: string): Promise<T> {
+    let url: string;
+    
+    if (id !== undefined) {
+      // Traditional (table, id) usage
+      url = `${this.baseUrl}/${tableOrUrl}/${id}`;
+    } else if (tableOrUrl.startsWith('/api/')) {
+      // URL path that already includes /api prefix - don't add baseUrl
+      url = tableOrUrl;
+    } else if (tableOrUrl.startsWith('/')) {
+      // URL path starting with / - prepend baseUrl
+      url = `${this.baseUrl}${tableOrUrl}`;
+    } else {
+      // Table name without id - use list behavior
+      url = `${this.baseUrl}/${tableOrUrl}`;
+    }
+    
+    const response = await this.request<T>(url, {
       method: 'GET',
       headers: this.getHeaders(),
     });
+    
+    // Return data directly for compatibility with existing usage
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+    return response.data as T;
+  }
+
+  async patch<T>(url: string, data: unknown): Promise<T> {
+    // If URL already includes /api prefix, don't add baseUrl
+    const fullUrl = url.startsWith('/api/') ? url : `${this.baseUrl}${url}`;
+    
+    const response = await this.request<T>(fullUrl, {
+      method: 'PATCH',
+      headers: {
+        ...this.getHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+    return response.data as T;
   }
 
   async list<T>(
@@ -196,6 +237,42 @@ export class ApiClient implements IApiClient {
     });
   }
 
+  async post<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
+    const headers: Record<string, string> = this.getHeaders();
+    const isFormData = data instanceof FormData;
+    
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    // If URL already includes /api prefix, don't add baseUrl
+    const fullUrl = url.startsWith('/api/') ? url : `${this.baseUrl}${url}`;
+
+    return this.request<T>(fullUrl, {
+      method: 'POST',
+      headers,
+      body: isFormData ? data : JSON.stringify(data),
+    });
+  }
+
+  async put<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
+    const headers: Record<string, string> = this.getHeaders();
+    const isFormData = data instanceof FormData;
+    
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    // If URL already includes /api prefix, don't add baseUrl
+    const fullUrl = url.startsWith('/api/') ? url : `${this.baseUrl}${url}`;
+
+    return this.request<T>(fullUrl, {
+      method: 'PUT',
+      headers,
+      body: isFormData ? data : JSON.stringify(data),
+    });
+  }
+
   // RPC methods
   async rpc<T>(
     functionName: string,
@@ -225,3 +302,74 @@ export function getApiClient(): ApiClient {
 export function setApiClient(client: ApiClient): void {
   apiClientInstance = client;
 }
+
+// Export singleton instance for backward compatibility
+export const apiClient = getApiClient();
+
+// System Statistics API
+export interface SystemStatistics {
+  users: {
+    total: number;
+    byRole: Record<string, number>;
+  };
+  deals: {
+    total: number;
+    totalInvestment: number;
+  };
+  events: {
+    total: number;
+    totalAttendees: number;
+  };
+  growth: Array<{
+    month: string;
+    users: number;
+  }>;
+}
+
+export async function getSystemStatistics(): Promise<SystemStatistics> {
+  const client = getApiClient();
+  return await client.get<SystemStatistics>('admin', 'statistics');
+}
+
+// Founder Documents API
+export interface FounderDocument {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+}
+
+export interface DocumentViewer {
+  investorName: string;
+  viewedAt: string;
+}
+
+export async function getFounderDocuments(): Promise<FounderDocument[]> {
+  const client = getApiClient();
+  const response = await client.list<FounderDocument>('founder/documents');
+  return response.data?.data || [];
+}
+
+export async function uploadDocument(data: { file: File; type: string }): Promise<FounderDocument> {
+  const client = getApiClient();
+  const formData = new FormData();
+  formData.append('file', data.file);
+  formData.append('type', data.type);
+  
+  const response = await client.post<FounderDocument>('/founder/documents', formData);
+  return response.data;
+}
+
+export async function deleteDocument(id: string): Promise<{ success: boolean }> {
+  const client = getApiClient();
+  const response = await client.delete('founder/documents', id);
+  return { success: !response.error };
+}
+
+export async function getDocumentViewers(documentId: string): Promise<DocumentViewer[]> {
+  const client = getApiClient();
+  const response = await client.list<DocumentViewer>(`founder/documents/${documentId}/viewers`);
+  return response.data?.data || [];
+}
+

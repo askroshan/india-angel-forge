@@ -1,13 +1,13 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../server';
+import { authenticateToken } from '../../../server';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Middleware to check admin/compliance role
-const requireCompliance = (req: any, res: any, next: any) => {
-  if (!req.user.roles.includes('admin') && !req.user.roles.includes('compliance')) {
+const requireCompliance = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!req.user?.roles.includes('admin') && !req.user?.roles.includes('compliance')) {
     return res.status(403).json({ error: 'Compliance team access required' });
   }
   next();
@@ -36,9 +36,7 @@ router.get('/accreditation', authenticateToken, requireCompliance, async (req, r
           fullName: true,
           email: true,
           phone: true,
-          investmentCapacity: true,
           accreditationStatus: true,
-          kycDocumentPath: true,
           submittedAt: true,
           status: true,
         },
@@ -90,7 +88,7 @@ router.get('/aml-screening', authenticateToken, requireCompliance, async (req, r
 
     // Using investor applications as proxy for AML screening
     // In production, create a dedicated aml_screening table
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     
     const [screenings, total] = await Promise.all([
       prisma.investorApplication.findMany({
@@ -145,9 +143,18 @@ router.patch('/aml-screening/:userId', authenticateToken, requireCompliance, asy
     const { userId } = req.params;
     const { riskLevel, status, notes } = req.body;
 
+    // Find user's application first
+    const application = await prisma.investorApplication.findFirst({
+      where: { userId },
+    });
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
     // Update investor application as proxy
     const updated = await prisma.investorApplication.update({
-      where: { userId },
+      where: { id: application.id },
       data: {
         accreditationStatus: riskLevel === 'low' ? 'verified' : 'pending',
         status: status || 'pending_review',
@@ -189,7 +196,6 @@ router.get('/kyc-review', authenticateToken, requireCompliance, async (req, res)
           fullName: true,
           email: true,
           phone: true,
-          kycDocumentPath: true,
           accreditationStatus: true,
           submittedAt: true,
           status: true,

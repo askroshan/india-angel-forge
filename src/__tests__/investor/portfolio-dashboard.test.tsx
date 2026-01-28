@@ -155,7 +155,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
 
   describe('Page Display', () => {
     it('should display portfolio dashboard page', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -165,7 +165,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display portfolio summary statistics', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -176,7 +176,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display empty state when no portfolio companies', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -188,7 +188,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
 
   describe('Portfolio Companies List', () => {
     it('should display all portfolio companies', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -201,7 +201,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display investment amount for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -212,7 +212,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display investment date for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -223,7 +223,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display current valuation for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -234,7 +234,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display ownership percentage for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -245,7 +245,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display IRR for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -256,7 +256,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display multiple for each company', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -267,7 +267,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should display latest company update when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -280,7 +280,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
 
   describe('Filtering', () => {
     it('should allow filtering by sector', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -291,7 +291,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should allow filtering by funding stage', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -304,7 +304,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
     });
 
     it('should allow filtering by status', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPortfolioCompanies });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPortfolioCompanies);
 
       renderWithProviders(<PortfolioDashboard />);
 
@@ -335,7 +335,7 @@ describe('US-INVESTOR-011: View Portfolio Dashboard', () => {
           multiple: null,
         },
       ];
-      vi.mocked(apiClient.get).mockResolvedValue({ data: companiesWithNullValuation });
+      vi.mocked(apiClient.get).mockResolvedValue(companiesWithNullValuation);
 
       renderWithProviders(<PortfolioDashboard />);
 

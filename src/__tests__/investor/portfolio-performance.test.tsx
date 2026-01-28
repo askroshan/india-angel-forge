@@ -89,7 +89,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
 
   describe('Page Display', () => {
     it('should display portfolio performance page', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -100,21 +100,19 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
 
     it('should display empty state when no performance data', async () => {
       vi.mocked(apiClient.get).mockResolvedValue({
-        data: {
-          overview: {
-            total_deployed_capital: 0,
-            total_current_value: 0,
-            unrealized_gains: 0,
-            realized_returns: 0,
-            portfolio_irr: 0,
-            total_companies: 0,
-            active_companies: 0,
-            exited_companies: 0,
-          },
-          by_sector: [],
-          by_stage: [],
-          performance_over_time: [],
+        overview: {
+          total_deployed_capital: 0,
+          total_current_value: 0,
+          unrealized_gains: 0,
+          realized_returns: 0,
+          portfolio_irr: 0,
+          total_companies: 0,
+          active_companies: 0,
+          exited_companies: 0,
         },
+        by_sector: [],
+        by_stage: [],
+        performance_over_time: [],
       });
 
       renderWithProviders(<PortfolioPerformance />);
@@ -127,7 +125,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
 
   describe('Overview Metrics', () => {
     it('should display total deployed capital', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -138,7 +136,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display total current value', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -149,7 +147,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display unrealized gains', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -162,7 +160,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display realized returns', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -175,7 +173,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display portfolio IRR', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -190,7 +188,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
 
   describe('Performance by Sector', () => {
     it('should display performance breakdown by sector', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -203,7 +201,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display sector-wise deployed capital', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -216,7 +214,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display sector-wise return percentages', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -229,7 +227,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
 
   describe('Performance by Stage', () => {
     it('should display performance breakdown by funding stage', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 
@@ -242,7 +240,7 @@ describe('US-INVESTOR-012: Track Portfolio Performance', () => {
     });
 
     it('should display stage-wise return percentages', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockPerformanceData });
+      vi.mocked(apiClient.get).mockResolvedValue(mockPerformanceData);
 
       renderWithProviders(<PortfolioPerformance />);
 

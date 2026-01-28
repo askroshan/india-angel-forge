@@ -38,6 +38,7 @@ export default function PitchMaterials() {
 
   useEffect(() => {
     fetchMaterials();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchMaterials = async () => {
@@ -153,11 +154,11 @@ export default function PitchMaterials() {
   const getFileIcon = (materialType: string) => {
     if (materialType.includes('pdf')) {
       return <FileText className="h-8 w-8 text-red-500" />;
-    } else if (fileType.includes('sheet') || fileType.includes('excel')) {
+    } else if (materialType.includes('sheet') || materialType.includes('excel')) {
       return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
-    } else if (fileType.includes('word') || fileType.includes('document')) {
+    } else if (materialType.includes('word') || materialType.includes('document')) {
       return <FileText className="h-8 w-8 text-blue-500" />;
-    } else if (fileType.includes('presentation') || fileType.includes('powerpoint')) {
+    } else if (materialType.includes('presentation') || materialType.includes('powerpoint')) {
       return <FileText className="h-8 w-8 text-orange-500" />;
     } else {
       return <File className="h-8 w-8 text-gray-500" />;

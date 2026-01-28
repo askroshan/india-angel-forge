@@ -151,7 +151,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
 
   describe('Page Display', () => {
     it('should display portfolio updates page', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -161,7 +161,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display empty state when no updates', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -173,7 +173,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
 
   describe('Updates List', () => {
     it('should display all portfolio company updates', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -185,7 +185,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display company name for each update', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -197,7 +197,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display key metrics when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -210,7 +210,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display milestones when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -221,7 +221,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display challenges when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -231,7 +231,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display asks when available', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 
@@ -244,9 +244,9 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
   describe('Comments', () => {
     it('should allow commenting on updates', async () => {
       vi.mocked(apiClient.get).mockImplementation((url) => {
-        if (url === '/api/portfolio/updates') return Promise.resolve({ data: mockUpdates });
-        if (url.includes('/comments')) return Promise.resolve({ data: mockComments });
-        return Promise.resolve({ data: [] });
+        if (url === '/api/portfolio/updates') return Promise.resolve(mockUpdates);
+        if (url.includes('/comments')) return Promise.resolve(mockComments);
+        return Promise.resolve([]);
       });
 
       renderWithProviders(<PortfolioUpdates />);
@@ -259,7 +259,7 @@ describe('US-INVESTOR-013: Access Portfolio Company Updates', () => {
     });
 
     it('should display comment count for each update', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockUpdates });
+      vi.mocked(apiClient.get).mockResolvedValue(mockUpdates);
 
       renderWithProviders(<PortfolioUpdates />);
 

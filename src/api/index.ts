@@ -1,5 +1,5 @@
 // API Client exports
-export { ApiClient, getApiClient, setApiClient } from './client';
+export { ApiClient, getApiClient, setApiClient, apiClient } from './client';
 export type {
   ApiResponse,
   ApiError,

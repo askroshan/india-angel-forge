@@ -177,7 +177,7 @@ describe('InvestorRepository', () => {
 
   describe('getById', () => {
     it('should fetch an investor by ID', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(mockInvestor);
 
       const result = await repository.getById('investor-123');
 
@@ -189,26 +189,32 @@ describe('InvestorRepository', () => {
   describe('getByUserId', () => {
     it('should fetch investor by user ID', async () => {
       mockApiClient.list.mockResolvedValue({ 
-        data: [mockInvestor], 
+        data: {
+          data: [mockInvestor],
+          total: 1,
+          page: 1,
+          pageSize: 1,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 1,
       });
 
       const result = await repository.getByUserId('user-456');
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('investors', { userId: 'user-456' });
+      expect(mockApiClient.list).toHaveBeenCalledWith('investors', { filters: { userId: 'user-456' } });
       expect(result.data).toEqual(mockInvestor);
     });
 
     it('should return null if no investor found', async () => {
       mockApiClient.list.mockResolvedValue({ 
-        data: [], 
+        data: {
+          data: [],
+          total: 0,
+          page: 1,
+          pageSize: 1,
+          hasMore: false,
+        },
         error: null,
-        total: 0,
-        page: 1,
-        pageSize: 1,
       });
 
       const result = await repository.getByUserId('non-existent');
@@ -277,7 +283,7 @@ describe('InvestorRepository', () => {
 
   describe('updateStatus', () => {
     it('should transition investor from applied to under-review', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(mockInvestor);
       const updatedInvestor = { ...mockInvestor, status: 'under-review' as InvestorStatus };
       mockApiClient.update.mockResolvedValue({ data: updatedInvestor, error: null });
 
@@ -287,7 +293,7 @@ describe('InvestorRepository', () => {
     });
 
     it('should reject invalid status transition', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(mockInvestor);
 
       const result = await repository.updateStatus('investor-123', 'active');
 
@@ -296,7 +302,7 @@ describe('InvestorRepository', () => {
 
     it('should set approvedAt when transitioning to approved', async () => {
       const kycVerifiedInvestor = { ...mockInvestor, status: 'kyc-verified' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: kycVerifiedInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(kycVerifiedInvestor);
       mockApiClient.update.mockResolvedValue({ 
         data: { ...kycVerifiedInvestor, status: 'approved', approvedAt: expect.any(String) }, 
         error: null 
@@ -314,7 +320,7 @@ describe('InvestorRepository', () => {
 
   describe('rejectInvestor', () => {
     it('should reject investor with reason', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(mockInvestor);
       const rejectedInvestor = { 
         ...mockInvestor, 
         status: 'rejected' as InvestorStatus,
@@ -336,7 +342,7 @@ describe('InvestorRepository', () => {
   describe('submitKYC', () => {
     it('should transition from kyc-pending to kyc-submitted', async () => {
       const kycPendingInvestor = { ...mockInvestor, status: 'kyc-pending' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: kycPendingInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(kycPendingInvestor);
       
       const kycSubmittedInvestor = { 
         ...kycPendingInvestor, 
@@ -352,7 +358,7 @@ describe('InvestorRepository', () => {
     });
 
     it('should fail if not in kyc-pending status', async () => {
-      mockApiClient.get.mockResolvedValue({ data: mockInvestor, error: null }); // applied status
+      mockApiClient.get.mockResolvedValue(mockInvestor); // applied status
 
       const result = await repository.submitKYC('investor-123');
 
@@ -367,7 +373,7 @@ describe('InvestorRepository', () => {
         status: 'kyc-submitted' as InvestorStatus,
         kycStatus: 'submitted' as const,
       };
-      mockApiClient.get.mockResolvedValue({ data: kycSubmittedInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(kycSubmittedInvestor);
       
       const kycVerifiedInvestor = { 
         ...kycSubmittedInvestor, 
@@ -386,7 +392,7 @@ describe('InvestorRepository', () => {
   describe('verifyAccreditedStatus', () => {
     it('should mark investor as accredited with category', async () => {
       const approvedInvestor = { ...mockInvestor, status: 'approved' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: approvedInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(approvedInvestor);
       
       const accreditedInvestor = { 
         ...approvedInvestor, 
@@ -425,24 +431,27 @@ describe('InvestorRepository', () => {
       ];
 
       mockApiClient.list.mockResolvedValue({ 
-        data: mockDocuments, 
+        data: {
+          data: mockDocuments,
+          total: 1,
+          page: 1,
+          pageSize: 20,
+          hasMore: false,
+        },
         error: null,
-        total: 1,
-        page: 1,
-        pageSize: 20,
       });
 
       const result = await repository.getKYCDocuments('investor-123');
 
-      expect(mockApiClient.list).toHaveBeenCalledWith('kyc_documents', { investorId: 'investor-123' });
-      expect(result.data).toHaveLength(1);
+      expect(mockApiClient.list).toHaveBeenCalledWith('kyc_documents', { filters: { investorId: 'investor-123' } });
+      expect(result.data?.data).toHaveLength(1);
     });
   });
 
   describe('checkEligibilityForDeal', () => {
     it('should return eligible for approved investor', async () => {
       const approvedInvestor = { ...mockInvestor, status: 'approved' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: approvedInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(approvedInvestor);
 
       const result = await repository.checkEligibilityForDeal('investor-123');
 
@@ -451,7 +460,7 @@ describe('InvestorRepository', () => {
 
     it('should return eligible for active investor', async () => {
       const activeInvestor = { ...mockInvestor, status: 'active' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: activeInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(activeInvestor);
 
       const result = await repository.checkEligibilityForDeal('investor-123');
 
@@ -460,7 +469,7 @@ describe('InvestorRepository', () => {
 
     it('should return not eligible for kyc-pending investor', async () => {
       const kycPendingInvestor = { ...mockInvestor, status: 'kyc-pending' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: kycPendingInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(kycPendingInvestor);
 
       const result = await repository.checkEligibilityForDeal('investor-123');
 
@@ -470,7 +479,7 @@ describe('InvestorRepository', () => {
 
     it('should return not eligible for suspended investor', async () => {
       const suspendedInvestor = { ...mockInvestor, status: 'suspended' as InvestorStatus };
-      mockApiClient.get.mockResolvedValue({ data: suspendedInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(suspendedInvestor);
 
       const result = await repository.checkEligibilityForDeal('investor-123');
 
@@ -485,7 +494,7 @@ describe('InvestorRepository', () => {
         countryOfResidence: 'CN',
         requiresGovernmentApproval: true,
       };
-      mockApiClient.get.mockResolvedValue({ data: borderingInvestor, error: null });
+      mockApiClient.get.mockResolvedValue(borderingInvestor);
 
       const result = await repository.checkEligibilityForDeal('investor-123');
 

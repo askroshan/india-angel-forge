@@ -30,67 +30,73 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { testUsers, createMockSession } from '../fixtures/testData';
 
 import InvestmentCommitment from '@/pages/investor/InvestmentCommitment';
+
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'investor-1', email: 'investor@example.com', role: 'INVESTOR' },
+    token: 'mock-token',
+    isAuthenticated: true,
+  }),
+}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate, useParams: () => ({ interestId: 'interest-001' }) };
+});
 
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
 describe('US-INVESTOR-007: Submit Investment Commitment', () => {
-  const investor = testUsers.standard_investor;
-  const mockSession = createMockSession(investor);
-
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    } as any);
   });
 
   describe('Commitment Form', () => {
     it('should display commitment form for accepted interest', async () => {
       const mockInterest = {
         id: 'interest-001',
-        deal_id: 'deal-001',
+        dealId: 'deal-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
         deal: {
           title: 'HealthTech Startup',
-          company_name: 'HealthTech Inc'
+          companyName: 'HealthTech Inc'
         }
       };
 
       const mockSPV = {
         id: 'spv-001',
         name: 'HealthTech SPV 2026',
-        target_amount: 50000000
+        targetAmount: 50000000
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockInterest,
-              error: null,
-            }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: mockSPV,
-              error: null,
-            }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(null),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -105,31 +111,38 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
       const mockInterest = {
         id: 'interest-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        target_amount: 50000000,
-        carry_percentage: 20
+        targetAmount: 50000000,
+        carryPercentage: 20
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockSPV, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(null),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -148,34 +161,43 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
       const mockInterest = {
         id: 'interest-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
       const mockSPV = {
         id: 'spv-001',
         name: 'Test SPV',
-        target_amount: 50000000
+        targetAmount: 50000000
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockSPV, error: null }),
-          } as any;
-        } else if (table === 'investment_commitments') {
-          return {
-            insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockSPV),
+          });
+        }
+        if (url.includes('/api/commitments') && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(null),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -184,7 +206,7 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
         expect(screen.getByText(/Investment Commitment/i)).toBeInTheDocument();
       });
 
-      const confirmCheckbox = screen.getByRole('checkbox', { name: /confirm commitment/i });
+      const confirmCheckbox = screen.getByRole('checkbox');
       await user.click(confirmCheckbox);
 
       const submitButton = screen.getByRole('button', { name: /submit commitment/i });
@@ -196,29 +218,34 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
     });
 
     it('should require confirmation checkbox', async () => {
-      const user = userEvent.setup();
-      
       const mockInterest = {
         id: 'interest-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: { id: 'spv-001', name: 'Test SPV' }, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'spv-001', name: 'Test SPV' }),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(null),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -227,12 +254,9 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
         expect(screen.getByText(/Investment Commitment/i)).toBeInTheDocument();
       });
 
+      // Submit button should be disabled when checkbox not checked
       const submitButton = screen.getByRole('button', { name: /submit commitment/i });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/must confirm/i)).toBeInTheDocument();
-      });
+      expect(submitButton).toBeDisabled();
     });
   });
 
@@ -241,9 +265,9 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
       const mockInterest = {
         id: 'interest-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
       const mockCommitment = {
@@ -252,24 +276,26 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
         amount: 1000000
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: { id: 'spv-001', name: 'Test SPV' }, error: null }),
-          } as any;
-        } else if (table === 'investment_commitments') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockCommitment, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'spv-001', name: 'Test SPV' }),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockCommitment),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -283,36 +309,38 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
       const mockInterest = {
         id: 'interest-001',
         status: 'accepted',
-        commitment_amount: 1000000,
-        spv_id: 'spv-001',
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        spvId: 'spv-001',
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
       const mockCommitment = {
         id: 'commitment-001',
         status: 'paid',
         amount: 1000000,
-        payment_reference: 'PAY-123456'
+        paymentReference: 'PAY-123456'
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
-        } else if (table === 'spvs') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: { id: 'spv-001', name: 'Test SPV' }, error: null }),
-          } as any;
-        } else if (table === 'investment_commitments') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockCommitment, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/spv/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'spv-001', name: 'Test SPV' }),
+          });
+        }
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockCommitment),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
@@ -329,25 +357,32 @@ describe('US-INVESTOR-007: Submit Investment Commitment', () => {
       const mockInterest = {
         id: 'interest-001',
         status: 'pending', // Not accepted
-        commitment_amount: 1000000,
-        deal: { title: 'Test Deal', company_name: 'Test Co' }
+        commitmentAmount: 1000000,
+        deal: { title: 'Test Deal', companyName: 'Test Co' }
       };
 
-      vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
-        if (table === 'deal_interests') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ data: mockInterest, error: null }),
-          } as any;
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/deal-interests/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockInterest),
+          });
         }
-        return {} as any;
+        if (url.includes('/api/commitments')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(null),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(null) });
       });
 
       renderWithRouter(<InvestmentCommitment />);
 
+      // Wait for the "not accepted" message to appear
       await waitFor(() => {
-        expect(screen.getByText(/not yet accepted/i)).toBeInTheDocument();
-      });
+        expect(screen.getByText(/has not yet been accepted/i)).toBeInTheDocument();
+      }, { timeout: 3000 });
     });
   });
 });

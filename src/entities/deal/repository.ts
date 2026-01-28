@@ -42,14 +42,25 @@ export class DealRepository {
    * Get a single deal by ID
    */
   async getById(id: string): Promise<ApiResponse<Deal>> {
-    return this.apiClient.get<Deal>('deals', id);
+    try {
+      const data = await this.apiClient.get<Deal>('deals', id);
+      return { data, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { 
+          message: error instanceof Error ? error.message : 'Failed to fetch deal', 
+          code: 'FETCH_ERROR' 
+        } 
+      };
+    }
   }
 
   /**
    * List deals with optional filters
    */
-  async list(filters: DealFilters = {}): Promise<PaginatedResponse<Deal>> {
-    return this.apiClient.list<Deal>('deals', filters);
+  async list(filters: DealFilters = {}): Promise<ApiResponse<PaginatedResponse<Deal>>> {
+    return this.apiClient.list<Deal>('deals', { filters: filters as Record<string, unknown> });
   }
 
   /**
@@ -159,8 +170,8 @@ export class DealRepository {
   /**
    * Get all commitments for a deal
    */
-  async getCommitments(dealId: string): Promise<PaginatedResponse<DealCommitment>> {
-    return this.apiClient.list<DealCommitment>('deal_commitments', { dealId });
+  async getCommitments(dealId: string): Promise<ApiResponse<PaginatedResponse<DealCommitment>>> {
+    return this.apiClient.list<DealCommitment>('deal_commitments', { filters: { dealId } });
   }
 
   /**
@@ -213,7 +224,7 @@ export class DealRepository {
       dealId,
       investorId,
       amount,
-      status: 'pending',
+      status: 'pending' as const,
       amountReceived: 0,
     };
 
@@ -230,16 +241,16 @@ export class DealRepository {
       return { data: null, error: commitmentsResponse.error };
     }
 
-    const commitments = commitmentsResponse.data || [];
+    const commitments = commitmentsResponse.data?.data || [];
     
     // Filter active commitments (exclude cancelled)
-    const activeCommitments = commitments.filter(c => 
+    const activeCommitments = commitments.filter((c: DealCommitment) => 
       ACTIVE_COMMITMENT_STATUSES.includes(c.status)
     );
 
     const metrics: DealMetrics = {
-      totalCommitted: activeCommitments.reduce((sum, c) => sum + c.amount, 0),
-      totalFunded: activeCommitments.reduce((sum, c) => sum + (c.amountReceived || 0), 0),
+      totalCommitted: activeCommitments.reduce((sum: number, c: DealCommitment) => sum + c.amount, 0),
+      totalFunded: activeCommitments.reduce((sum: number, c: DealCommitment) => sum + (c.amountReceived || 0), 0),
       investorCount: activeCommitments.length,
     };
 

@@ -53,16 +53,19 @@ export default function UserRoleManagement() {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!accessDenied) {
       fetchUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessDenied]);
 
   useEffect(() => {
     filterUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, searchQuery, filterRole]);
 
   const checkAccess = async () => {
@@ -104,7 +107,7 @@ export default function UserRoleManagement() {
 
       const data = await response.json();
       setUsers(data || []);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to load users',
@@ -179,7 +182,7 @@ export default function UserRoleManagement() {
 
       handleCloseDialog();
       fetchUsers();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to assign role',

@@ -78,6 +78,7 @@ export default function KYCUpload() {
 
   useEffect(() => {
     checkAuthAndLoadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuthAndLoadDocuments = async () => {
@@ -113,7 +114,7 @@ export default function KYCUpload() {
 
       const docs = await response.json();
       setDocuments(docs || []);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to load documents',
@@ -176,7 +177,7 @@ export default function KYCUpload() {
 
       // Reload documents
       await checkAuthAndLoadDocuments();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Upload Failed',
         description: error.message || 'Failed to upload document',

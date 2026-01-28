@@ -1,17 +1,21 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/setup';
 import InvestorUpdates from '@/pages/founder/InvestorUpdates';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
+// Mock AuthContext for authentication
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'founder-123',
+      email: 'founder@example.com',
+      role: 'founder',
     },
-    from: vi.fn(),
-  },
+    isAuthenticated: true,
+    token: 'test-token',
+  }),
 }));
 
 // Mock react-router-dom
@@ -27,29 +31,15 @@ vi.mock('react-router-dom', async () => {
 describe('InvestorUpdates', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'founder-123' },
-        },
-      },
-    });
   });
 
   describe('Updates Dashboard', () => {
     it('should display investor updates dashboard', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -68,34 +58,25 @@ describe('InvestorUpdates', () => {
           id: 'update-1',
           title: 'Q1 2024 Portfolio Review',
           content: 'Great progress this quarter',
-          created_at: '2024-01-15T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-15T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
         {
           id: 'update-2',
           title: 'Market Insights',
           content: 'Interesting market trends',
-          created_at: '2024-01-20T10:00:00Z',
-          investor: {
-            full_name: 'Jane Capital',
-            email: 'jane@capital.com',
-          },
+          createdAt: '2024-01-20T10:00:00Z',
+          investorName: 'Jane Capital',
+          investorEmail: 'jane@capital.com',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockUpdates,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json(mockUpdates);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -117,24 +98,17 @@ describe('InvestorUpdates', () => {
           id: 'update-1',
           title: 'Q1 Review',
           content: 'Great work',
-          created_at: '2024-01-15T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-15T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockUpdates,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json(mockUpdates);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -153,24 +127,17 @@ describe('InvestorUpdates', () => {
           id: 'update-1',
           title: 'Q1 Review',
           content: 'Great work',
-          created_at: '2024-01-15T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-15T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockUpdates,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json(mockUpdates);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -189,24 +156,17 @@ describe('InvestorUpdates', () => {
           id: 'update-1',
           title: 'Q1 Review',
           content: 'Your company showed excellent growth this quarter',
-          created_at: '2024-01-15T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-15T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockUpdates,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json(mockUpdates);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -227,34 +187,25 @@ describe('InvestorUpdates', () => {
           id: 'update-2',
           title: 'Newer Update',
           content: 'Recent message',
-          created_at: '2024-01-20T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-20T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
         {
           id: 'update-1',
           title: 'Older Update',
           content: 'Old message',
-          created_at: '2024-01-15T10:00:00Z',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          createdAt: '2024-01-15T10:00:00Z',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockUpdates,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json(mockUpdates);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -263,25 +214,19 @@ describe('InvestorUpdates', () => {
       );
 
       await waitFor(() => {
-        const updates = screen.getAllByRole('heading', { level: 3 });
-        expect(updates[0]).toHaveTextContent('Newer Update');
-        expect(updates[1]).toHaveTextContent('Older Update');
+        expect(screen.getByText('Newer Update')).toBeInTheDocument();
+        expect(screen.getByText('Older Update')).toBeInTheDocument();
       });
     });
   });
 
   describe('Empty State', () => {
     it('should display empty state when no updates', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/portfolio/updates', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>

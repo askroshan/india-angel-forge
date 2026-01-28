@@ -5,6 +5,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import UploadPitchDeck from '@/pages/founder/UploadPitchDeck';
 
+// Mock sonner toast for success/error messages
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock('sonner', () => ({
+  toast: {
+    success: (msg: string) => mockToastSuccess(msg),
+    error: (msg: string) => mockToastError(msg),
+  },
+}));
+
 // Mock API client
 vi.mock('@/api/client', () => ({
   apiClient: {
@@ -91,11 +101,13 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockToastSuccess.mockClear();
+    mockToastError.mockClear();
   });
 
   describe('Page Display', () => {
     it('should display upload pitch materials page', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -103,30 +115,38 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
     });
 
     it('should display list of uploaded documents', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
 
       renderWithProviders(<UploadPitchDeck />);
 
       await waitFor(() => {
-        expect(screen.getByText('Startup Pitch Deck.pdf')).toBeInTheDocument();
-        expect(screen.getByText('Financial Projections.xlsx')).toBeInTheDocument();
+        // Use getAllByText since the file name appears in multiple places in UI
+        const pitchDeckElements = screen.getAllByText('Startup Pitch Deck.pdf');
+        expect(pitchDeckElements.length).toBeGreaterThan(0);
+        const financialElements = screen.getAllByText('Financial Projections.xlsx');
+        expect(financialElements.length).toBeGreaterThan(0);
       });
     });
 
     it('should display document metadata (type, size, upload date)', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
 
       renderWithProviders(<UploadPitchDeck />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Pitch Deck/i)).toBeInTheDocument();
-        expect(screen.getByText(/2.4 MB/i)).toBeInTheDocument();
-        expect(screen.getByText(/January 20, 2026/i)).toBeInTheDocument();
+        // Use getByRole for heading to avoid matching other "Pitch Deck" text
+        expect(screen.getByRole('heading', { name: /Pitch Deck/i })).toBeInTheDocument();
+        // File size appears in multiple places, use getAllByText
+        const sizeElements = screen.getAllByText(/2.4 MB/i);
+        expect(sizeElements.length).toBeGreaterThan(0);
+        // Date format from component uses en-IN locale: "20 January 2026"
+        const dateElements = screen.getAllByText(/20 January 2026/i);
+        expect(dateElements.length).toBeGreaterThan(0);
       });
     });
 
     it('should display view counts for documents', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -139,7 +159,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
   describe('Upload Documents', () => {
     it('should display upload button for each document type', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -153,7 +173,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should allow selecting file for upload', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -167,7 +187,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should validate file types', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -182,7 +202,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should upload document successfully', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
       vi.mocked(apiClient.post).mockResolvedValue({
         data: {
           id: 'doc-3',
@@ -190,6 +210,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
           file_name: 'New Pitch.pdf',
           file_url: 'https://storage.example.com/new-pitch.pdf',
         },
+        error: null,
       });
 
       renderWithProviders(<UploadPitchDeck />);
@@ -214,13 +235,14 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should show success message after upload', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
       vi.mocked(apiClient.post).mockResolvedValue({
         data: {
           id: 'doc-3',
           document_type: 'pitch_deck',
           file_name: 'New Pitch.pdf',
         },
+        error: null,
       });
 
       renderWithProviders(<UploadPitchDeck />);
@@ -236,14 +258,14 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Document uploaded successfully/i)).toBeInTheDocument();
+        expect(mockToastSuccess).toHaveBeenCalledWith('Document uploaded successfully');
       });
     });
   });
 
   describe('Update Documents', () => {
     it('should display replace button for existing documents', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -255,9 +277,10 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should allow replacing existing document', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
       vi.mocked(apiClient.put).mockResolvedValue({
         data: { id: 'doc-1', file_name: 'Updated Pitch.pdf' },
+        error: null,
       });
 
       renderWithProviders(<UploadPitchDeck />);
@@ -277,7 +300,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should show confirmation before replacing document', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: mockDocuments });
+      vi.mocked(apiClient.get).mockResolvedValue(mockDocuments);
 
       renderWithProviders(<UploadPitchDeck />);
 
@@ -299,18 +322,20 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
     it('should display who viewed documents', async () => {
       vi.mocked(apiClient.get).mockImplementation((url) => {
         if (url === '/api/deal-documents') {
-          return Promise.resolve({ data: mockDocuments });
+          return Promise.resolve(mockDocuments);
         }
         if (url.includes('/api/document-views/')) {
-          return Promise.resolve({ data: mockDocumentViewers });
+          return Promise.resolve(mockDocumentViewers);
         }
-        return Promise.resolve({ data: [] });
+        return Promise.resolve([]);
       });
 
       renderWithProviders(<UploadPitchDeck />);
 
       await waitFor(() => {
-        expect(screen.getByText('Startup Pitch Deck.pdf')).toBeInTheDocument();
+        // Use getAllByText since filename appears multiple times
+        const elements = screen.getAllByText('Startup Pitch Deck.pdf');
+        expect(elements.length).toBeGreaterThan(0);
       });
 
       const user = userEvent.setup();
@@ -326,18 +351,20 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
     it('should display view timestamps', async () => {
       vi.mocked(apiClient.get).mockImplementation((url) => {
         if (url === '/api/deal-documents') {
-          return Promise.resolve({ data: mockDocuments });
+          return Promise.resolve(mockDocuments);
         }
         if (url.includes('/api/document-views/')) {
-          return Promise.resolve({ data: mockDocumentViewers });
+          return Promise.resolve(mockDocumentViewers);
         }
-        return Promise.resolve({ data: [] });
+        return Promise.resolve([]);
       });
 
       renderWithProviders(<UploadPitchDeck />);
 
       await waitFor(() => {
-        expect(screen.getByText('Startup Pitch Deck.pdf')).toBeInTheDocument();
+        // Use getAllByText since filename appears multiple times
+        const elements = screen.getAllByText('Startup Pitch Deck.pdf');
+        expect(elements.length).toBeGreaterThan(0);
       });
 
       const user = userEvent.setup();
@@ -345,25 +372,28 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
       await user.click(viewDetailsButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/January 24, 2026/i)).toBeInTheDocument();
+        // Date format uses en-IN locale: "24 January 2026"
+        expect(screen.getByText(/24 January 2026/i)).toBeInTheDocument();
       });
     });
 
     it('should display view duration', async () => {
       vi.mocked(apiClient.get).mockImplementation((url) => {
         if (url === '/api/deal-documents') {
-          return Promise.resolve({ data: mockDocuments });
+          return Promise.resolve(mockDocuments);
         }
         if (url.includes('/api/document-views/')) {
-          return Promise.resolve({ data: mockDocumentViewers });
+          return Promise.resolve(mockDocumentViewers);
         }
-        return Promise.resolve({ data: [] });
+        return Promise.resolve([]);
       });
 
       renderWithProviders(<UploadPitchDeck />);
 
       await waitFor(() => {
-        expect(screen.getByText('Startup Pitch Deck.pdf')).toBeInTheDocument();
+        // Use getAllByText since filename appears multiple times
+        const elements = screen.getAllByText('Startup Pitch Deck.pdf');
+        expect(elements.length).toBeGreaterThan(0);
       });
 
       const user = userEvent.setup();
@@ -390,7 +420,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
 
     it('should handle upload error gracefully', async () => {
       const user = userEvent.setup();
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+      vi.mocked(apiClient.get).mockResolvedValue([]);
       vi.mocked(apiClient.post).mockRejectedValue(new Error('Upload failed'));
 
       renderWithProviders(<UploadPitchDeck />);
@@ -406,7 +436,7 @@ describe('US-FOUNDER-005: Upload Pitch Deck and Documents', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to upload document/i)).toBeInTheDocument();
+        expect(mockToastError).toHaveBeenCalledWith('Failed to upload document');
       });
     });
   });

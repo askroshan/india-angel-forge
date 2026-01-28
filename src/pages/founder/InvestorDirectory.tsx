@@ -24,10 +24,12 @@ export default function InvestorDirectory() {
 
   useEffect(() => {
     fetchInvestors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     filterInvestors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, investors]);
 
   const fetchInvestors = async () => {
@@ -66,12 +68,9 @@ export default function InvestorDirectory() {
 
     const query = searchQuery.toLowerCase();
     const filtered = investors.filter(investor => {
-      const nameMatch = investor.full_name?.toLowerCase().includes(query);
+      const nameMatch = investor.fullName?.toLowerCase().includes(query);
       const emailMatch = investor.email.toLowerCase().includes(query);
-      const focusMatch = investor.investor_profile.focus_areas?.some(
-        area => area.toLowerCase().includes(query)
-      );
-      return nameMatch || emailMatch || focusMatch;
+      return nameMatch || emailMatch;
     });
 
     setFilteredInvestors(filtered);

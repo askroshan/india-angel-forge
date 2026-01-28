@@ -97,14 +97,14 @@ describe('US-OPERATOR-003: Mentor Startups', () => {
     // Default mock implementations
     vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
       if (url === '/api/operator/mentorships') {
-        return Promise.resolve({ data: mockMentorships });
+        return Promise.resolve(mockMentorships);
       }
       if (url.startsWith('/api/operator/mentorships/')) {
         const id = url.split('/').pop();
         if (id === 'mentorship-1' && url.includes('/sessions')) {
-          return Promise.resolve({ data: mockSessions });
+          return Promise.resolve(mockSessions);
         }
-        return Promise.resolve({ data: mockMentorships[0] });
+        return Promise.resolve(mockMentorships[0]);
       }
       return Promise.reject(new Error('Not found'));
     });
@@ -132,7 +132,7 @@ describe('US-OPERATOR-003: Mentor Startups', () => {
     it('should display empty state when no mentorships', async () => {
       vi.mocked(apiClient.apiClient.get).mockImplementation((url: string) => {
         if (url === '/api/operator/mentorships') {
-          return Promise.resolve({ data: [] });
+          return Promise.resolve([]);
         }
         return Promise.reject(new Error('Not found'));
       });

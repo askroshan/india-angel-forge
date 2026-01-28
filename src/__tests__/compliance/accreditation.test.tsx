@@ -27,43 +27,62 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { testUsers, createMockSession } from '../fixtures/testData';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 
 import AccreditationVerification from '@/pages/compliance/AccreditationVerification';
 
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
+// Mock API client
+vi.mock('@/api/client', () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn()
+  }
+}));
+
+// Mock AuthContext
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'compliance-officer-001',
+      email: 'compliance@example.com',
+      role: 'compliance_officer'
+    },
+    token: 'mock-token',
+    isAuthenticated: true
+  })
+}));
+
+const renderWithProviders = (component: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false }
+    }
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>{component}</BrowserRouter>
+    </QueryClientProvider>
+  );
 };
 
 describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
-  const complianceOfficer = testUsers.compliance_officer;
-  const mockSession = createMockSession(complianceOfficer);
-
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    } as any);
   });
 
   describe('Dashboard Access', () => {
     it('should display accreditation verification dashboard for compliance officer', async () => {
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: [],
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue([]);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Accreditation Verification/i)).toBeInTheDocument();
@@ -75,29 +94,35 @@ describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
         {
           id: 'acc-001',
           investor_id: 'investor-001',
-          verification_type: 'income_based',
-          status: 'pending',
+          verification_method: 'income',
+          verification_status: 'pending',
+          annual_income: 5000000,
+          documents: [],
+          submitted_at: '2026-01-20T10:00:00Z',
           investor: {
-            profile: {
-              full_name: 'Priya Sharma'
-            }
+            id: 'investor-001',
+            full_name: 'Priya Sharma',
+            email: 'priya@example.com'
           }
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue(mockAccreditations);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show empty state when no applications exist', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue([]);
+
+      renderWithProviders(<AccreditationVerification />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/No accreditation applications found/i)).toBeInTheDocument();
       });
     });
   });
@@ -109,119 +134,115 @@ describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
       const mockAccreditation = {
         id: 'acc-001',
         investor_id: 'investor-001',
-        verification_type: 'income_based',
-        status: 'pending',
+        verification_method: 'income',
+        verification_status: 'pending',
+        annual_income: 5000000,
+        documents: [],
+        submitted_at: '2026-01-20T10:00:00Z',
         investor: {
-          profile: { full_name: 'Priya Sharma' }
+          id: 'investor-001',
+          full_name: 'Priya Sharma',
+          email: 'priya@example.com'
         }
       };
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: [mockAccreditation],
-          error: null,
-        }),
-        update: vi.fn().mockReturnThis(),
-        insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue([mockAccreditation]);
 
-      vi.spyOn(supabase, 'rpc').mockResolvedValue({
-        data: null,
-        error: null,
-      } as any);
-
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
       });
 
-      const verifyButtons = screen.getAllByRole('button', { name: /verify/i });
-      await user.click(verifyButtons[0]);
+      // Click the Approve button to open the dialog
+      const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+      await user.click(approveButtons[0]);
 
+      // Dialog should open with expiry date field
       await waitFor(() => {
         expect(screen.getByLabelText(/expiry date/i)).toBeInTheDocument();
       });
     });
 
-    it('should require expiry date when verifying', async () => {
+    it('should submit approval with expiry date', async () => {
       const user = userEvent.setup();
       
       const mockAccreditation = {
         id: 'acc-001',
         investor_id: 'investor-001',
-        verification_type: 'income_based',
-        status: 'pending',
+        verification_method: 'income',
+        verification_status: 'pending',
+        annual_income: 5000000,
+        documents: [],
+        submitted_at: '2026-01-20T10:00:00Z',
         investor: {
-          profile: { full_name: 'Priya Sharma' }
+          id: 'investor-001',
+          full_name: 'Priya Sharma',
+          email: 'priya@example.com'
         }
       };
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: [mockAccreditation],
-          error: null,
-        }),
-        update: vi.fn().mockReturnThis(),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue([mockAccreditation]);
+      vi.mocked(apiClient.patch).mockResolvedValue({ success: true });
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
       });
 
-      const verifyButtons = screen.getAllByRole('button', { name: /verify/i });
-      await user.click(verifyButtons[0]);
+      // Click the Approve button in the card
+      const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+      await user.click(approveButtons[0]);
 
-      const confirmButton = await screen.findByRole('button', { name: /confirm/i });
-      await user.click(confirmButton);
+      // Wait for dialog to open
+      await waitFor(() => {
+        expect(screen.getByLabelText(/expiry date/i)).toBeInTheDocument();
+      });
+
+      // Click the Approve button in the dialog to submit
+      const dialogApproveButton = screen.getAllByRole('button', { name: /approve/i }).slice(-1)[0];
+      await user.click(dialogApproveButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/expiry date is required/i)).toBeInTheDocument();
+        expect(apiClient.patch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/compliance/accreditation/acc-001/approve'),
+          expect.objectContaining({ expiry_date: expect.any(String) })
+        );
       });
     });
   });
 
-  describe('Expiry Warnings', () => {
-    it('should show warning for expiring accreditations (within 30 days)', async () => {
-      const expiringDate = new Date();
-      expiringDate.setDate(expiringDate.getDate() + 20);
-
+  describe('Status Display', () => {
+    it('should display approved status for verified applications', async () => {
       const mockAccreditations = [
         {
           id: 'acc-001',
           investor_id: 'investor-001',
-          verification_type: 'income_based',
-          status: 'verified',
-          expiry_date: expiringDate.toISOString(),
+          verification_method: 'income',
+          verification_status: 'approved',
+          annual_income: 5000000,
+          expiry_date: '2027-01-20T00:00:00Z',
+          documents: [],
+          submitted_at: '2026-01-15T10:00:00Z',
           investor: {
-            profile: { full_name: 'Priya Sharma' }
+            id: 'investor-001',
+            full_name: 'Priya Sharma',
+            email: 'priya@example.com'
           }
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue(mockAccreditations);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
-        expect(screen.getByText(/expiring soon/i)).toBeInTheDocument();
+        expect(screen.getByText(/Approved/i)).toBeInTheDocument();
       });
     });
 
-    it('should show expired status for past expiry dates', async () => {
+    it('should display expired status for past expiry dates', async () => {
       const expiredDate = new Date();
       expiredDate.setDate(expiredDate.getDate() - 5);
 
@@ -229,28 +250,54 @@ describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
         {
           id: 'acc-001',
           investor_id: 'investor-001',
-          verification_type: 'income_based',
-          status: 'verified',
+          verification_method: 'income',
+          verification_status: 'expired',
+          annual_income: 5000000,
           expiry_date: expiredDate.toISOString(),
+          documents: [],
+          submitted_at: '2026-01-15T10:00:00Z',
           investor: {
-            profile: { full_name: 'Priya Sharma' }
+            id: 'investor-001',
+            full_name: 'Priya Sharma',
+            email: 'priya@example.com'
           }
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue(mockAccreditations);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
-        expect(screen.getByText(/expired/i)).toBeInTheDocument();
+        expect(screen.getByText(/Expired/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display rejected status for rejected applications', async () => {
+      const mockAccreditations = [
+        {
+          id: 'acc-001',
+          investor_id: 'investor-001',
+          verification_method: 'income',
+          verification_status: 'rejected',
+          annual_income: 5000000,
+          rejection_reason: 'Income proof invalid',
+          documents: [],
+          submitted_at: '2026-01-15T10:00:00Z',
+          investor: {
+            id: 'investor-001',
+            full_name: 'Priya Sharma',
+            email: 'priya@example.com'
+          }
+        }
+      ];
+
+      vi.mocked(apiClient.get).mockResolvedValue(mockAccreditations);
+
+      renderWithProviders(<AccreditationVerification />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Rejected/i)).toBeInTheDocument();
       });
     });
   });
@@ -263,43 +310,48 @@ describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
         {
           id: 'acc-001',
           investor_id: 'investor-001',
-          verification_type: 'income_based',
-          status: 'pending',
+          verification_method: 'income',
+          verification_status: 'pending',
+          annual_income: 5000000,
+          documents: [],
+          submitted_at: '2026-01-20T10:00:00Z',
           investor: {
-            profile: { full_name: 'Priya Sharma' }
+            id: 'investor-001',
+            full_name: 'Priya Sharma',
+            email: 'priya@example.com'
           }
         },
         {
           id: 'acc-002',
           investor_id: 'investor-002',
-          verification_type: 'net_worth_based',
-          status: 'verified',
+          verification_method: 'net_worth',
+          verification_status: 'approved',
+          net_worth: 25000000,
+          documents: [],
+          submitted_at: '2026-01-20T10:00:00Z',
           investor: {
-            profile: { full_name: 'Rahul Gupta' }
+            id: 'investor-002',
+            full_name: 'Rahul Gupta',
+            email: 'rahul@example.com'
           }
         }
       ];
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue(mockAccreditations);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
         expect(screen.getByText(/Rahul Gupta/i)).toBeInTheDocument();
       });
 
-      const statusFilter = screen.getByRole('combobox', { name: /status/i });
+      // Click the status filter dropdown
+      const statusFilter = screen.getByRole('combobox');
       await user.click(statusFilter);
       
-      const pendingOption = screen.getByRole('option', { name: /pending/i });
+      // Select pending option
+      const pendingOption = await screen.findByRole('option', { name: /pending/i });
       await user.click(pendingOption);
 
       await waitFor(() => {
@@ -307,91 +359,99 @@ describe('US-COMPLIANCE-003: Verify Accredited Investor Status', () => {
         expect(screen.queryByText(/Rahul Gupta/i)).not.toBeInTheDocument();
       });
     });
+  });
 
-    it('should search investors by name', async () => {
+  describe('Rejection Flow', () => {
+    it('should allow rejecting application with reason', async () => {
       const user = userEvent.setup();
       
-      const mockAccreditations = [
-        {
-          id: 'acc-001',
-          investor_id: 'investor-001',
-          verification_type: 'income_based',
-          status: 'pending',
-          investor: {
-            profile: { full_name: 'Priya Sharma' }
-          }
-        },
-        {
-          id: 'acc-002',
-          investor_id: 'investor-002',
-          verification_type: 'net_worth_based',
-          status: 'verified',
-          investor: {
-            profile: { full_name: 'Rahul Gupta' }
-          }
+      const mockAccreditation = {
+        id: 'acc-001',
+        investor_id: 'investor-001',
+        verification_method: 'income',
+        verification_status: 'pending',
+        annual_income: 5000000,
+        documents: [],
+        submitted_at: '2026-01-20T10:00:00Z',
+        investor: {
+          id: 'investor-001',
+          full_name: 'Priya Sharma',
+          email: 'priya@example.com'
         }
-      ];
+      };
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue([mockAccreditation]);
+      vi.mocked(apiClient.patch).mockResolvedValue({ success: true });
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
         expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/search investors/i);
-      await user.type(searchInput, 'Rahul');
+      // Click the Reject button
+      const rejectButton = screen.getByRole('button', { name: /reject/i });
+      await user.click(rejectButton);
+
+      // Wait for dialog to open
+      await waitFor(() => {
+        expect(screen.getByLabelText(/rejection reason/i)).toBeInTheDocument();
+      });
+
+      // Enter rejection reason
+      const reasonField = screen.getByLabelText(/rejection reason/i);
+      await user.type(reasonField, 'Income documents are not valid');
+
+      // Submit rejection
+      const dialogRejectButton = screen.getAllByRole('button', { name: /reject/i }).slice(-1)[0];
+      await user.click(dialogRejectButton);
 
       await waitFor(() => {
-        expect(screen.queryByText(/Priya Sharma/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Rahul Gupta/i)).toBeInTheDocument();
+        expect(apiClient.patch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/compliance/accreditation/acc-001/reject'),
+          expect.objectContaining({ reason: 'Income documents are not valid' })
+        );
       });
     });
   });
 
-  describe('Statistics', () => {
-    it('should display accreditation statistics', async () => {
-      const mockAccreditations = [
-        {
-          id: 'acc-001',
-          status: 'pending',
-          investor: { profile: { full_name: 'User 1' } }
-        },
-        {
-          id: 'acc-002',
-          status: 'verified',
-          investor: { profile: { full_name: 'User 2' } }
-        },
-        {
-          id: 'acc-003',
-          status: 'verified',
-          investor: { profile: { full_name: 'User 3' } }
+  describe('View Documents', () => {
+    it('should allow viewing application documents', async () => {
+      const user = userEvent.setup();
+      
+      const mockAccreditation = {
+        id: 'acc-001',
+        investor_id: 'investor-001',
+        verification_method: 'income',
+        verification_status: 'pending',
+        annual_income: 5000000,
+        documents: [
+          { id: 'doc-1', type: 'income_proof', url: 'https://example.com/doc1.pdf' }
+        ],
+        submitted_at: '2026-01-20T10:00:00Z',
+        investor: {
+          id: 'investor-001',
+          full_name: 'Priya Sharma',
+          email: 'priya@example.com'
         }
-      ];
+      };
 
-      vi.spyOn(supabase, 'from').mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({
-          data: mockAccreditations,
-          error: null,
-        }),
-      } as any);
+      vi.mocked(apiClient.get).mockResolvedValue([mockAccreditation]);
 
-      renderWithRouter(<AccreditationVerification />);
+      renderWithProviders(<AccreditationVerification />);
 
       await waitFor(() => {
-        expect(screen.getByText(/3/)).toBeInTheDocument(); // Total
-        expect(screen.getByText(/2/)).toBeInTheDocument(); // Verified
-        expect(screen.getByText(/1/)).toBeInTheDocument(); // Pending
+        expect(screen.getByText(/Priya Sharma/i)).toBeInTheDocument();
+      });
+
+      // Click the View Documents button
+      const viewDocsButton = screen.getByRole('button', { name: /view documents/i });
+      await user.click(viewDocsButton);
+
+      // Dialog should open with documents
+      await waitFor(() => {
+        expect(screen.getByText(/Application Documents/i)).toBeInTheDocument();
+        expect(screen.getByText(/income_proof/i)).toBeInTheDocument();
       });
     });
   });

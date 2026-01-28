@@ -72,16 +72,19 @@ export default function KYCReviewDashboard() {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!accessDenied) {
       fetchDocuments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessDenied]);
 
   useEffect(() => {
     filterDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documents, filterStatus, filterType, searchQuery]);
 
   const checkAccess = async () => {
@@ -116,10 +119,11 @@ export default function KYCReviewDashboard() {
 
       const data = await response.json();
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load KYC documents',
+        description: err.message || 'Failed to load KYC documents',
         variant: 'destructive',
       });
     } finally {
@@ -155,10 +159,11 @@ export default function KYCReviewDashboard() {
   const handleViewDocument = async (doc: KYCDocument) => {
     try {
       window.open(`/uploads/${doc.filePath}`, '_blank');
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load document',
+        description: err.message || 'Failed to load document',
         variant: 'destructive',
       });
     }
@@ -167,10 +172,11 @@ export default function KYCReviewDashboard() {
   const handleDownloadDocument = async (doc: KYCDocument) => {
     try {
       window.open(`/uploads/${doc.filePath}`, '_blank');
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to download document',
+        description: err.message || 'Failed to download document',
         variant: 'destructive',
       });
     }
@@ -229,10 +235,11 @@ export default function KYCReviewDashboard() {
 
       handleCloseDialog();
       fetchDocuments();
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update document',
+        description: err.message || 'Failed to update document',
         variant: 'destructive',
       });
     }

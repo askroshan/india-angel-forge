@@ -48,6 +48,7 @@ export default function SPVDashboard() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spvId]);
 
   const fetchData = async () => {

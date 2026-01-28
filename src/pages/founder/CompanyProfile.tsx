@@ -51,6 +51,7 @@ export default function CompanyProfile() {
 
   useEffect(() => {
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProfile = async () => {
@@ -124,7 +125,7 @@ export default function CompanyProfile() {
     }
   };
 
-  const updateProfile = (field: keyof CompanyProfile, value: any) => {
+  const updateProfile = (field: keyof CompanyProfile, value: CompanyProfile[keyof CompanyProfile]) => {
     setProfile({ ...profile, [field]: value });
   };
 

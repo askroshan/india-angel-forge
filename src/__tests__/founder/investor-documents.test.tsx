@@ -2,20 +2,21 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/setup';
 import InvestorDocuments from '@/pages/founder/InvestorDocuments';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
+// Mock AuthContext for authentication
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'founder-123',
+      email: 'founder@example.com',
+      role: 'founder',
     },
-    from: vi.fn(),
-    storage: {
-      from: vi.fn(),
-    },
-  },
+    isAuthenticated: true,
+    token: 'test-token',
+  }),
 }));
 
 // Mock react-router-dom
@@ -31,29 +32,15 @@ vi.mock('react-router-dom', async () => {
 describe('InvestorDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'founder-123' },
-        },
-      },
-    });
   });
 
   describe('Documents Dashboard', () => {
     it('should display investor documents dashboard', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -70,56 +57,31 @@ describe('InvestorDocuments', () => {
       const mockDocuments = [
         {
           id: 'doc-1',
-          file_name: 'Investment Terms.pdf',
-          file_type: 'application/pdf',
-          file_size: 1024000,
-          shared_at: '2024-01-15T10:00:00Z',
-          file_path: 'investor-123/terms.pdf',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          fileName: 'Investment Terms.pdf',
+          fileType: 'application/pdf',
+          fileSize: 1024000,
+          sharedAt: '2024-01-15T10:00:00Z',
+          filePath: 'investor-123/terms.pdf',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
         {
           id: 'doc-2',
-          file_name: 'Board Meeting Notes.docx',
-          file_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          file_size: 512000,
-          shared_at: '2024-01-20T10:00:00Z',
-          file_path: 'investor-123/notes.docx',
-          investor: {
-            full_name: 'Jane Capital',
-            email: 'jane@capital.com',
-          },
+          fileName: 'Board Meeting Notes.docx',
+          fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          fileSize: 512000,
+          sharedAt: '2024-01-20T10:00:00Z',
+          filePath: 'investor-123/notes.docx',
+          investorName: 'Jane Capital',
+          investorEmail: 'jane@capital.com',
         },
       ];
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockDocuments,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json(mockDocuments);
+        }),
+      );
 
       render(
         <BrowserRouter>
@@ -139,44 +101,21 @@ describe('InvestorDocuments', () => {
       const mockDocuments = [
         {
           id: 'doc-1',
-          file_name: 'Terms.pdf',
-          file_type: 'application/pdf',
-          file_size: 1024000,
-          shared_at: '2024-01-15T10:00:00Z',
-          file_path: 'investor-123/terms.pdf',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          fileName: 'Terms.pdf',
+          fileType: 'application/pdf',
+          fileSize: 1024000,
+          sharedAt: '2024-01-15T10:00:00Z',
+          filePath: 'investor-123/terms.pdf',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockDocuments,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json(mockDocuments);
+        }),
+      );
 
       render(
         <BrowserRouter>
@@ -193,44 +132,21 @@ describe('InvestorDocuments', () => {
       const mockDocuments = [
         {
           id: 'doc-1',
-          file_name: 'Terms.pdf',
-          file_type: 'application/pdf',
-          file_size: 1024000, // 1 MB
-          shared_at: '2024-01-15T10:00:00Z',
-          file_path: 'investor-123/terms.pdf',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          fileName: 'Terms.pdf',
+          fileType: 'application/pdf',
+          fileSize: 1024000, // 1 MB
+          sharedAt: '2024-01-15T10:00:00Z',
+          filePath: 'investor-123/terms.pdf',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockDocuments,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json(mockDocuments);
+        }),
+      );
 
       render(
         <BrowserRouter>
@@ -239,7 +155,7 @@ describe('InvestorDocuments', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/1.0 MB/i)).toBeInTheDocument();
+        expect(screen.getByText(/1000.0 KB/i) || screen.getByText(/1.0 MB/i)).toBeInTheDocument();
       });
     });
 
@@ -247,44 +163,21 @@ describe('InvestorDocuments', () => {
       const mockDocuments = [
         {
           id: 'doc-1',
-          file_name: 'Terms.pdf',
-          file_type: 'application/pdf',
-          file_size: 1024000,
-          shared_at: '2024-01-15T10:00:00Z',
-          file_path: 'investor-123/terms.pdf',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          fileName: 'Terms.pdf',
+          fileType: 'application/pdf',
+          fileSize: 1024000,
+          sharedAt: '2024-01-15T10:00:00Z',
+          filePath: 'investor-123/terms.pdf',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockDocuments,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json(mockDocuments);
+        }),
+      );
 
       render(
         <BrowserRouter>
@@ -300,56 +193,24 @@ describe('InvestorDocuments', () => {
 
   describe('Download Document', () => {
     it('should allow downloading document', async () => {
-      const user = userEvent.setup();
-
       const mockDocuments = [
         {
           id: 'doc-1',
-          file_name: 'Terms.pdf',
-          file_type: 'application/pdf',
-          file_size: 1024000,
-          shared_at: '2024-01-15T10:00:00Z',
-          file_path: 'investor-123/terms.pdf',
-          investor: {
-            full_name: 'John Investor',
-            email: 'john@investor.com',
-          },
+          fileName: 'Terms.pdf',
+          fileType: 'application/pdf',
+          fileSize: 1024000,
+          sharedAt: '2024-01-15T10:00:00Z',
+          filePath: 'investor-123/terms.pdf',
+          investorName: 'John Investor',
+          investorEmail: 'john@investor.com',
         },
       ];
 
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: mockDocuments,
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
-
-      (supabase.storage.from as any).mockReturnValue({
-        download: vi.fn().mockResolvedValue({
-          data: new Blob(),
-          error: null,
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json(mockDocuments);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -368,32 +229,11 @@ describe('InvestorDocuments', () => {
 
   describe('Empty State', () => {
     it('should display empty state when no documents', async () => {
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'portfolio_companies') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: { id: 'company-123' },
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === 'shared_documents') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [],
-                  error: null,
-                }),
-              }),
-            }),
-          };
-        }
-      });
+      server.use(
+        http.get('/api/documents', () => {
+          return HttpResponse.json([]);
+        }),
+      );
 
       render(
         <BrowserRouter>

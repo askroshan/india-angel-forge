@@ -104,8 +104,8 @@ const DirectMessages = () => {
   const { data: threads = [], isLoading: threadsLoading, error: threadsError } = useQuery<MessageThread[]>({
     queryKey: ['message-threads'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/messages/threads');
-      return response.data;
+      const response = await apiClient.get<MessageThread[]>('/api/messages/threads');
+      return response;
     },
   });
 
@@ -113,8 +113,8 @@ const DirectMessages = () => {
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['messages', selectedThreadId],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/messages/threads/${selectedThreadId}/messages`);
-      return response.data;
+      const response = await apiClient.get<Message[]>(`/api/messages/threads/${selectedThreadId}/messages`);
+      return response;
     },
     enabled: !!selectedThreadId,
   });
@@ -123,8 +123,8 @@ const DirectMessages = () => {
   const { data: users = [] } = useQuery<UserOption[]>({
     queryKey: ['users-list'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/users');
-      return response.data;
+      const response = await apiClient.get<UserOption[]>('/api/users');
+      return response;
     },
     enabled: newConversationOpen,
   });
@@ -133,10 +133,8 @@ const DirectMessages = () => {
   const { data: searchResults = [] } = useQuery<Message[]>({
     queryKey: ['search-messages', searchQuery],
     queryFn: async () => {
-      const response = await apiClient.get('/api/messages/search', {
-        params: { q: searchQuery },
-      });
-      return response.data;
+      const response = await apiClient.get<Message[]>(`/api/messages/search?q=${encodeURIComponent(searchQuery)}`);
+      return response;
     },
     enabled: searchQuery.length > 2,
   });
@@ -144,7 +142,8 @@ const DirectMessages = () => {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { thread_id: string; content: string }) => {
-      const response = await apiClient.post('/api/messages', data);
+      const response = await apiClient.post<Message>('/api/messages', data);
+      if (response.error) throw new Error(response.error.message);
       return response.data;
     },
     onSuccess: () => {
@@ -161,8 +160,9 @@ const DirectMessages = () => {
   // Start new conversation mutation
   const startConversationMutation = useMutation({
     mutationFn: async (data: { recipient_id: string; initial_message: string }) => {
-      const response = await apiClient.post('/api/messages/threads', data);
-      return response.data;
+      const response = await apiClient.post<MessageThread>('/api/messages/threads', data);
+      if (response.error) throw new Error(response.error.message);
+      return response.data as MessageThread;
     },
     onSuccess: (data) => {
       toast.success('Conversation started');
@@ -170,7 +170,7 @@ const DirectMessages = () => {
       setSelectedUserId('');
       setMessageText('');
       queryClient.invalidateQueries({ queryKey: ['message-threads'] });
-      setSelectedThreadId(data.id);
+      setSelectedThreadId(data?.id ?? null);
     },
     onError: () => {
       toast.error('Failed to start conversation');

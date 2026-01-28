@@ -2,20 +2,21 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/setup';
 import PitchMaterials from '@/pages/founder/PitchMaterials';
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock Supabase
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
+// Mock AuthContext for authentication
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'founder-123',
+      email: 'founder@example.com',
+      role: 'founder',
     },
-    from: vi.fn(),
-    storage: {
-      from: vi.fn(),
-    },
-  },
+    isAuthenticated: true,
+    token: 'test-token',
+  }),
 }));
 
 // Mock react-router-dom
@@ -31,30 +32,15 @@ vi.mock('react-router-dom', async () => {
 describe('PitchMaterials', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock authenticated session
-    (supabase.auth.getSession as any).mockResolvedValue({
-      data: {
-        session: {
-          user: { id: 'founder-123' },
-        },
-      },
-    });
   });
 
   describe('Pitch Materials Dashboard', () => {
     it('should display pitch materials dashboard', async () => {
-      // Mock pitch materials query
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -63,7 +49,7 @@ describe('PitchMaterials', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Pitch Materials/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Pitch Materials/i, level: 1 })).toBeInTheDocument();
       });
     });
 
@@ -71,30 +57,27 @@ describe('PitchMaterials', () => {
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000,
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000,
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
         {
           id: 'material-2',
-          file_name: 'Financial Projections.xlsx',
-          file_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          file_size: 512000,
-          uploaded_at: '2024-01-16T10:00:00Z',
+          title: 'Financial Projections.xlsx',
+          materialType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          filePath: 'founder-123/financial.xlsx',
+          fileSize: 512000,
+          uploadedAt: '2024-01-16T10:00:00Z',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -111,16 +94,11 @@ describe('PitchMaterials', () => {
 
   describe('Upload Pitch Material', () => {
     it('should show upload button', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -129,43 +107,22 @@ describe('PitchMaterials', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Upload/i)).toBeInTheDocument();
+        // Look for button containing "Upload Material" text specifically
+        expect(screen.getByRole('button', { name: /Upload Material/i })).toBeInTheDocument();
       });
     });
 
     it('should allow uploading pitch material', async () => {
       const user = userEvent.setup();
 
-      // Mock storage operations
-      const mockStorageUpload = vi.fn().mockResolvedValue({
-        data: { path: 'founder-123/pitch-deck.pdf' },
-        error: null,
-      });
-
-      (supabase.storage.from as any).mockReturnValue({
-        upload: mockStorageUpload,
-        getPublicUrl: vi.fn().mockReturnValue({
-          data: { publicUrl: 'https://storage.supabase.co/pitch-materials/founder-123/pitch-deck.pdf' },
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json([]);
         }),
-      });
-
-      // Mock insert operation
-      const mockInsert = vi.fn().mockResolvedValue({
-        data: { id: 'material-123' },
-        error: null,
-      });
-
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+        http.post('/api/pitch/materials', () => {
+          return HttpResponse.json({ id: 'material-123' });
         }),
-        insert: mockInsert,
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -175,16 +132,16 @@ describe('PitchMaterials', () => {
 
       // Wait for initial load
       await waitFor(() => {
-        expect(screen.getByText(/Pitch Materials/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Pitch Materials/i, level: 1 })).toBeInTheDocument();
       });
 
-      // Click upload button
-      const uploadButton = screen.getByText(/Upload/i);
+      // Click upload button - use specific button with "Upload Material" text
+      const uploadButton = screen.getByRole('button', { name: /Upload Material/i });
       await user.click(uploadButton);
 
       // Should show file input or dialog
       await waitFor(() => {
-        expect(screen.getByLabelText(/file/i) || screen.getByText(/Choose file/i)).toBeInTheDocument();
+        expect(screen.getByRole('dialog') || screen.getByLabelText(/file/i) || screen.getByText(/title/i)).toBeInTheDocument();
       });
     });
   });
@@ -194,23 +151,19 @@ describe('PitchMaterials', () => {
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000, // 2 MB
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000, // 2 MB
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -227,23 +180,19 @@ describe('PitchMaterials', () => {
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000,
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000,
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -261,23 +210,19 @@ describe('PitchMaterials', () => {
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000,
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000,
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -293,37 +238,22 @@ describe('PitchMaterials', () => {
 
   describe('Material Actions', () => {
     it('should allow downloading pitch material', async () => {
-      const user = userEvent.setup();
-
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000,
-          file_path: 'founder-123/pitch-deck.pdf',
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000,
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
       ];
 
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-      });
-
-      // Mock storage download
-      (supabase.storage.from as any).mockReturnValue({
-        download: vi.fn().mockResolvedValue({
-          data: new Blob(),
-          error: null,
-        }),
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -341,45 +271,25 @@ describe('PitchMaterials', () => {
     });
 
     it('should allow deleting pitch material', async () => {
-      const user = userEvent.setup();
-
       const mockMaterials = [
         {
           id: 'material-1',
-          file_name: 'Pitch Deck.pdf',
-          file_type: 'application/pdf',
-          file_size: 2048000,
-          file_path: 'founder-123/pitch-deck.pdf',
-          uploaded_at: '2024-01-15T10:00:00Z',
+          title: 'Pitch Deck.pdf',
+          materialType: 'application/pdf',
+          filePath: 'founder-123/pitch-deck.pdf',
+          fileSize: 2048000,
+          uploadedAt: '2024-01-15T10:00:00Z',
         },
       ];
 
-      // Mock delete operations
-      const mockDelete = vi.fn().mockResolvedValue({
-        error: null,
-      });
-
-      const mockStorageRemove = vi.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockMaterials,
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json(mockMaterials);
         }),
-        delete: vi.fn().mockReturnValue({
-          eq: mockDelete,
+        http.delete('/api/pitch/materials/:id', () => {
+          return HttpResponse.json({ success: true });
         }),
-      });
-
-      (supabase.storage.from as any).mockReturnValue({
-        remove: mockStorageRemove,
-      });
+      );
 
       render(
         <BrowserRouter>
@@ -391,24 +301,23 @@ describe('PitchMaterials', () => {
         expect(screen.getByText('Pitch Deck.pdf')).toBeInTheDocument();
       });
 
-      // Should have delete button
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
-      expect(deleteButton).toBeInTheDocument();
+      // Should have delete button (look for button with red text styling that has a trash icon)
+      const buttons = screen.getAllByRole('button');
+      const trashButton = buttons.find(button => 
+        button.classList.contains('text-red-600') || 
+        button.querySelector('svg[class*="lucide"]')?.classList.contains('lucide-trash-2')
+      );
+      expect(trashButton).toBeTruthy();
     });
   });
 
   describe('Empty State', () => {
     it('should display empty state when no materials', async () => {
-      (supabase.from as any).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [],
-              error: null,
-            }),
-          }),
+      server.use(
+        http.get('/api/pitch/materials', () => {
+          return HttpResponse.json([]);
         }),
-      });
+      );
 
       render(
         <BrowserRouter>
