@@ -18,7 +18,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+// ...existing code...
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -161,7 +161,8 @@ export default function AMLScreeningDashboard() {
         risk_level: 'low',
       };
 
-      const { error } = await supabase
+      // TODO: Replace supabase call with new API
+      // const { error } = await fetch('/api/compliance/aml-screening', ...)
         .from('aml_screening')
         .insert({
           investor_id: investorId,

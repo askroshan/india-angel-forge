@@ -1,5 +1,5 @@
 /**
- * US-ADMIN-002: View Audit Logs
+ * US-ADMIN-006: View Audit Logs
  * 
  * As an: Admin
  * I want to: View system audit logs
@@ -60,7 +60,7 @@ const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
 
-describe('US-ADMIN-002: View Audit Logs', () => {
+describe('US-ADMIN-006: View Audit Logs', () => {
   const mockLogs = [
     {
       id: 'log-001',

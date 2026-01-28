@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// ...existing code...
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,8 @@ const Membership = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/membership/check-subscription', ...)
       
       if (error) throw error;
       setSubscriptionData(data);
@@ -78,7 +79,8 @@ const Membership = () => {
   const handleManageSubscription = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/membership/customer-portal', ...)
       
       if (error) throw error;
       

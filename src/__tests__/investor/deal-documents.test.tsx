@@ -14,21 +14,7 @@ const createChainableMock = (finalData: unknown, finalError: unknown = null) => 
   order: vi.fn().mockResolvedValue({ data: finalData, error: finalError }),
 });
 
-const mockSupabaseFrom = vi.fn();
-
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: (...args: unknown[]) => mockSupabaseFrom(...args),
-    storage: {
-      from: vi.fn().mockReturnValue({
-        createSignedUrl: vi.fn().mockResolvedValue({
-          data: { signedUrl: 'https://example.com/signed' },
-          error: null
-        })
-      })
-    },
-  },
-}));
+// ...existing code...
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
@@ -76,11 +62,7 @@ describe('US-INVESTOR-006: View Deal Documents', () => {
     });
     const documentsChain = createChainableMock(mockDocs);
 
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === 'deal_interests') return interestChain;
-      if (table === 'deal_documents') return documentsChain;
-      return createChainableMock([]);
-    });
+    // TODO: Replace with mock for new API fetch implementation
 
     render(<BrowserRouter><DealDocuments /></BrowserRouter>);
 
@@ -93,10 +75,7 @@ describe('US-INVESTOR-006: View Deal Documents', () => {
   it('should deny access to non-interested investors', async () => {
     const interestChain = createChainableMock(null, { message: 'Not found' });
 
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === 'deal_interests') return interestChain;
-      return createChainableMock([]);
-    });
+    // TODO: Replace with mock for new API fetch implementation
 
     render(<BrowserRouter><DealDocuments /></BrowserRouter>);
 

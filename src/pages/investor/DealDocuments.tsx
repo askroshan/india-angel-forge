@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+// ...existing code...
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +77,8 @@ const DealDocuments = () => {
   const checkInterest = async (userId: string) => {
     try {
       // Check if user has expressed interest in this deal
-      const { data: interest, error: interestError } = await supabase
+      // TODO: Replace supabase call with new API
+      // const { data: interest, error: interestError } = await fetch('/api/deal-interests', ...)
         .from('deal_interests')
         .select('*, deal:deal_id(title)')
         .eq('deal_id', dealId)
@@ -102,7 +103,8 @@ const DealDocuments = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/deal-documents', ...)
         .from('deal_documents')
         .select('*')
         .eq('deal_id', dealId)
@@ -124,7 +126,8 @@ const DealDocuments = () => {
 
   const downloadDocument = async (doc: DealDocument) => {
     try {
-      const { data, error } = await supabase.storage
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/storage', ...)
         .from('deal-documents')
         .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
 

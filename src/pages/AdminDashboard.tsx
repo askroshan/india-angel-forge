@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// ...existing code...
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,8 @@ const AdminDashboard = () => {
       }
 
       // Use the has_role function to check if user is admin
-      const { data, error } = await supabase.rpc('has_role', {
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/roles/has_role', ...)
         _user_id: user.id,
         _role: 'admin'
       });
@@ -75,11 +76,11 @@ const AdminDashboard = () => {
       setLoadingData(true);
 
       const [founderRes, investorRes] = await Promise.all([
-        supabase
+        // ...existing code...
           .from('founder_applications')
           .select('id, company_name, founder_name, founder_email, stage, status, created_at')
           .order('created_at', { ascending: false }),
-        supabase
+        // ...existing code...
           .from('investor_applications')
           .select('id, full_name, email, membership_type, status, created_at')
           .order('created_at', { ascending: false })
@@ -101,7 +102,8 @@ const AdminDashboard = () => {
     id: string,
     status: string
   ) => {
-    const { error } = await supabase
+    // TODO: Replace supabase call with new API
+    // const { error } = await fetch('/api/logout', ...)
       .from(table)
       .update({ status })
       .eq('id', id);
@@ -120,13 +122,15 @@ const AdminDashboard = () => {
       
       // Refresh data
       if (table === 'founder_applications') {
-        const { data } = await supabase
+        // TODO: Replace supabase call with new API
+        // const { data } = await fetch('/api/roles', ...)
           .from('founder_applications')
           .select('id, company_name, founder_name, founder_email, stage, status, created_at')
           .order('created_at', { ascending: false });
         if (data) setFounderApps(data);
       } else {
-        const { data } = await supabase
+        // TODO: Replace supabase call with new API
+        // const { data } = await fetch('/api/roles', ...)
           .from('investor_applications')
           .select('id, full_name, email, membership_type, status, created_at')
           .order('created_at', { ascending: false });

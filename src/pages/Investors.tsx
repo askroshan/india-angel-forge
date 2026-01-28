@@ -7,7 +7,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Check, Users, Target, Shield, TrendingUp, Database, Award, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// ...existing code...
 import { useToast } from "@/hooks/use-toast";
 
 const Investors = () => {
@@ -45,7 +45,8 @@ const Investors = () => {
 
     setLoadingPlan(membershipType);
     try {
-      const { data, error } = await supabase.functions.invoke("create-membership-checkout", {
+      // TODO: Replace supabase call with new API
+      // const { data, error } = await fetch('/api/membership/checkout', ...)
         body: { membershipType },
       });
 
