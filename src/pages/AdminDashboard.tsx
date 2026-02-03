@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,17 +48,13 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Use the has_role function to check if user is admin
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
-      });
-
-      if (error) {
+      // Check admin role via API
+      try {
+        const response = await apiClient.get<{ hasRole: boolean }>('/api/auth/check-role?role=admin');
+        setIsAdmin(response.hasRole === true);
+      } catch (error) {
         console.error('Error checking admin role:', error);
         setIsAdmin(false);
-      } else {
-        setIsAdmin(data === true);
       }
       setCheckingRole(false);
     };
@@ -75,18 +71,12 @@ const AdminDashboard = () => {
       setLoadingData(true);
 
       const [founderRes, investorRes] = await Promise.all([
-        supabase
-          .from('founder_applications')
-          .select('id, company_name, founder_name, founder_email, stage, status, created_at')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('investor_applications')
-          .select('id, full_name, email, membership_type, status, created_at')
-          .order('created_at', { ascending: false })
+        apiClient.get<FounderApplication[]>('/api/applications/founders'),
+        apiClient.get<InvestorApplication[]>('/api/applications/investors')
       ]);
 
-      if (founderRes.data) setFounderApps(founderRes.data);
-      if (investorRes.data) setInvestorApps(investorRes.data);
+      if (founderRes) setFounderApps(founderRes);
+      if (investorRes) setInvestorApps(investorRes);
       
       setLoadingData(false);
     };
@@ -101,18 +91,12 @@ const AdminDashboard = () => {
     id: string,
     status: string
   ) => {
-    const { error } = await supabase
-      .from(table)
-      .update({ status })
-      .eq('id', id);
+    try {
+      const endpoint = table === 'founder_applications' 
+        ? `/api/applications/founders/${id}` 
+        : `/api/applications/investors/${id}`;
+      await apiClient.update(endpoint, { status });
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
-      });
-    } else {
       toast({
         title: "Success",
         description: "Application status updated",
@@ -120,18 +104,18 @@ const AdminDashboard = () => {
       
       // Refresh data
       if (table === 'founder_applications') {
-        const { data } = await supabase
-          .from('founder_applications')
-          .select('id, company_name, founder_name, founder_email, stage, status, created_at')
-          .order('created_at', { ascending: false });
+        const data = await apiClient.get<FounderApplication[]>('/api/applications/founders');
         if (data) setFounderApps(data);
       } else {
-        const { data } = await supabase
-          .from('investor_applications')
-          .select('id, full_name, email, membership_type, status, created_at')
-          .order('created_at', { ascending: false });
+        const data = await apiClient.get<InvestorApplication[]>('/api/applications/investors');
         if (data) setInvestorApps(data);
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
     }
   };
 

@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -77,14 +77,11 @@ const DealDocuments = () => {
   const checkInterest = async (userId: string) => {
     try {
       // Check if user has expressed interest in this deal
-      const { data: interest, error: interestError } = await supabase
-        .from('deal_interests')
-        .select('*, deal:deal_id(title)')
-        .eq('deal_id', dealId)
-        .eq('investor_id', userId)
-        .single();
+      const interest = await apiClient.get<{ id: string; deal: { title: string } }>(
+        `/api/deals/${dealId}/interest`
+      );
 
-      if (interestError || !interest) {
+      if (!interest) {
         setHasAccess(false);
         setLoading(false);
         return;
@@ -102,13 +99,7 @@ const DealDocuments = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('deal_documents')
-        .select('*')
-        .eq('deal_id', dealId)
-        .order('uploaded_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.get<DealDocument[]>(`/api/deals/${dealId}/documents`);
 
       setDocuments(data || []);
     } catch (err) {
@@ -124,11 +115,9 @@ const DealDocuments = () => {
 
   const downloadDocument = async (doc: DealDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('deal-documents')
-        .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
-
-      if (error) throw error;
+      const data = await apiClient.get<{ signedUrl: string }>(
+        `/api/documents/${doc.id}/download`
+      );
 
       if (data?.signedUrl) {
         window.open(data.signedUrl, '_blank');
@@ -138,9 +127,10 @@ const DealDocuments = () => {
         });
       }
     } catch (err) {
+      const error = err as { message?: string };
       toast({
         title: 'Download Failed',
-        description: err.message || 'Failed to download document',
+        description: error.message || 'Failed to download document',
         variant: 'destructive',
       });
     }

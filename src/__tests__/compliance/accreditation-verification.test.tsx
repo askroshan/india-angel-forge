@@ -290,7 +290,7 @@ describe('US-COMPLIANCE-003: Accreditation Verification', () => {
     });
 
     it('should call API with expiry date when approving', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(apiClient.get).mockResolvedValue(mockAccreditationApplications);
       vi.mocked(apiClient.patch).mockResolvedValue({ success: true });
 
@@ -430,7 +430,7 @@ describe('US-COMPLIANCE-003: Accreditation Verification', () => {
     });
 
     it('should call API with rejection reason', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(apiClient.get).mockResolvedValue(mockAccreditationApplications);
       vi.mocked(apiClient.patch).mockResolvedValue({ success: true });
 

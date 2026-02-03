@@ -7,7 +7,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Check, Users, Target, Shield, TrendingUp, Database, Award, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Investors = () => {
@@ -45,11 +45,8 @@ const Investors = () => {
 
     setLoadingPlan(membershipType);
     try {
-      const { data, error } = await supabase.functions.invoke("create-membership-checkout", {
-        body: { membershipType },
-      });
+      const data = await apiClient.post<{ url: string }>('/api/membership/checkout', { membershipType });
 
-      if (error) throw error;
       if (data?.url) {
         window.open(data.url, "_blank");
       }

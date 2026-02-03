@@ -18,7 +18,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -161,17 +161,13 @@ export default function AMLScreeningDashboard() {
         risk_level: 'low',
       };
 
-      const { error } = await supabase
-        .from('aml_screening')
-        .insert({
-          investor_id: investorId,
-          screening_status: mockScreeningResult.match_score > 70 ? 'flagged' : 'clear',
-          screening_provider: mockScreeningResult.provider,
-          match_score: mockScreeningResult.match_score,
-          screening_results: mockScreeningResult,
-        });
-
-      if (error) throw error;
+      await apiClient.post('/api/compliance/aml-screening', {
+        investor_id: investorId,
+        screening_status: mockScreeningResult.match_score > 70 ? 'flagged' : 'clear',
+        screening_provider: mockScreeningResult.provider,
+        match_score: mockScreeningResult.match_score,
+        screening_results: mockScreeningResult,
+      });
 
       toast({
         title: 'Screening Initiated',
