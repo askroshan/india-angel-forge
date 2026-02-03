@@ -95,21 +95,25 @@ describe('US-ADMIN-006: View Audit Logs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // Default fetch mock
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(mockLogs),
-    } as Response);
+    // Default fetch mock - mockImplementation allows multiple calls to work properly
+    global.fetch = vi.fn().mockImplementation(() => 
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockLogs),
+      } as Response)
+    );
   });
 
   describe('Dashboard Access', () => {
     it('should display audit logs dashboard for admin', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve([]),
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() => 
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve([]),
+        } as Response)
+      );
 
       renderWithRouter(<AuditLogs />);
 
@@ -198,11 +202,13 @@ describe('US-ADMIN-006: View Audit Logs', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(dateMockLogs),
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(dateMockLogs),
+        } as Response)
+      );
 
       renderWithRouter(<AuditLogs />);
 
@@ -237,11 +243,13 @@ describe('US-ADMIN-006: View Audit Logs', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(searchMockLogs),
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(searchMockLogs),
+        } as Response)
+      );
 
       renderWithRouter(<AuditLogs />);
 
@@ -284,11 +292,13 @@ describe('US-ADMIN-006: View Audit Logs', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(searchMockLogs),
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(searchMockLogs),
+        } as Response)
+      );
 
       renderWithRouter(<AuditLogs />);
 
@@ -318,11 +328,13 @@ describe('US-ADMIN-006: View Audit Logs', () => {
         details: {}
       }));
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(manyLogs),
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(manyLogs),
+        } as Response)
+      );
 
       renderWithRouter(<AuditLogs />);
 

@@ -59,10 +59,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
 
   describe('Pipeline Display', () => {
     it('should display pipeline page for investor', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -103,10 +105,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -132,10 +136,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -158,10 +164,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -185,10 +193,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -265,10 +275,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -296,10 +308,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -335,10 +349,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 
@@ -368,10 +384,12 @@ describe('US-INVESTOR-005: Track Deal Pipeline', () => {
         }
       ];
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockInterests),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockInterests),
+        })
+      );
 
       renderWithRouter(<DealPipeline />);
 

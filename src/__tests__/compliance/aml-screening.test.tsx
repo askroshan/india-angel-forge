@@ -376,7 +376,7 @@ describe('US-COMPLIANCE-002: AML Screening', () => {
     });
 
     it('should call API to flag screening with reason', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(apiClient.get).mockResolvedValue(mockAMLScreenings);
       vi.mocked(apiClient.patch).mockResolvedValue({
         data: {
@@ -451,7 +451,7 @@ describe('US-COMPLIANCE-002: AML Screening', () => {
     });
 
     it('should call API to clear screening', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(apiClient.get).mockResolvedValue(mockAMLScreenings);
       vi.mocked(apiClient.patch).mockResolvedValue({
         data: {

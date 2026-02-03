@@ -60,10 +60,12 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
   describe('Upload Form Display', () => {
     it('should display KYC upload form for investor', async () => {
       // Mock /api/kyc/documents endpoint returning empty array
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       renderWithRouter(<KYCUpload />);
 
@@ -74,10 +76,12 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
 
     it('should show required document types', async () => {
       // Mock /api/kyc/documents endpoint returning empty array
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       renderWithRouter(<KYCUpload />);
 
@@ -159,18 +163,20 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
 
   describe('Document Status Display', () => {
     it('should show pending status for uploaded documents', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([
-          {
-            id: 'kyc-001',
-            documentType: 'pan',
-            filePath: 'kyc/pan.pdf',
-            verificationStatus: 'pending',
-            uploadedAt: new Date().toISOString(),
-          },
-        ]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'kyc-001',
+              documentType: 'pan',
+              filePath: 'kyc/pan.pdf',
+              verificationStatus: 'pending',
+              uploadedAt: new Date().toISOString(),
+            },
+          ]),
+        })
+      );
 
       renderWithRouter(<KYCUpload />);
 
@@ -180,19 +186,21 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
     });
 
     it('should show verified badge for approved documents', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([
-          {
-            id: 'kyc-001',
-            documentType: 'pan',
-            filePath: 'kyc/pan.pdf',
-            verificationStatus: 'verified',
-            uploadedAt: new Date().toISOString(),
-            verifiedAt: '2025-01-20T10:00:00Z',
-          },
-        ]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'kyc-001',
+              documentType: 'pan',
+              filePath: 'kyc/pan.pdf',
+              verificationStatus: 'verified',
+              uploadedAt: new Date().toISOString(),
+              verifiedAt: '2025-01-20T10:00:00Z',
+            },
+          ]),
+        })
+      );
 
       renderWithRouter(<KYCUpload />);
 
@@ -206,19 +214,21 @@ describe('US-INVESTOR-002: Upload KYC Documents', () => {
     });
 
     it('should show rejection reason for rejected documents', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([
-          {
-            id: 'kyc-001',
-            documentType: 'pan',
-            filePath: 'kyc/pan.pdf',
-            verificationStatus: 'rejected',
-            uploadedAt: new Date().toISOString(),
-            rejectionReason: 'Document not clear',
-          },
-        ]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'kyc-001',
+              documentType: 'pan',
+              filePath: 'kyc/pan.pdf',
+              verificationStatus: 'rejected',
+              uploadedAt: new Date().toISOString(),
+              rejectionReason: 'Document not clear',
+            },
+          ]),
+        })
+      );
 
       renderWithRouter(<KYCUpload />);
 

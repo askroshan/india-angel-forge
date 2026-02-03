@@ -30,10 +30,12 @@ describe('SharedDocuments', () => {
 
   describe('Shared Documents Dashboard', () => {
     it('should display shared documents dashboard', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       render(
         <BrowserRouter>
@@ -97,10 +99,12 @@ describe('SharedDocuments', () => {
 
   describe('Share Document', () => {
     it('should show share document button', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       render(
         <BrowserRouter>
@@ -350,10 +354,12 @@ describe('SharedDocuments', () => {
 
   describe('Empty State', () => {
     it('should display empty state when no documents', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        })
+      );
 
       render(
         <BrowserRouter>

@@ -159,11 +159,13 @@ describe('US-COMPLIANCE-001: KYC Document Review', () => {
 
     it('should deny access to non-compliance users', async () => {
       // Mock unauthorized response for checkAccess
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        json: () => Promise.resolve({ error: 'Forbidden' })
-      } as Response);
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: false,
+          status: 403,
+          json: () => Promise.resolve({ error: 'Forbidden' })
+        } as Response)
+      );
 
       renderWithRouter(<KYCReviewDashboard />);
 
@@ -276,7 +278,7 @@ describe('US-COMPLIANCE-001: KYC Document Review', () => {
 
   describe('Document Rejection', () => {
     it('should allow rejecting document with reason', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       
       // Mock fetch calls
       const mockFetch = vi.fn()

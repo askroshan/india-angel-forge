@@ -268,7 +268,7 @@ describe('US-INVESTOR-008: Create SPV', () => {
 
   describe('Create SPV Submission', () => {
     it('should submit SPV creation successfully', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.mocked(apiClient.get).mockResolvedValue(mockDeals);
       vi.mocked(apiClient.post).mockResolvedValue({
         data: {

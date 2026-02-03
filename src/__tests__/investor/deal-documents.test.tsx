@@ -7,14 +7,18 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import DealDocuments from '@/pages/investor/DealDocuments';
 
-const createChainableMock = (finalData: unknown, finalError: unknown = null) => ({
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  single: vi.fn().mockResolvedValue({ data: finalData, error: finalError }),
-  order: vi.fn().mockResolvedValue({ data: finalData, error: finalError }),
-});
+// Mock API client
+vi.mock('@/api/client', () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
 
-// ...existing code...
+import { apiClient } from '@/api/client';
+import { Mock } from 'vitest';
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
@@ -55,14 +59,15 @@ describe('US-INVESTOR-006: View Deal Documents', () => {
       }
     ];
 
-    const interestChain = createChainableMock({ 
-      id: 'interest-001', 
-      deal_id: 'deal-001', 
-      deal: { title: 'Test Deal' } 
+    (apiClient.get as Mock).mockImplementation((url: string) => {
+      if (url.includes('/interest')) {
+        return Promise.resolve({ id: 'interest-001', deal: { title: 'Test Deal' } });
+      }
+      if (url.includes('/documents')) {
+        return Promise.resolve(mockDocs);
+      }
+      return Promise.resolve(null);
     });
-    const documentsChain = createChainableMock(mockDocs);
-
-    // TODO: Replace with mock for new API fetch implementation
 
     render(<BrowserRouter><DealDocuments /></BrowserRouter>);
 
@@ -73,9 +78,12 @@ describe('US-INVESTOR-006: View Deal Documents', () => {
   });
 
   it('should deny access to non-interested investors', async () => {
-    const interestChain = createChainableMock(null, { message: 'Not found' });
-
-    // TODO: Replace with mock for new API fetch implementation
+    (apiClient.get as Mock).mockImplementation((url: string) => {
+      if (url.includes('/interest')) {
+        return Promise.reject(new Error('Not found'));
+      }
+      return Promise.resolve([]);
+    });
 
     render(<BrowserRouter><DealDocuments /></BrowserRouter>);
 

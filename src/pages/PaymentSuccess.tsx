@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { CheckCircle, Loader2, Mail } from "lucide-react";
-// ...existing code...
+import { apiClient } from "@/api/client";
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -20,17 +20,8 @@ const PaymentSuccess = () => {
       }
 
       try {
-        // TODO: Replace supabase call with new API
-        // const { error } = await fetch('/api/membership/confirmation', ...)
-          body: { sessionId },
-        });
-
-        if (error) {
-          console.error("Error sending confirmation email:", error);
-          setEmailStatus("error");
-        } else {
-          setEmailStatus("sent");
-        }
+        await apiClient.post('/api/membership/send-confirmation', { sessionId });
+        setEmailStatus("sent");
       } catch (error) {
         console.error("Error sending confirmation email:", error);
         setEmailStatus("error");
