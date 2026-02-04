@@ -1,0 +1,1171 @@
+{
+  "analysis_metadata": {
+    "date_generated": "2026-02-04",
+    "project": "India Angel Forum",
+    "total_user_stories": 59,
+    "total_e2e_test_cases": 95,
+    "total_documented_tests": 699
+  },
+  "user_stories_summary": {
+    "admin": {
+      "total": 6,
+      "stories": [
+        {
+          "id": "US-ADMIN-001",
+          "title": "User Management",
+          "status": "✅ Complete",
+          "test_coverage": "15/15 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not directly tested in E2E",
+            "READ": "✅ Tested - list and search users",
+            "UPDATE": "❌ Not directly tested in E2E",
+            "DELETE": "❌ Not directly tested in E2E"
+          },
+          "e2e_status": "Minimal coverage"
+        },
+        {
+          "id": "US-ADMIN-002",
+          "title": "Role Assignment",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-ADMIN-003",
+          "title": "Event Management",
+          "status": "✅ Complete",
+          "test_coverage": "14/14 passing (100%)",
+          "crud_operations": {
+            "CREATE": "✅ Admin can create events",
+            "READ": "✅ Admin can view events",
+            "UPDATE": "✅ Admin can update event details",
+            "DELETE": "✅ Admin can delete events"
+          },
+          "e2e_status": "Full CRUD coverage in E2E",
+          "e2e_tests": 13
+        },
+        {
+          "id": "US-ADMIN-004",
+          "title": "Application Review",
+          "status": "✅ Complete",
+          "test_coverage": "26/26 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-ADMIN-005",
+          "title": "System Statistics",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-ADMIN-006",
+          "title": "Audit Logs",
+          "status": "✅ Complete",
+          "test_coverage": "12/12 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "compliance": {
+      "total": 4,
+      "stories": [
+        {
+          "id": "US-COMPLIANCE-001",
+          "title": "Review KYC Documents",
+          "status": "✅ Complete",
+          "test_coverage": "18/18 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "✅ Compliance can view KYC submissions",
+            "UPDATE": "✅ Compliance can approve/reject KYC",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "Partial CRUD coverage",
+          "e2e_tests": 4
+        },
+        {
+          "id": "US-COMPLIANCE-002",
+          "title": "Perform AML Screening",
+          "status": "✅ Complete",
+          "test_coverage": "26/26 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "✅ Compliance can view AML screenings",
+            "UPDATE": "✅ Compliance can update screening status",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "Partial CRUD coverage",
+          "e2e_tests": 3
+        },
+        {
+          "id": "US-COMPLIANCE-003",
+          "title": "Verify Accredited Investor Status",
+          "status": "✅ Complete",
+          "test_coverage": "24/24 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-COMPLIANCE-004",
+          "title": "Access Audit Logs",
+          "status": "✅ Complete",
+          "test_coverage": "9/9 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "investor": {
+      "total": 16,
+      "stories": [
+        {
+          "id": "US-INVESTOR-001",
+          "title": "Submit Application",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-002",
+          "title": "Upload KYC Documents",
+          "status": "✅ Complete",
+          "test_coverage": "8/8 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-003",
+          "title": "Browse Available Deals",
+          "status": "✅ Complete",
+          "test_coverage": "25/25 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-004",
+          "title": "Express Interest in Deal",
+          "status": "✅ Complete",
+          "test_coverage": "14/14 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "✅ Investor can view expressed interests",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "Partial CRUD coverage",
+          "e2e_tests": 3
+        },
+        {
+          "id": "US-INVESTOR-005",
+          "title": "Track Deal Pipeline",
+          "status": "✅ Complete",
+          "test_coverage": "12/12 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-006",
+          "title": "View Deal Documents",
+          "status": "✅ Complete",
+          "test_coverage": "8/8 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-007",
+          "title": "Submit Investment Commitment",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-008",
+          "title": "Create SPV",
+          "status": "✅ Complete",
+          "test_coverage": "16/16 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-009",
+          "title": "Invite Co-Investors to SPV",
+          "status": "✅ Complete",
+          "test_coverage": "9/9 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-010",
+          "title": "Track SPV Allocations",
+          "status": "✅ Complete",
+          "test_coverage": "16/16 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-011",
+          "title": "View Portfolio Dashboard",
+          "status": "✅ Complete",
+          "test_coverage": "16/16 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-012",
+          "title": "Track Portfolio Performance",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-013",
+          "title": "Access Portfolio Company Updates",
+          "status": "✅ Complete",
+          "test_coverage": "11/11 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-014",
+          "title": "Send Direct Messages",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-015",
+          "title": "Create Discussion Threads",
+          "status": "✅ Complete",
+          "test_coverage": "17/17 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-INVESTOR-016",
+          "title": "Set Communication Preferences",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "founder": {
+      "total": 6,
+      "stories": [
+        {
+          "id": "US-FOUNDER-001",
+          "title": "Submit Founder Application",
+          "status": "✅ Complete",
+          "test_coverage": "12/12 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-FOUNDER-002",
+          "title": "Track Application Status",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "✅ Founder can view application status",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "Minimal coverage",
+          "e2e_tests": 2
+        },
+        {
+          "id": "US-FOUNDER-003",
+          "title": "Access Investor Profiles",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-FOUNDER-004",
+          "title": "Schedule Pitch Sessions",
+          "status": "✅ Complete",
+          "test_coverage": "14/14 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-FOUNDER-005",
+          "title": "Upload Pitch Deck and Documents",
+          "status": "✅ Complete",
+          "test_coverage": "12/12 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-FOUNDER-006",
+          "title": "Receive and Respond to Investor Feedback",
+          "status": "✅ Complete",
+          "test_coverage": "7/7 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "moderator": {
+      "total": 3,
+      "stories": [
+        {
+          "id": "US-MODERATOR-001",
+          "title": "Screen Founder Applications",
+          "status": "✅ Complete",
+          "test_coverage": "18/18 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "✅ Moderator can view applications",
+            "UPDATE": "✅ Moderator can approve/reject applications",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "Partial CRUD coverage",
+          "e2e_tests": 5
+        },
+        {
+          "id": "US-MODERATOR-002",
+          "title": "Review Event Attendance",
+          "status": "✅ Complete",
+          "test_coverage": "12/12 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-MODERATOR-003",
+          "title": "Manage Content Flags",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "operator_angel": {
+      "total": 3,
+      "stories": [
+        {
+          "id": "US-OPERATOR-001",
+          "title": "Offer Advisory Services",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-OPERATOR-002",
+          "title": "Track Advisory Hours",
+          "status": "✅ Complete",
+          "test_coverage": "10/10 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        },
+        {
+          "id": "US-OPERATOR-003",
+          "title": "Mentor Startups",
+          "status": "✅ Complete",
+          "test_coverage": "13/13 passing (100%)",
+          "crud_operations": {
+            "CREATE": "❌ Not tested in E2E",
+            "READ": "❌ Not tested in E2E",
+            "UPDATE": "❌ Not tested in E2E",
+            "DELETE": "❌ Not tested in E2E"
+          },
+          "e2e_status": "No E2E coverage"
+        }
+      ]
+    },
+    "authorization": {
+      "total": 8,
+      "stories": [
+        {
+          "id": "US-AUTH-001",
+          "title": "Role-Based Route Protection",
+          "status": "🔄 In Progress",
+          "test_coverage": "E2E tests - Playwright",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "✅ Routes protected by role",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "Full authorization testing",
+          "e2e_tests": 35
+        },
+        {
+          "id": "US-AUTH-002",
+          "title": "API Endpoint Authorization",
+          "status": "🔄 In Progress",
+          "test_coverage": "Partial - via CRUD tests",
+          "crud_operations": {
+            "CREATE": "❌ Partial",
+            "READ": "✅ Partial",
+            "UPDATE": "✅ Partial",
+            "DELETE": "✅ Partial"
+          },
+          "e2e_status": "Covered in CRUD tests"
+        },
+        {
+          "id": "US-AUTH-003",
+          "title": "Forbidden Access Page (WCAG 2.2 AA)",
+          "status": "🔄 In Progress",
+          "test_coverage": "E2E tests - Accessibility",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ N/A",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "Accessibility testing",
+          "e2e_tests": 6
+        },
+        {
+          "id": "US-AUTH-004",
+          "title": "Admin Dashboard Data Verification",
+          "status": "🔄 In Progress",
+          "test_coverage": "0 test cases",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ No E2E tests",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "NEEDS TESTING - CRITICAL"
+        },
+        {
+          "id": "US-AUTH-005",
+          "title": "Compliance Dashboard Data Verification",
+          "status": "🔄 In Progress",
+          "test_coverage": "0 test cases",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ No E2E tests",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "NEEDS TESTING - CRITICAL"
+        },
+        {
+          "id": "US-AUTH-006",
+          "title": "Investor Dashboard Data Verification",
+          "status": "🔄 In Progress",
+          "test_coverage": "0 test cases",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ No E2E tests",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "NEEDS TESTING - CRITICAL"
+        },
+        {
+          "id": "US-AUTH-007",
+          "title": "Founder Dashboard Data Verification",
+          "status": "🔄 In Progress",
+          "test_coverage": "0 test cases",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ No E2E tests",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "NEEDS TESTING"
+        },
+        {
+          "id": "US-AUTH-008",
+          "title": "Moderator Dashboard Data Verification",
+          "status": "🔄 In Progress",
+          "test_coverage": "0 test cases",
+          "crud_operations": {
+            "CREATE": "❌ N/A",
+            "READ": "❌ No E2E tests",
+            "UPDATE": "❌ N/A",
+            "DELETE": "❌ N/A"
+          },
+          "e2e_status": "NEEDS TESTING"
+        }
+      ]
+    }
+  },
+  "e2e_test_files": {
+    "authorization.spec.ts": {
+      "path": "e2e/authorization.spec.ts",
+      "total_tests": 48,
+      "test_suites": [
+        {
+          "name": "US-AUTH-001: Role-Based Route Protection",
+          "tests": 35,
+          "coverage": {
+            "admin_routes": 7,
+            "compliance_routes": 4,
+            "investor_routes": 6,
+            "founder_routes": 3,
+            "moderator_routes": 3,
+            "operator_angel_routes": 3
+          }
+        },
+        {
+          "name": "US-AUTH-003: Forbidden Access Page (WCAG 2.2 AA)",
+          "tests": 6,
+          "coverage": "Accessibility testing, responsive design, keyboard navigation"
+        },
+        {
+          "name": "US-AUTH-010: Admin Login to Dashboard Flow",
+          "tests": 5,
+          "coverage": "Authentication, credential validation, role-based redirect"
+        },
+        {
+          "name": "US-AUTH-011: AccessDenied Shows User's Current Role",
+          "tests": 5,
+          "coverage": "Role display in error page, dashboard links, required role info"
+        }
+      ]
+    },
+    "crud-operations.spec.ts": {
+      "path": "e2e/crud-operations.spec.ts",
+      "total_tests": 47,
+      "test_suites": [
+        {
+          "name": "US-ADMIN-003: Event Management CRUD",
+          "tests": 13,
+          "coverage": {
+            "CREATE": 3,
+            "READ": 3,
+            "UPDATE": 3,
+            "DELETE": 2,
+            "authorization": 2
+          }
+        },
+        {
+          "name": "US-INVESTOR-001: Event Registration",
+          "tests": 9,
+          "coverage": {
+            "CREATE": 4,
+            "READ": 2,
+            "authorization": 2,
+            "duplicate_prevention": 1
+          }
+        },
+        {
+          "name": "US-COMPLIANCE-001: KYC Document Review",
+          "tests": 4,
+          "coverage": {
+            "READ": 4,
+            "authorization": 2,
+            "UPDATE": 2
+          }
+        },
+        {
+          "name": "US-COMPLIANCE-002: AML Screening",
+          "tests": 3,
+          "coverage": {
+            "READ": 2,
+            "UPDATE": 1
+          }
+        },
+        {
+          "name": "US-FOUNDER-001: Founder Application",
+          "tests": 3,
+          "coverage": {
+            "page_accessibility": 1,
+            "validation": 1,
+            "READ": 1
+          }
+        },
+        {
+          "name": "US-INVESTOR-004: Deal Interest",
+          "tests": 3,
+          "coverage": {
+            "READ": 2,
+            "authorization": 1
+          }
+        },
+        {
+          "name": "US-MODERATOR-001: Application Screening",
+          "tests": 5,
+          "coverage": {
+            "READ": 3,
+            "UPDATE": 2
+          }
+        }
+      ]
+    }
+  },
+  "crud_coverage_by_role": {
+    "admin": {
+      "total_crud_operations": 13,
+      "CREATE": {
+        "count": 4,
+        "features": ["Events", "Data (implied by system management)"],
+        "not_tested": ["Users", "Roles", "Audit logs"]
+      },
+      "READ": {
+        "count": 4,
+        "features": ["Events", "Event registrations", "KYC submissions", "AML screenings"],
+        "not_tested": ["Users with detailed filters", "Audit logs", "Statistics"]
+      },
+      "UPDATE": {
+        "count": 3,
+        "features": ["Event details", "KYC status", "AML status"],
+        "not_tested": ["User roles", "Event registration status"]
+      },
+      "DELETE": {
+        "count": 2,
+        "features": ["Events"],
+        "not_tested": ["Users", "Content"]
+      }
+    },
+    "compliance": {
+      "total_crud_operations": 4,
+      "CREATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["All creation operations"]
+      },
+      "READ": {
+        "count": 2,
+        "features": ["KYC submissions", "AML screenings"],
+        "not_tested": ["Detailed document viewing", "Audit logs"]
+      },
+      "UPDATE": {
+        "count": 2,
+        "features": ["KYC status (approve/reject)", "AML screening status"],
+        "not_tested": ["Document annotations", "Re-verification scheduling"]
+      },
+      "DELETE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["All deletion operations"]
+      }
+    },
+    "investor": {
+      "total_crud_operations": 6,
+      "CREATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Applications", "Deal interests", "SPV creation", "Commitments"]
+      },
+      "READ": {
+        "count": 3,
+        "features": ["Deal interests", "Deal pipeline", "Event registrations"],
+        "not_tested": ["Deal documents", "Portfolio", "SPV details", "Profiles"]
+      },
+      "UPDATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Pipeline status", "Preferences", "Profile information"]
+      },
+      "DELETE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Interests", "Registrations"]
+      }
+    },
+    "founder": {
+      "total_crud_operations": 1,
+      "CREATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Application submission", "Company profile", "Pitch materials"]
+      },
+      "READ": {
+        "count": 1,
+        "features": ["Application status"],
+        "not_tested": ["Company profile", "Pitch sessions", "Feedback", "Investor profiles"]
+      },
+      "UPDATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Application", "Company profile", "Pitch materials"]
+      },
+      "DELETE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["All operations"]
+      }
+    },
+    "moderator": {
+      "total_crud_operations": 3,
+      "CREATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["All creation operations"]
+      },
+      "READ": {
+        "count": 1,
+        "features": ["Applications"],
+        "not_tested": ["Content flags", "Event attendance records"]
+      },
+      "UPDATE": {
+        "count": 2,
+        "features": ["Application status (approve/reject)"],
+        "not_tested": ["Content moderation actions", "Event attendance updates"]
+      },
+      "DELETE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Content", "Applications"]
+      }
+    },
+    "operator_angel": {
+      "total_crud_operations": 0,
+      "CREATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Advisory profile", "Mentorship", "Advisory hours"]
+      },
+      "READ": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Deals", "Advisory requests", "Portfolio"]
+      },
+      "UPDATE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Advisory hours", "Mentorship sessions"]
+      },
+      "DELETE": {
+        "count": 0,
+        "features": [],
+        "not_tested": ["Advisory relationships"]
+      }
+    }
+  },
+  "gaps_and_missing_e2e_tests": {
+    "critical_gaps": [
+      {
+        "user_story": "US-AUTH-004",
+        "title": "Admin Dashboard Data Verification",
+        "severity": "CRITICAL",
+        "reason": "Admin dashboard must show accurate real-time data for system management",
+        "missing_tests": [
+          "Total users count by role",
+          "Pending applications count",
+          "Active events with registration counts",
+          "Audit log entries display",
+          "Data refresh on navigation"
+        ],
+        "impact": "Cannot verify admin dashboard functionality in E2E"
+      },
+      {
+        "user_story": "US-AUTH-005",
+        "title": "Compliance Dashboard Data Verification",
+        "severity": "CRITICAL",
+        "reason": "Compliance dashboard is essential for regulatory compliance operations",
+        "missing_tests": [
+          "Pending KYC reviews display",
+          "Pending AML screenings display",
+          "Risk flags visibility",
+          "Accreditation expiration alerts",
+          "Recent actions display"
+        ],
+        "impact": "Cannot verify compliance dashboard functionality in E2E"
+      },
+      {
+        "user_story": "US-AUTH-006",
+        "title": "Investor Dashboard Data Verification",
+        "severity": "CRITICAL",
+        "reason": "Investor dashboard is the primary interface for investment activities",
+        "missing_tests": [
+          "Available deals display",
+          "Expressed interests display",
+          "Commitment status visibility",
+          "Portfolio company display",
+          "KYC/accreditation status prompts"
+        ],
+        "impact": "Cannot verify investor dashboard functionality in E2E"
+      }
+    ],
+    "high_priority_gaps": [
+      {
+        "user_story": "US-ADMIN-001",
+        "title": "User Management - Full CRUD",
+        "severity": "HIGH",
+        "reason": "Only READ is tested, CREATE/UPDATE/DELETE not verified in E2E",
+        "missing_tests": [
+          "Create new user",
+          "Update user details",
+          "Delete user"
+        ],
+        "affected_features": "User management interface"
+      },
+      {
+        "user_story": "US-ADMIN-002",
+        "title": "Role Assignment - Full CRUD",
+        "severity": "HIGH",
+        "reason": "Critical security feature with no E2E tests",
+        "missing_tests": [
+          "Assign role to user",
+          "Remove role from user",
+          "Verify role changes persist"
+        ],
+        "affected_features": "Role management interface"
+      },
+      {
+        "user_story": "US-INVESTOR-004",
+        "title": "Express Interest in Deal - Full CRUD",
+        "severity": "HIGH",
+        "reason": "Core investor feature - only READ tested",
+        "missing_tests": [
+          "CREATE interest expression",
+          "UPDATE interest status",
+          "DELETE interest"
+        ],
+        "affected_features": "Deal interest flow"
+      },
+      {
+        "user_story": "US-INVESTOR-007",
+        "title": "Submit Investment Commitment",
+        "severity": "HIGH",
+        "reason": "Revenue-critical feature with no E2E tests",
+        "missing_tests": [
+          "CREATE commitment",
+          "READ commitment",
+          "UPDATE commitment status",
+          "Verify payment instructions sent"
+        ],
+        "affected_features": "Investment commitment flow"
+      },
+      {
+        "user_story": "US-INVESTOR-008-010",
+        "title": "SPV Management (Full CRUD)",
+        "severity": "HIGH",
+        "reason": "SPV is critical feature with no E2E tests",
+        "missing_tests": [
+          "Create SPV",
+          "Invite co-investors",
+          "Track allocations",
+          "Update allocation status"
+        ],
+        "affected_features": "SPV management interface"
+      }
+    ],
+    "medium_priority_gaps": [
+      {
+        "user_story": "US-ADMIN-005",
+        "title": "System Statistics Dashboard",
+        "severity": "MEDIUM",
+        "reason": "Dashboard data visibility not tested in E2E",
+        "missing_tests": ["View statistics", "Filter by date range"]
+      },
+      {
+        "user_story": "US-INVESTOR-013",
+        "title": "Portfolio Company Updates",
+        "severity": "MEDIUM",
+        "reason": "Communication feature not tested in E2E",
+        "missing_tests": ["View updates", "Comment on updates"]
+      },
+      {
+        "user_story": "US-INVESTOR-014-015",
+        "title": "Messaging and Discussions",
+        "severity": "MEDIUM",
+        "reason": "Community features not tested in E2E",
+        "missing_tests": ["Send messages", "Create discussions", "Post replies"]
+      },
+      {
+        "user_story": "US-MODERATOR-002-003",
+        "title": "Content Moderation",
+        "severity": "MEDIUM",
+        "reason": "Moderation features not tested in E2E",
+        "missing_tests": ["Review flags", "Take moderation actions"]
+      }
+    ],
+    "operator_angel_gaps": {
+      "severity": "HIGH",
+      "reason": "Operator Angel role has zero E2E test coverage",
+      "affected_user_stories": ["US-OPERATOR-001", "US-OPERATOR-002", "US-OPERATOR-003"],
+      "missing_tests": [
+        "Create advisory profile",
+        "View advisory requests",
+        "Log advisory hours",
+        "Create mentorship",
+        "Track mentorship sessions"
+      ]
+    }
+  },
+  "summary_statistics": {
+    "total_user_stories": 59,
+    "user_stories_with_status": {
+      "complete": 51,
+      "in_progress": 8
+    },
+    "total_documented_test_cases": 699,
+    "e2e_test_cases": {
+      "total": 95,
+      "authorization": 48,
+      "crud_operations": 47
+    },
+    "crud_coverage_percentage": {
+      "admin": {
+        "CREATE": "50%",
+        "READ": "67%",
+        "UPDATE": "60%",
+        "DELETE": "33%",
+        "overall": "52.5%"
+      },
+      "compliance": {
+        "CREATE": "0%",
+        "READ": "50%",
+        "UPDATE": "67%",
+        "DELETE": "0%",
+        "overall": "29%"
+      },
+      "investor": {
+        "CREATE": "0%",
+        "READ": "27%",
+        "UPDATE": "0%",
+        "DELETE": "0%",
+        "overall": "7%"
+      },
+      "founder": {
+        "CREATE": "0%",
+        "READ": "17%",
+        "UPDATE": "0%",
+        "DELETE": "0%",
+        "overall": "4%"
+      },
+      "moderator": {
+        "CREATE": "0%",
+        "READ": "33%",
+        "UPDATE": "67%",
+        "DELETE": "0%",
+        "overall": "25%"
+      },
+      "operator_angel": {
+        "CREATE": "0%",
+        "READ": "0%",
+        "UPDATE": "0%",
+        "DELETE": "0%",
+        "overall": "0%"
+      }
+    }
+  },
+  "recommendations": {
+    "immediate_actions": [
+      {
+        "priority": "P0",
+        "action": "Create E2E tests for US-AUTH-004 (Admin Dashboard)",
+        "estimated_effort": "4-6 hours",
+        "details": "Test all dashboard data elements: user counts, pending applications, events, audit logs"
+      },
+      {
+        "priority": "P0",
+        "action": "Create E2E tests for US-AUTH-005 (Compliance Dashboard)",
+        "estimated_effort": "3-4 hours",
+        "details": "Test KYC/AML data display, filters, sorting, action triggers"
+      },
+      {
+        "priority": "P0",
+        "action": "Create E2E tests for US-AUTH-006 (Investor Dashboard)",
+        "estimated_effort": "4-6 hours",
+        "details": "Test deals display, interests, commitments, portfolio, status prompts"
+      },
+      {
+        "priority": "P1",
+        "action": "Add E2E tests for Investor CRUD operations",
+        "estimated_effort": "8-12 hours",
+        "details": "Complete CREATE/UPDATE/DELETE for: deals, interests, commitments, SPV"
+      },
+      {
+        "priority": "P1",
+        "action": "Add E2E tests for Admin CRUD operations",
+        "estimated_effort": "6-8 hours",
+        "details": "Complete CREATE/UPDATE/DELETE for: users, roles, role assignments"
+      },
+      {
+        "priority": "P1",
+        "action": "Create comprehensive Operator Angel E2E tests",
+        "estimated_effort": "6-8 hours",
+        "details": "All CRUD operations for: advisory profile, mentorship, hours logging"
+      }
+    ],
+    "test_coverage_roadmap": {
+      "phase_1": {
+        "title": "Critical Dashboard Tests (Week 1)",
+        "user_stories": ["US-AUTH-004", "US-AUTH-005", "US-AUTH-006"],
+        "estimated_tests": 15,
+        "effort": "12-16 hours"
+      },
+      "phase_2": {
+        "title": "Admin & Investor CRUD (Week 2)",
+        "user_stories": ["US-ADMIN-001", "US-ADMIN-002", "US-INVESTOR-007", "US-INVESTOR-008", "US-INVESTOR-009", "US-INVESTOR-010"],
+        "estimated_tests": 25,
+        "effort": "20-28 hours"
+      },
+      "phase_3": {
+        "title": "Founder & Moderator CRUD (Week 3)",
+        "user_stories": ["US-FOUNDER-001", "US-MODERATOR-002", "US-MODERATOR-003"],
+        "estimated_tests": 15,
+        "effort": "12-16 hours"
+      },
+      "phase_4": {
+        "title": "Operator Angel & Communication (Week 4)",
+        "user_stories": ["US-OPERATOR-001", "US-OPERATOR-002", "US-OPERATOR-003", "US-INVESTOR-014", "US-INVESTOR-015"],
+        "estimated_tests": 20,
+        "effort": "16-20 hours"
+      }
+    }
+  }
+}

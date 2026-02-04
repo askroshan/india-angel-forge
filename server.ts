@@ -3,28 +3,33 @@
  * Express.js server with PostgreSQL via Prisma
  */
 
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Extend Express Request to include user
+interface AuthenticatedRequest extends Request {
+  user?: JwtPayload & { userId: string; email: string; roles?: string[] };
+}
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.API_PORT || 3001;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'];
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Auth middleware
-const authenticateToken = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -32,13 +37,66 @@ const authenticateToken = (req: express.Request, res: express.Response, next: ex
     return res.status(401).json({ error: { message: 'Access token required', code: 'UNAUTHORIZED' } });
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: VerifyErrors | null, decoded: string | JwtPayload | undefined) => {
     if (err) {
       return res.status(403).json({ error: { message: 'Invalid token', code: 'FORBIDDEN' } });
     }
-    (req as any).user = user;
+    (req as AuthenticatedRequest).user = decoded as AuthenticatedRequest['user'];
     next();
   });
+};
+
+/**
+ * Role-based authorization middleware
+ * Checks if the authenticated user has one of the allowed roles
+ * Must be used after authenticateToken middleware
+ * 
+ * @param allowedRoles - Array of roles that are allowed to access this endpoint
+ * @returns Express middleware function
+ * 
+ * @example
+ * // Single role
+ * app.get('/api/admin/users', authenticateToken, requireRole(['admin']), handler);
+ * 
+ * @example
+ * // Multiple roles
+ * app.get('/api/deals', authenticateToken, requireRole(['investor', 'angel_investor', 'vc_partner']), handler);
+ */
+const requireRole = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({ 
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' } 
+      });
+    }
+
+    const userRoles: string[] = user.roles || [];
+    const hasRequiredRole = allowedRoles.some(role => userRoles.includes(role));
+
+    if (!hasRequiredRole) {
+      return res.status(403).json({ 
+        error: { 
+          message: 'Access denied. Insufficient permissions.', 
+          code: 'FORBIDDEN',
+          requiredRoles: allowedRoles,
+          userRoles: userRoles
+        } 
+      });
+    }
+
+    next();
+  };
+};
+
+// Helper function to get user ID from authenticated request (with type safety)
+const getUserId = (req: Request): string => {
+  const user = (req as AuthenticatedRequest).user;
+  if (!user?.userId) {
+    throw new Error('User not authenticated');
+  }
+  return user.userId;
 };
 
 // ==================== AUTH ROUTES ====================
@@ -129,7 +187,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Get current session
 app.get('/api/auth/session', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { roles: true },
@@ -160,7 +218,7 @@ app.get('/api/auth/session', authenticateToken, async (req, res) => {
 app.get('/api/auth/check-role', authenticateToken, async (req, res) => {
   try {
     const { role } = req.query;
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
 
     const userRole = await prisma.userRole.findFirst({
       where: { userId, role: role as string },
@@ -175,7 +233,7 @@ app.get('/api/auth/check-role', authenticateToken, async (req, res) => {
 
 // ==================== USER ROUTES ====================
 
-app.get('/api/admin/users', authenticateToken, async (req, res) => {
+app.get('/api/admin/users', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       include: { roles: true },
@@ -195,7 +253,7 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== EVENTS ROUTES ====================
+// ==================== EVENTS ROUTES (PUBLIC) ====================
 
 app.get('/api/events', async (req, res) => {
   try {
@@ -209,10 +267,45 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+// Note: Specific routes must come before :id route to avoid matching conflict
+// Get user's event registrations
+app.get('/api/events/my-registrations', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const registrations = await prisma.eventRegistration.findMany({
+      where: { userId },
+      include: {
+        event: true,
+      },
+      orderBy: { registeredAt: 'desc' },
+    });
+    res.json(registrations);
+  } catch (error) {
+    console.error('Get user registrations error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Get user's waitlist entries
+app.get('/api/events/my-waitlist', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const waitlistEntries = await prisma.eventWaitlist.findMany({
+      where: { userId },
+      include: { event: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(waitlistEntries);
+  } catch (error) {
+    console.error('Get user waitlist error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 app.get('/api/events/:id', async (req, res) => {
   try {
     const event = await prisma.event.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       include: { registrations: true },
     });
 
@@ -256,7 +349,7 @@ app.get('/api/applications/investors', authenticateToken, async (req, res) => {
 // Get user's own founder application
 app.get('/api/applications/founder-application', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const application = await prisma.founderApplication.findFirst({
       where: { userId },
       orderBy: { submittedAt: 'desc' },
@@ -271,7 +364,7 @@ app.get('/api/applications/founder-application', authenticateToken, async (req, 
 // Get user's own investor application
 app.get('/api/applications/investor-application', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const application = await prisma.investorApplication.findFirst({
       where: { userId },
       orderBy: { submittedAt: 'desc' },
@@ -297,10 +390,26 @@ app.get('/api/deals', authenticateToken, async (req, res) => {
   }
 });
 
+// Note: Specific routes must come before :id route to avoid matching conflict
+app.get('/api/deals/interests', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const interests = await prisma.dealInterest.findMany({
+      where: { investorId: userId },
+      include: { deal: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(interests);
+  } catch (error) {
+    console.error('Get deal interests error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 app.get('/api/deals/:id', authenticateToken, async (req, res) => {
   try {
     const deal = await prisma.deal.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
     });
     if (!deal) {
       return res.status(404).json({ error: { message: 'Deal not found', code: 'NOT_FOUND' } });
@@ -312,26 +421,11 @@ app.get('/api/deals/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/deals/interests', authenticateToken, async (req, res) => {
-  try {
-    const userId = (req as any).user.userId;
-    const interests = await prisma.dealInterest.findMany({
-      where: { userId },
-      include: { deal: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(interests);
-  } catch (error) {
-    console.error('Get deal interests error:', error);
-    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
-  }
-});
-
 // ==================== COMMITMENTS ROUTES ====================
 
 app.get('/api/commitments', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const commitments = await prisma.commitment.findMany({
       where: { userId },
       include: { deal: true },
@@ -346,7 +440,7 @@ app.get('/api/commitments', authenticateToken, async (req, res) => {
 
 app.post('/api/commitments', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { dealId, amount, notes } = req.body;
     
     const commitment = await prisma.commitment.create({
@@ -365,9 +459,111 @@ app.post('/api/commitments', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== MODERATOR ROUTES ====================
+
+app.get('/api/moderator/applications', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const founderApplications = await prisma.founderApplication.findMany({
+      orderBy: { submittedAt: 'desc' },
+    });
+    
+    // Transform to match expected format
+    const applications = founderApplications.map(app => ({
+      id: app.id,
+      company_name: app.companyName,
+      founder_name: app.fullName,
+      founder_email: app.email,
+      website: app.companyWebsite || '',
+      stage: app.stage,
+      sector: app.industry,
+      problem: app.description || '',
+      solution: '',
+      market_size: '',
+      traction: '',
+      fundraising_amount: Number(app.fundingGoal) || 0,
+      use_of_funds: '',
+      status: app.status.toUpperCase(),
+      submitted_at: app.submittedAt.toISOString(),
+      completeness_score: 75, // Default score
+    }));
+    
+    res.json(applications);
+  } catch (error) {
+    console.error('Get moderator applications error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.get('/api/moderator/applications/:id/screening-notes', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    // Return empty array if no notes table exists
+    res.json([]);
+  } catch (error) {
+    console.error('Get screening notes error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.patch('/api/moderator/applications/:id', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    const application = await prisma.founderApplication.update({
+      where: { id: String(req.params.id) },
+      data: { 
+        status: status.toLowerCase(),
+      },
+    });
+    
+    res.json({
+      id: application.id,
+      status: application.status.toUpperCase(),
+    });
+  } catch (error) {
+    console.error('Update application status error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/applications/:id/screening-notes', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { notes } = req.body;
+    // Return a mock note since we don't have a screening notes table
+    res.json({
+      id: `note-${Date.now()}`,
+      application_id: req.params.id,
+      moderator_id: getUserId(req),
+      notes,
+      created_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Create screening note error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/applications/:id/request-info', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const application = await prisma.founderApplication.update({
+      where: { id: String(req.params.id) },
+      data: { 
+        status: 'more_info_requested',
+      },
+    });
+    
+    res.json({
+      id: application.id,
+      status: 'MORE_INFO_REQUESTED',
+    });
+  } catch (error) {
+    console.error('Request info error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 // ==================== COMPLIANCE ROUTES ====================
 
-app.get('/api/compliance/kyc-review', authenticateToken, async (req, res) => {
+app.get('/api/compliance/kyc-review', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
     const kycDocuments = await prisma.kYCDocument.findMany({
       include: { user: true },
@@ -380,13 +576,13 @@ app.get('/api/compliance/kyc-review', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/compliance/kyc-review/:id', authenticateToken, async (req, res) => {
+app.put('/api/compliance/kyc-review/:id', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
     const { status, notes } = req.body;
-    const reviewedBy = (req as any).user.userId;
+    const reviewedBy = getUserId(req);
     
     const document = await prisma.kYCDocument.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: { 
         status, 
         reviewNotes: notes,
@@ -401,7 +597,7 @@ app.put('/api/compliance/kyc-review/:id', authenticateToken, async (req, res) =>
   }
 });
 
-app.get('/api/compliance/aml-screening', authenticateToken, async (req, res) => {
+app.get('/api/compliance/aml-screening', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
     const screenings = await prisma.aMLScreening.findMany({
       include: { user: true },
@@ -414,13 +610,13 @@ app.get('/api/compliance/aml-screening', authenticateToken, async (req, res) => 
   }
 });
 
-app.put('/api/compliance/aml-screening/:id', authenticateToken, async (req, res) => {
+app.put('/api/compliance/aml-screening/:id', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
     const { status, riskLevel, notes } = req.body;
-    const reviewedBy = (req as any).user.userId;
+    const reviewedBy = getUserId(req);
     
     const screening = await prisma.aMLScreening.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: { 
         status, 
         riskLevel,
@@ -438,7 +634,7 @@ app.put('/api/compliance/aml-screening/:id', authenticateToken, async (req, res)
 
 app.get('/api/compliance/accreditation', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const accreditation = await prisma.accreditation.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -454,7 +650,7 @@ app.get('/api/compliance/accreditation', authenticateToken, async (req, res) => 
 
 app.get('/api/kyc/documents', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const documents = await prisma.kYCDocument.findMany({
       where: { userId },
       orderBy: { uploadedAt: 'desc' },
@@ -468,7 +664,7 @@ app.get('/api/kyc/documents', authenticateToken, async (req, res) => {
 
 app.post('/api/kyc/documents', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { documentType, fileName, fileUrl } = req.body;
     
     const document = await prisma.kYCDocument.create({
@@ -491,7 +687,7 @@ app.post('/api/kyc/documents', authenticateToken, async (req, res) => {
 
 app.get('/api/documents', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { sharedWith } = req.query;
     
     const documents = await prisma.document.findMany({
@@ -507,7 +703,7 @@ app.get('/api/documents', authenticateToken, async (req, res) => {
 
 app.post('/api/documents', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { title, description, fileUrl, sharedWith } = req.body;
     
     const document = await prisma.document.create({
@@ -530,7 +726,7 @@ app.post('/api/documents', authenticateToken, async (req, res) => {
 
 app.get('/api/portfolio/companies', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     
     // Get companies the user has invested in
     const commitments = await prisma.commitment.findMany({
@@ -569,7 +765,7 @@ app.get('/api/portfolio/updates', authenticateToken, async (req, res) => {
 
 app.get('/api/pitch/sessions', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const sessions = await prisma.pitchSession.findMany({
       where: { founderId: userId },
       orderBy: { sessionDate: 'desc' },
@@ -583,7 +779,7 @@ app.get('/api/pitch/sessions', authenticateToken, async (req, res) => {
 
 app.post('/api/pitch/sessions', authenticateToken, async (req, res) => {
   try {
-    const founderId = (req as any).user.userId;
+    const founderId = getUserId(req);
     const { title, description, sessionDate, duration, location, meetingLink } = req.body;
     
     const session = await prisma.pitchSession.create({
@@ -606,10 +802,10 @@ app.post('/api/pitch/sessions', authenticateToken, async (req, res) => {
 
 app.get('/api/pitch/materials', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const materials = await prisma.pitchMaterial.findMany({
       where: { founderId: userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { uploadedAt: 'desc' },
     });
     res.json(materials);
   } catch (error) {
@@ -620,7 +816,7 @@ app.get('/api/pitch/materials', authenticateToken, async (req, res) => {
 
 app.post('/api/pitch/materials', authenticateToken, async (req, res) => {
   try {
-    const founderId = (req as any).user.userId;
+    const founderId = getUserId(req);
     const { title, description, filePath, fileType, fileSize } = req.body;
     
     const material = await prisma.pitchMaterial.create({
@@ -644,7 +840,7 @@ app.post('/api/pitch/materials', authenticateToken, async (req, res) => {
 
 app.get('/api/company/profile', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const company = await prisma.company.findFirst({
       where: { founderId: userId },
     });
@@ -657,7 +853,7 @@ app.get('/api/company/profile', authenticateToken, async (req, res) => {
 
 app.put('/api/company/profile', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { name, description, website, sector, stage, teamSize, location } = req.body;
     
     const existingCompany = await prisma.company.findFirst({
@@ -693,7 +889,7 @@ app.put('/api/company/profile', authenticateToken, async (req, res) => {
 
 app.get('/api/company/fundraising-rounds', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const company = await prisma.company.findFirst({
       where: { founderId: userId },
     });
@@ -715,10 +911,10 @@ app.get('/api/company/fundraising-rounds', authenticateToken, async (req, res) =
 
 app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
-    const { roundType, targetAmount, raisedAmount, valuation, status } = req.body;
+    const userId = getUserId(req);
+    const { roundName, roundType, targetAmount, raisedAmount, status } = req.body;
     
-    const company = await prisma.company.findFirst({
+    const company = await prisma.companyProfile.findFirst({
       where: { founderId: userId },
     });
     
@@ -729,11 +925,10 @@ app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) 
     const round = await prisma.fundraisingRound.create({
       data: {
         companyId: company.id,
-        roundType,
+        roundName: roundName || roundType || 'Series A',
         targetAmount,
         raisedAmount: raisedAmount || 0,
-        valuation,
-        status: status || 'active',
+        status: status || 'planning',
       },
     });
     res.json(round);
@@ -745,7 +940,7 @@ app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) 
 
 // ==================== ADMIN ROUTES ====================
 
-app.get('/api/admin/audit-logs', authenticateToken, async (req, res) => {
+app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const logs = await prisma.auditLog.findMany({
       include: { user: true },
@@ -759,7 +954,7 @@ app.get('/api/admin/audit-logs', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/admin/investors', authenticateToken, async (req, res) => {
+app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const investors = await prisma.user.findMany({
       where: {
@@ -804,7 +999,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 app.post('/api/auth/update-password', authenticateToken, async (req, res) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = getUserId(req);
     const { newPassword } = req.body;
     
     const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -816,6 +1011,363 @@ app.post('/api/auth/update-password', authenticateToken, async (req, res) => {
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Update password error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== EVENT CRUD ROUTES (ADMIN) ====================
+
+// Get all events (admin)
+app.get('/api/admin/events', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    const events = await prisma.event.findMany({
+      include: {
+        _count: {
+          select: { registrations: true, waitlist: true }
+        }
+      },
+      orderBy: { eventDate: 'desc' },
+    });
+    res.json(events);
+  } catch (error) {
+    console.error('Get admin events error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Create event (admin)
+app.post('/api/admin/events', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    const { title, description, eventDate, location, capacity, registrationDeadline, status } = req.body;
+    
+    if (!title || !eventDate) {
+      return res.status(400).json({ error: { message: 'Title and event date are required', code: 'VALIDATION_ERROR' } });
+    }
+    
+    const event = await prisma.event.create({
+      data: {
+        title,
+        description,
+        eventDate: new Date(eventDate),
+        location,
+        capacity: capacity ? parseInt(capacity, 10) : null,
+        registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+        status: status || 'upcoming',
+      },
+    });
+    res.status(201).json(event);
+  } catch (error) {
+    console.error('Create event error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Update event (admin)
+app.patch('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    const { title, description, eventDate, location, capacity, registrationDeadline, status } = req.body;
+    
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (eventDate !== undefined) updateData.eventDate = new Date(eventDate);
+    if (location !== undefined) updateData.location = location;
+    if (capacity !== undefined) updateData.capacity = capacity ? parseInt(capacity, 10) : null;
+    if (registrationDeadline !== undefined) updateData.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+    if (status !== undefined) updateData.status = status;
+    
+    const event = await prisma.event.update({
+      where: { id: String(req.params.id) },
+      data: updateData,
+    });
+    res.json(event);
+  } catch (error) {
+    console.error('Update event error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Delete event (admin)
+app.delete('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    await prisma.event.delete({
+      where: { id: String(req.params.id) },
+    });
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Get all event registrations (admin)
+app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    const { eventId } = req.query;
+    const where = eventId ? { eventId: eventId as string } : {};
+    
+    const registrations = await prisma.eventRegistration.findMany({
+      where,
+      include: {
+        event: { select: { title: true, eventDate: true } },
+        user: { select: { email: true, fullName: true } },
+      },
+      orderBy: { registeredAt: 'desc' },
+    });
+    res.json(registrations);
+  } catch (error) {
+    console.error('Get admin event registrations error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== EVENT REGISTRATION ROUTES (USER) ====================
+
+// Register for an event
+app.post('/api/events/register', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { eventId, fullName, email, phone, company, dietaryRequirements, notes } = req.body;
+    
+    if (!eventId || !fullName || !email) {
+      return res.status(400).json({ error: { message: 'Event ID, full name, and email are required', code: 'VALIDATION_ERROR' } });
+    }
+    
+    // Check if event exists and has capacity
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { _count: { select: { registrations: true } } },
+    });
+    
+    if (!event) {
+      return res.status(404).json({ error: { message: 'Event not found', code: 'NOT_FOUND' } });
+    }
+    
+    // Check registration deadline
+    if (event.registrationDeadline && new Date() > event.registrationDeadline) {
+      return res.status(400).json({ error: { message: 'Registration deadline has passed', code: 'DEADLINE_PASSED' } });
+    }
+    
+    // Check capacity
+    if (event.capacity && event._count.registrations >= event.capacity) {
+      return res.status(400).json({ error: { message: 'Event is at full capacity', code: 'CAPACITY_FULL' } });
+    }
+    
+    // Check if already registered
+    const existingRegistration = await prisma.eventRegistration.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    if (existingRegistration) {
+      return res.status(400).json({ error: { message: 'You are already registered for this event', code: 'ALREADY_REGISTERED' } });
+    }
+    
+    const registration = await prisma.eventRegistration.create({
+      data: {
+        eventId,
+        userId,
+        fullName,
+        email,
+        phone,
+        company,
+        dietaryRequirements,
+        notes,
+      },
+      include: { event: true },
+    });
+    
+    res.status(201).json(registration);
+  } catch (error) {
+    console.error('Event registration error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Cancel event registration
+app.delete('/api/events/registrations/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    
+    const registration = await prisma.eventRegistration.findUnique({
+      where: { id: String(req.params.id) },
+    });
+    
+    if (!registration) {
+      return res.status(404).json({ error: { message: 'Registration not found', code: 'NOT_FOUND' } });
+    }
+    
+    if (registration.userId !== userId) {
+      return res.status(403).json({ error: { message: 'Not authorized to cancel this registration', code: 'FORBIDDEN' } });
+    }
+    
+    await prisma.eventRegistration.delete({
+      where: { id: String(req.params.id) },
+    });
+    
+    res.json({ message: 'Registration cancelled successfully' });
+  } catch (error) {
+    console.error('Cancel registration error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Get registration count for an event (public)
+app.get('/api/events/:id/registration-count', async (req, res) => {
+  try {
+    const count = await prisma.eventRegistration.count({
+      where: { eventId: req.params.id },
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Get registration count error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== EVENT WAITLIST ROUTES ====================
+
+// Get waitlist for an event (admin only)
+app.get('/api/admin/events/:id/waitlist', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
+  try {
+    const waitlist = await prisma.eventWaitlist.findMany({
+      where: { eventId: String(req.params.id) },
+      include: {
+        user: { select: { email: true, fullName: true } },
+      },
+      orderBy: { position: 'asc' },
+    });
+    res.json(waitlist);
+  } catch (error) {
+    console.error('Get event waitlist error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Join waitlist for an event
+app.post('/api/events/:id/waitlist', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const eventId = String(req.params.id);
+    const { fullName, email, phone, company } = req.body;
+    
+    if (!fullName || !email) {
+      return res.status(400).json({ error: { message: 'Full name and email are required', code: 'VALIDATION_ERROR' } });
+    }
+    
+    // Check if event exists
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+    
+    if (!event) {
+      return res.status(404).json({ error: { message: 'Event not found', code: 'NOT_FOUND' } });
+    }
+    
+    // Check if already on waitlist
+    const existingWaitlist = await prisma.eventWaitlist.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    if (existingWaitlist) {
+      return res.status(400).json({ error: { message: 'You are already on the waitlist for this event', code: 'ALREADY_ON_WAITLIST' } });
+    }
+    
+    // Check if already registered
+    const existingRegistration = await prisma.eventRegistration.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    if (existingRegistration) {
+      return res.status(400).json({ error: { message: 'You are already registered for this event', code: 'ALREADY_REGISTERED' } });
+    }
+    
+    // Get current max position
+    const maxPosition = await prisma.eventWaitlist.aggregate({
+      where: { eventId },
+      _max: { position: true },
+    });
+    
+    const waitlistEntry = await prisma.eventWaitlist.create({
+      data: {
+        eventId,
+        userId,
+        fullName,
+        email,
+        phone,
+        company,
+        position: (maxPosition._max?.position || 0) + 1,
+      },
+      include: { event: true },
+    });
+    
+    res.status(201).json(waitlistEntry);
+  } catch (error) {
+    console.error('Join waitlist error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Get waitlist count for an event (public)
+app.get('/api/events/:id/waitlist/count', async (req, res) => {
+  try {
+    const count = await prisma.eventWaitlist.count({
+      where: { eventId: String(req.params.id) },
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Get waitlist count error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Get user's waitlist position for an event
+app.get('/api/events/:id/waitlist/position', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const eventId = String(req.params.id);
+    const waitlistEntry = await prisma.eventWaitlist.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    if (!waitlistEntry) {
+      return res.status(404).json({ error: { message: 'Not on waitlist', code: 'NOT_FOUND' } });
+    }
+    
+    res.json({ position: waitlistEntry.position });
+  } catch (error) {
+    console.error('Get waitlist position error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Leave waitlist
+app.delete('/api/events/:id/waitlist', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const eventId = String(req.params.id);
+    
+    const waitlistEntry = await prisma.eventWaitlist.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    if (!waitlistEntry) {
+      return res.status(404).json({ error: { message: 'Not on waitlist', code: 'NOT_FOUND' } });
+    }
+    
+    await prisma.eventWaitlist.delete({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    
+    // Reorder positions for remaining entries
+    await prisma.$executeRaw`
+      UPDATE event_waitlist 
+      SET position = position - 1 
+      WHERE event_id = ${eventId} AND position > ${waitlistEntry.position}
+    `;
+    
+    res.json({ message: 'Removed from waitlist successfully' });
+  } catch (error) {
+    console.error('Leave waitlist error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });

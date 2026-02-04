@@ -45,10 +45,10 @@ const Investors = () => {
 
     setLoadingPlan(membershipType);
     try {
-      const data = await apiClient.post<{ url: string }>('/api/membership/checkout', { membershipType });
+      const response = await apiClient.post<{ url: string }>('/api/membership/checkout', { membershipType });
 
-      if (data?.url) {
-        window.open(data.url, "_blank");
+      if (response?.data?.url) {
+        window.open(response.data.url, "_blank");
       }
     } catch (error) {
       console.error("Checkout error:", error);

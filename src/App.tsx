@@ -28,6 +28,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import CodeOfConduct from "./pages/CodeOfConduct";
 import NotFound from "./pages/NotFound";
+import AccessDenied from "./pages/AccessDenied";
 import KYCUpload from "./pages/investor/KYCUpload";
 import DealsPage from "./pages/investor/DealsPage";
 import DealPipeline from "./pages/investor/DealPipeline";
@@ -55,6 +56,47 @@ import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
+import ApplicationScreening from "./pages/moderator/ApplicationScreening";
+import ContentModeration from "./pages/moderator/ContentModeration";
+import EventAttendance from "./pages/moderator/EventAttendance";
+import AdvisoryHours from "./pages/operator/AdvisoryHours";
+import AdvisoryProfile from "./pages/operator/AdvisoryProfile";
+import MentorshipHub from "./pages/operator/MentorshipHub";
+
+/**
+ * Role definitions for route protection
+ * These match the roles stored in the database UserRole table
+ */
+const ROLES = {
+  ADMIN: 'admin',
+  COMPLIANCE: 'compliance_officer',
+  MODERATOR: 'moderator',
+  FOUNDER: 'founder',
+  INVESTOR: 'investor',
+  ANGEL_INVESTOR: 'angel_investor',
+  VC_PARTNER: 'vc_partner',
+  FAMILY_OFFICE: 'family_office',
+  OPERATOR_ANGEL: 'operator_angel',
+  USER: 'user',
+} as const;
+
+/** All investor-type roles that can access investor features */
+const INVESTOR_ROLES = [ROLES.INVESTOR, ROLES.ANGEL_INVESTOR, ROLES.VC_PARTNER, ROLES.FAMILY_OFFICE, ROLES.ADMIN];
+
+/** All founder-type roles that can access founder features */
+const FOUNDER_ROLES = [ROLES.FOUNDER, ROLES.ADMIN];
+
+/** All compliance-type roles that can access compliance features */
+const COMPLIANCE_ROLES = [ROLES.COMPLIANCE, ROLES.ADMIN];
+
+/** All moderator-type roles that can access moderation features */
+const MODERATOR_ROLES = [ROLES.MODERATOR, ROLES.ADMIN];
+
+/** All operator-type roles that can access operator/advisory features */
+const OPERATOR_ROLES = [ROLES.OPERATOR_ANGEL, ROLES.ADMIN];
+
+/** All admin-type roles */
+const ADMIN_ROLES = [ROLES.ADMIN];
 
 const queryClient = new QueryClient();
 
@@ -89,16 +131,6 @@ const App = () => (
             } />
             <Route path="/apply/founder" element={<ApplyFounder />} />
             <Route path="/apply/investor" element={<ApplyInvestor />} />
-            <Route path="/founder/application-status" element={
-              <ProtectedRoute>
-                <ApplicationStatus />
-              </ProtectedRoute>
-            } />
-            <Route path="/founder/investors" element={
-              <ProtectedRoute>
-                <InvestorDirectory />
-              </ProtectedRoute>
-            } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -110,149 +142,188 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AdminDashboard />
               </ProtectedRoute>
             } />
             {/* Investor Routes */}
             <Route path="/investor/kyc" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <KYCUpload />
               </ProtectedRoute>
             } />
             <Route path="/deals" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <DealsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/deals" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DealsPage />
               </ProtectedRoute>
             } />
             <Route path="/investor/pipeline" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DealPipeline />
               </ProtectedRoute>
             } />
             <Route path="/deals/:dealId/documents" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DealDocuments />
               </ProtectedRoute>
             } />
             <Route path="/investor/commitments/:interestId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <InvestmentCommitment />
               </ProtectedRoute>
             } />
             <Route path="/investor/spv/create/:interestId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <CreateSPV />
               </ProtectedRoute>
             } />
             <Route path="/investor/spv/:spvId/invite" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <InviteCoInvestors />
               </ProtectedRoute>
             } />
             <Route path="/investor/spv/:spvId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <SPVDashboard />
               </ProtectedRoute>
             } />
             <Route path="/investor/portfolio/performance" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <PortfolioPerformance />
               </ProtectedRoute>
             } />
             <Route path="/investor/portfolio" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <PortfolioDashboard />
               </ProtectedRoute>
             } />
             <Route path="/investor/portfolio/updates" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <PortfolioUpdates />
               </ProtectedRoute>
             } />
             <Route path="/investor/shared-documents" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <SharedDocuments />
               </ProtectedRoute>
             } />
             <Route path="/investor/deal-analytics" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DealAnalytics />
               </ProtectedRoute>
             } />
             <Route path="/investor/due-diligence/:dealId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DueDiligenceChecklist />
               </ProtectedRoute>
             } />
             {/* Founder Routes */}
             <Route path="/founder/application-status" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <ApplicationStatus />
               </ProtectedRoute>
             } />
             <Route path="/founder/investors" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <InvestorDirectory />
               </ProtectedRoute>
             } />
             <Route path="/founder/pitch-sessions" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <PitchSessions />
               </ProtectedRoute>
             } />
             <Route path="/founder/pitch-materials" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <PitchMaterials />
               </ProtectedRoute>
             } />
             <Route path="/founder/investor-updates" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <InvestorUpdates />
               </ProtectedRoute>
             } />
             <Route path="/founder/investor-documents" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <InvestorDocuments />
               </ProtectedRoute>
             } />
             <Route path="/founder/company-profile" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <CompanyProfile />
               </ProtectedRoute>
             } />
             <Route path="/founder/fundraising-progress" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
                 <FundraisingProgress />
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
             <Route path="/compliance/kyc-review" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
                 <KYCReviewDashboard />
               </ProtectedRoute>
             } />
             <Route path="/compliance/aml-screening" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
                 <AMLScreeningDashboard />
               </ProtectedRoute>
             } />
             <Route path="/compliance/accreditation" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
                 <AccreditationVerification />
               </ProtectedRoute>
             } />
             {/* Admin Routes */}
             <Route path="/admin/users" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <UserRoleManagement />
               </ProtectedRoute>
             } />
             <Route path="/admin/audit-logs" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AuditLogs />
               </ProtectedRoute>
             } />
+            {/* Moderator Routes */}
+            <Route path="/moderator/applications" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ApplicationScreening />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/content" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ContentModeration />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/events" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <EventAttendance />
+              </ProtectedRoute>
+            } />
+            {/* Operator/Advisory Routes */}
+            <Route path="/operator/advisory" element={
+              <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
+                <AdvisoryHours />
+              </ProtectedRoute>
+            } />
+            <Route path="/operator/profile" element={
+              <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
+                <AdvisoryProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/operator/mentorship" element={
+              <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
+                <MentorshipHub />
+              </ProtectedRoute>
+            } />
+            {/* Access Denied Page */}
+            <Route path="/access-denied" element={<AccessDenied />} />
             {/* Legal & Contact Pages */}
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />

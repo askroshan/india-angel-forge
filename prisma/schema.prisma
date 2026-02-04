@@ -42,7 +42,7 @@ model User {
   amlScreenings         AMLScreening[]
   accreditations        Accreditation[]
   documents             Document[]
-  companies             Company[]           @relation("FounderCompany")
+  companies             Company[]              @relation("FounderCompany")
   commitments           Commitment[]
   auditLogs             AuditLog[]
 
@@ -455,16 +455,16 @@ model AMLScreening {
 }
 
 model Accreditation {
-  id             String    @id @default(uuid())
-  userId         String    @map("user_id")
-  status         String    @default("pending")
-  type           String?
-  verifiedAt     DateTime? @map("verified_at")
-  expiresAt      DateTime? @map("expires_at")
-  documentUrl    String?   @map("document_url")
-  reviewNotes    String?   @map("review_notes")
-  reviewedBy     String?   @map("reviewed_by")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  status      String    @default("pending")
+  type        String?
+  verifiedAt  DateTime? @map("verified_at")
+  expiresAt   DateTime? @map("expires_at")
+  documentUrl String?   @map("document_url")
+  reviewNotes String?   @map("review_notes")
+  reviewedBy  String?   @map("reviewed_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -502,7 +502,7 @@ model Company {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  founder           User               @relation("FounderCompany", fields: [founderId], references: [id], onDelete: Cascade)
+  founder           User                  @relation("FounderCompany", fields: [founderId], references: [id], onDelete: Cascade)
   fundraisingRounds FundraisingRoundNew[]
 
   @@map("companies")

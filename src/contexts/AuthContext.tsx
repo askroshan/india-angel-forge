@@ -45,11 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         
         if (storedToken && storedUser) {
+          const parsedUser = JSON.parse(storedUser);
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          setUser(parsedUser);
         }
       } catch (error) {
-        console.error('Error loading session:', error);
+        console.error('[AuthContext] Error loading session:', error);
         localStorage.removeItem(AUTH_STORAGE_KEY);
         localStorage.removeItem(USER_STORAGE_KEY);
       } finally {
@@ -96,7 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (!response.ok) {
-        return { error: new Error(data.error || 'Sign in failed') };
+        // Handle error response format: { error: { message, code } }
+        const errorMessage = data.error?.message || data.error || 'Sign in failed';
+        return { error: new Error(errorMessage) };
       }
 
       setToken(data.token);
@@ -106,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { error: null };
     } catch (error) {
+      console.error('[AuthContext] Sign in error:', error);
       return { error: error as Error };
     }
   };

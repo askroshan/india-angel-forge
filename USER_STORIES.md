@@ -883,6 +883,295 @@ General community members with access to educational content and events (not cov
 
 ---
 
+## Authorization & Security User Stories
+
+### US-AUTH-001: Role-Based Route Protection
+**As a** platform user  
+**I want** routes to be protected based on my role  
+**So that** I can only access pages I'm authorized to view
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in with a specific role
+- WHEN I navigate to a protected route
+- THEN access is granted only if my role is authorized
+- AND unauthorized access shows a 403 Forbidden page
+- AND unauthenticated access redirects to /auth
+- AND the 403 page explains the access denial with helpful guidance
+- AND a link is provided to return to appropriate dashboard
+
+**Route Authorization Matrix:**
+| Route Pattern | Allowed Roles |
+|--------------|---------------|
+| `/admin/*` | admin |
+| `/compliance/*` | compliance_officer, admin |
+| `/investor/*` | investor, operator_angel, family_office, admin |
+| `/founder/*` | founder, admin |
+| `/moderator/*` | moderator, admin |
+| `/operator/*` | operator_angel, admin |
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `user_roles`
+
+---
+
+### US-AUTH-002: API Endpoint Authorization
+**As a** backend system  
+**I want** API endpoints to verify user roles before processing requests  
+**So that** sensitive data is protected from unauthorized access
+
+**Acceptance Criteria:**
+- GIVEN a user makes an API request with a valid JWT
+- WHEN the endpoint requires a specific role
+- THEN the middleware checks the user's roles from the JWT
+- AND returns 403 Forbidden if role is not authorized
+- AND returns 401 Unauthorized if no valid token
+- AND successful authorization proceeds to the handler
+- AND authorization failures are logged for security audit
+
+**API Authorization Matrix:**
+| Endpoint Pattern | Required Roles |
+|-----------------|----------------|
+| `GET/PUT/DELETE /api/admin/*` | admin |
+| `GET/PUT /api/compliance/*` | compliance_officer, admin |
+| `GET/PUT/DELETE /api/applications/founders` | admin, moderator |
+| `GET/PUT/DELETE /api/applications/investors` | admin, moderator |
+| `GET/POST /api/deals` | investor, operator_angel, family_office, admin |
+| `GET/POST /api/commitments` | investor, operator_angel, family_office |
+| `GET/POST /api/pitch/*` | founder |
+| `GET/PUT /api/company/*` | founder |
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `user_roles`, `audit_logs`
+
+---
+
+### US-AUTH-003: Forbidden Access Page (WCAG 2.2 AA)
+**As a** user who attempts to access an unauthorized page  
+**I want** to see a clear, accessible error page  
+**So that** I understand why I cannot access the page and what to do next
+
+**Acceptance Criteria:**
+- GIVEN I navigate to a page I'm not authorized to view
+- THEN I see a 403 Forbidden page with:
+  - Clear heading "Access Denied" (h1)
+  - Explanation of why access was denied
+  - My current role displayed
+  - Link to return to my dashboard
+  - Contact support link if access seems incorrect
+- AND the page is fully keyboard navigable
+- AND the page announces correctly to screen readers
+- AND color contrast meets WCAG 2.2 AA (≥4.5:1)
+- AND the page is responsive (mobile, tablet, desktop)
+- AND focus is managed properly (no focus trap)
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** None
+
+---
+
+### US-AUTH-004: Admin Dashboard Data Verification
+**As an** Admin  
+**I want** the admin dashboard to display accurate real-time data  
+**So that** I can make informed decisions about platform management
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as admin
+- WHEN I view the admin dashboard
+- THEN I see accurate counts of:
+  - Total users by role
+  - Pending applications (founder + investor)
+  - Active events with registration counts
+  - Recent audit log entries
+- AND data refreshes when I navigate back to the page
+- AND loading states are shown while fetching
+- AND errors are displayed if data fetch fails
+- AND empty states are shown when no data exists
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `users`, `user_roles`, `applications`, `events`, `audit_logs`
+
+---
+
+### US-AUTH-005: Compliance Dashboard Data Verification
+**As a** Compliance Officer  
+**I want** the compliance dashboard to display accurate KYC/AML data  
+**So that** I can efficiently process verification requests
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as compliance officer
+- WHEN I view the compliance dashboard
+- THEN I see:
+  - Pending KYC reviews with document counts
+  - Pending AML screenings with risk flags
+  - Upcoming accreditation expirations
+  - Recent compliance actions
+- AND I can filter by status (pending, approved, rejected)
+- AND I can sort by date submitted or priority
+- AND the UI updates after taking actions
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `kyc_documents`, `aml_screenings`, `accreditations`
+
+---
+
+### US-AUTH-006: Investor Dashboard Data Verification
+**As an** Investor  
+**I want** my dashboard to display my personalized investment data  
+**So that** I can track my deal pipeline and portfolio
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as an investor (standard, operator_angel, or family_office)
+- WHEN I view the investor dashboard/deals page
+- THEN I see:
+  - Available deals matching my preferences
+  - My expressed interests with status
+  - My commitments with payment status
+  - My portfolio companies with valuations
+- AND only deals I have access to are shown
+- AND my KYC/accreditation status is visible
+- AND I see prompts if KYC is incomplete
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `deals`, `deal_interests`, `commitments`, `portfolio_companies`
+
+---
+
+### US-AUTH-007: Founder Dashboard Data Verification
+**As a** Founder  
+**I want** my dashboard to display my company and fundraising data  
+**So that** I can manage my fundraising journey
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as a founder
+- WHEN I view the founder dashboard
+- THEN I see:
+  - My application status
+  - My company profile (if approved)
+  - My pitch sessions (scheduled and past)
+  - My fundraising round progress
+  - Investor interest in my company
+- AND I see prompts to complete profile if incomplete
+- AND I see next steps based on my status
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `founder_applications`, `companies`, `pitch_sessions`, `fundraising_rounds`
+
+---
+
+### US-AUTH-008: Moderator Dashboard Data Verification
+**As a** Moderator  
+**I want** to view pending moderation tasks  
+**So that** I can maintain platform quality
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as a moderator
+- WHEN I view the moderator dashboard
+- THEN I see:
+  - Pending founder applications to screen
+  - Pending investor applications to screen
+  - Content flags requiring review
+  - Event attendance to manage
+- AND items are prioritized by submission date
+- AND I can take action directly from the list
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `founder_applications`, `investor_applications`, `content_flags`
+
+---
+
+### US-AUTH-009: Operator Angel Dashboard Data Verification
+**As an** Operator Angel  
+**I want** to see both investment and advisory data  
+**So that** I can manage my dual role effectively
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as an operator angel
+- WHEN I view the operator dashboard
+- THEN I see:
+  - Available deals (as an investor)
+  - My advisory profile and requests
+  - My mentorship relationships
+  - Advisory hours logged this month
+- AND I can switch between investor and advisory views
+- AND metrics show my impact as an advisor
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** 0 test cases  
+**Database Tables:** `deals`, `advisory_profiles`, `mentorships`, `advisory_hours`
+
+---
+
+### US-AUTH-010: Admin Login to Dashboard Flow
+**As an** Admin  
+**I want** to log in and be able to access the admin dashboard  
+**So that** I can manage the platform after authenticating
+
+**Acceptance Criteria:**
+- GIVEN I am on the login page at /auth
+- WHEN I enter valid admin credentials (admin@indiaangelforum.test / Admin@12345)
+- AND I click "Sign In"
+- THEN I am redirected to my dashboard
+- AND when I navigate to /admin, I see the admin dashboard
+- AND I do NOT see the AccessDenied page
+- AND my roles are properly stored in localStorage
+- AND subsequent visits to /admin work correctly
+
+**Error Scenarios:**
+- IF I use wrong email → shows "Invalid credentials" error
+- IF I use wrong password → shows "Invalid credentials" error
+- IF I use non-admin credentials and visit /admin → shows AccessDenied with my actual role
+- IF my session expires → redirected to /auth
+
+**Test Credentials:**
+- Email: `admin@indiaangelforum.test`
+- Password: `Admin@12345`
+- Expected roles: `['admin']`
+
+**Bug Fix (Feb 2026):**
+The AdminDashboard component was making a redundant API call to `/api/auth/check-role` to verify 
+admin role, but the apiClient didn't have the auth token set. This caused "Access token required" 
+errors and showed AccessDenied even when ProtectedRoute correctly verified the admin role.
+
+**Resolution:** 
+- Removed redundant API role check from AdminDashboard.tsx
+- AdminDashboard now uses `user.roles` from AuthContext directly (set by ProtectedRoute)
+- ProtectedRoute is the single source of truth for role verification
+
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (Playwright)  
+**E2E Test File:** e2e/authorization.spec.ts  
+**Database Tables:** `users`, `user_roles`
+
+---
+
+### US-AUTH-011: AccessDenied Page Shows User's Current Role
+**As a** user who attempts to access an unauthorized page  
+**I want** to see my current role on the AccessDenied page  
+**So that** I understand why I'm denied and can verify I'm logged in correctly
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in with a non-admin role (e.g., investor)
+- WHEN I navigate to an admin-only page (/admin)
+- THEN I see the AccessDenied page
+- AND the page shows "Your current role: Investor" (my actual role)
+- AND the page shows "Required role: Admin" (the role needed)
+- AND there's a link back to my appropriate dashboard
+- AND the information is readable and accessible
+
+**Implementation Status:** 🔄 In Progress  
+**Test Coverage:** E2E tests  
+**Database Tables:** `user_roles`
+
+---
+
 ## Acceptance Criteria
 
 ### General Principles
