@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -56,9 +56,7 @@ const Membership = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
-      
-      if (error) throw error;
+      const data = await apiClient.get<SubscriptionData>('/api/membership/subscription');
       setSubscriptionData(data);
     } catch (error) {
       console.error("Error fetching subscription:", error);
@@ -72,14 +70,13 @@ const Membership = () => {
     if (user) {
       fetchSubscription();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-      
-      if (error) throw error;
+      const data = await apiClient.get<{ url: string }>('/api/membership/portal');
       
       if (data?.url) {
         window.open(data.url, "_blank");

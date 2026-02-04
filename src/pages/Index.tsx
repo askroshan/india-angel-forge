@@ -225,7 +225,7 @@ const Index = () => {
               </div>
 
             <Button variant="default" className="w-full mt-4" asChild>
-              <Link to="/apply/investor">View Membership Plans</Link>
+              <Link to="/investors#plans">View Membership Plans</Link>
             </Button>
             </div>
           </div>

@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Target, Heart, Shield, TrendingUp, Users2, Award } from "lucide-react";
+import { Target, Heart, Shield, TrendingUp, Users2, Award, Linkedin } from "lucide-react";
 
 const About = () => {
   const values = [
@@ -28,17 +29,83 @@ const About = () => {
     {
       name: "Rajesh Kumar",
       role: "CEO & Co-Founder",
-      bio: "Serial entrepreneur and angel investor with 15+ years in Indian startup ecosystem"
+      bio: "Serial entrepreneur and angel investor with 15+ years in Indian startup ecosystem. Previously founded two successful exits.",
+      initials: "RK",
+      color: "bg-blue-600",
+      linkedin: "https://linkedin.com/in/rajeshkumar"
     },
     {
       name: "Priya Sharma",
       role: "Head of Platform",
-      bio: "Former venture partner with expertise in deal sourcing and portfolio management"
+      bio: "Former venture partner at a leading VC. Expertise in deal sourcing, portfolio management, and founder support.",
+      initials: "PS",
+      color: "bg-purple-600",
+      linkedin: "https://linkedin.com/in/priyasharma"
     },
     {
       name: "Amit Patel",
       role: "Head of Diligence",
-      bio: "Ex-investment banker specializing in early-stage financial and market analysis"
+      bio: "Ex-investment banker with Goldman Sachs. Specializes in early-stage financial analysis and market research.",
+      initials: "AP",
+      color: "bg-green-600",
+      linkedin: "https://linkedin.com/in/amitpatel"
+    }
+  ];
+
+  const featuredInvestors = [
+    {
+      name: "Vikram Mehta",
+      title: "Angel Investor & Operator",
+      investments: "25+ investments",
+      sectors: "AI, SaaS, Fintech",
+      background: "Ex-CTO at Flipkart, IIT Delhi",
+      initials: "VM",
+      color: "bg-orange-500"
+    },
+    {
+      name: "Sunita Reddy",
+      title: "Family Office Partner",
+      investments: "₹15 Cr+ deployed",
+      sectors: "Healthcare, Consumer",
+      background: "3rd gen entrepreneur, ISB Hyderabad",
+      initials: "SR",
+      color: "bg-pink-500"
+    },
+    {
+      name: "Arjun Kapoor",
+      title: "Serial Entrepreneur",
+      investments: "15+ investments",
+      sectors: "B2B SaaS, Climate Tech",
+      background: "Founded & exited 2 companies, Stanford MBA",
+      initials: "AK",
+      color: "bg-teal-500"
+    },
+    {
+      name: "Dr. Meera Singh",
+      title: "Domain Expert Angel",
+      investments: "12+ investments",
+      sectors: "Healthcare, Biotech",
+      background: "Former CMO, Apollo Hospitals",
+      initials: "MS",
+      color: "bg-red-500"
+    },
+    {
+      name: "Karthik Sundaram",
+      title: "Tech Operator Angel",
+      investments: "20+ investments",
+      sectors: "Deep Tech, AI/ML",
+      background: "Ex-Google, IIT Madras",
+      initials: "KS",
+      color: "bg-indigo-500"
+    },
+    {
+      name: "Nisha Agarwal",
+      title: "Early Stage Investor",
+      investments: "18+ investments",
+      sectors: "Consumer, D2C",
+      background: "Ex-McKinsey, Harvard Business School",
+      initials: "NA",
+      color: "bg-amber-500"
     }
   ];
 
@@ -153,13 +220,26 @@ const About = () => {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {team.map((member, index) => (
-              <Card key={index} className="border-2">
+              <Card key={index} className="border-2 hover:border-accent transition-all">
                 <CardContent className="pt-6 text-center space-y-4">
-                  <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
-                    <Users2 className="h-10 w-10 text-accent" />
-                  </div>
+                  <Avatar className={`h-20 w-20 mx-auto ${member.color}`}>
+                    <AvatarFallback className="text-white font-bold text-xl">
+                      {member.initials}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
+                    <div className="flex items-center justify-center gap-2">
+                      <h3 className="text-xl font-semibold">{member.name}</h3>
+                      <a 
+                        href={member.linkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-accent"
+                        aria-label={`${member.name}'s LinkedIn profile`}
+                      >
+                        <Linkedin className="h-4 w-4" />
+                      </a>
+                    </div>
                     <p className="text-sm text-accent font-medium mb-3">{member.role}</p>
                     <p className="text-sm text-muted-foreground">{member.bio}</p>
                   </div>
@@ -170,8 +250,53 @@ const About = () => {
         </div>
       </section>
 
-      {/* Advisory Board */}
+      {/* Featured Investors */}
       <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2>Featured Members</h2>
+            <p className="text-lg text-muted-foreground mt-4">
+              Meet some of our active angel investors
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {featuredInvestors.map((investor, index) => (
+              <Card key={index} className="border-2 hover:border-accent transition-all">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="flex items-start gap-4">
+                    <Avatar className={`h-14 w-14 ${investor.color}`}>
+                      <AvatarFallback className="text-white font-bold">
+                        {investor.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{investor.name}</h3>
+                      <p className="text-sm text-accent">{investor.title}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Track Record:</span>
+                      <span className="font-medium">{investor.investments}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Focus:</span>
+                      <span className="font-medium">{investor.sectors}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground border-t pt-3">
+                    {investor.background}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Advisory Board */}
+      <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
@@ -275,8 +400,8 @@ const About = () => {
               <Button size="lg" variant="hero" asChild>
                 <Link to="/apply/investor">Become a Member</Link>
               </Button>
-              <Button size="lg" variant="outline" className="bg-background hover:bg-background/90">
-                Contact Us
+              <Button size="lg" variant="outline" className="bg-background hover:bg-background/90" asChild>
+                <Link to="/contact">Contact Us</Link>
               </Button>
             </div>
           </div>

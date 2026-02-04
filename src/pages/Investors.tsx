@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Check, Users, Target, Shield, TrendingUp, Database, Award, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Investors = () => {
@@ -44,13 +45,10 @@ const Investors = () => {
 
     setLoadingPlan(membershipType);
     try {
-      const { data, error } = await supabase.functions.invoke("create-membership-checkout", {
-        body: { membershipType },
-      });
+      const response = await apiClient.post<{ url: string }>('/api/membership/checkout', { membershipType });
 
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
+      if (response?.data?.url) {
+        window.open(response.data.url, "_blank");
       }
     } catch (error) {
       console.error("Checkout error:", error);
@@ -65,7 +63,7 @@ const Investors = () => {
   };
 
   const handleContactFamilyOffice = () => {
-    window.location.href = "mailto:hello@indiaangelforum.com?subject=Family Office Membership Inquiry";
+    navigate("/contact");
   };
 
   const membershipPlans = [
@@ -176,6 +174,21 @@ const Investors = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>For Investors - India Angel Forum</title>
+        <meta
+          name="description"
+          content="Join India's largest angel network. Access curated deal flow, expert diligence, and SPV infrastructure. Membership plans starting at ₹36,000/year."
+        />
+        <link rel="canonical" href="https://indiaangelforum.com/investors" />
+        <meta property="og:title" content="For Investors - India Angel Forum" />
+        <meta
+          property="og:description"
+          content="Join 400+ angels and family offices backing the next generation of Indian unicorns. Curated deal flow, collaborative diligence, and transparent economics."
+        />
+        <meta property="og:url" content="https://indiaangelforum.com/investors" />
+      </Helmet>
+
       <Navigation />
 
       {/* Hero Section */}
@@ -189,7 +202,7 @@ const Investors = () => {
               Join 400+ angels and family offices backing the next generation of Indian unicorns.
             </p>
             <Button size="lg" variant="hero" asChild>
-              <Link to="/apply/investor">View Membership Plans</Link>
+              <a href="#plans">View Membership Plans</a>
             </Button>
           </div>
         </div>
@@ -414,9 +427,9 @@ const Investors = () => {
                 size="lg" 
                 variant="outline" 
                 className="bg-background hover:bg-background/90"
-                onClick={() => window.location.href = "mailto:hello@indiaangelforum.com?subject=Schedule a Call - Angel Membership"}
+                asChild
               >
-                Schedule a Call
+                <Link to="/contact">Schedule a Call</Link>
               </Button>
             </div>
           </div>

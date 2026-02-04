@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { toast } from "sonner";
-import type { Event } from "./useEvents";
+import type { Event, EventRegistration } from "./useEvents";
 
 export interface CreateEventInput {
   title: string;
@@ -28,13 +28,7 @@ export function useAdminEvents() {
   return useQuery({
     queryKey: ['admin-events'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      return data as Event[];
+      return await apiClient.get<Event[]>('/api/admin/events');
     },
   });
 }
@@ -44,17 +38,12 @@ export function useCreateEvent() {
 
   return useMutation({
     mutationFn: async (input: CreateEventInput) => {
-      const { data, error } = await supabase
-        .from('events')
-        .insert({
-          ...input,
-          status: input.status || 'upcoming',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      const response = await apiClient.post<Event>('/api/admin/events', {
+        ...input,
+        status: input.status || 'upcoming',
+      });
+      if (response.error) throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
@@ -72,15 +61,9 @@ export function useUpdateEvent() {
 
   return useMutation({
     mutationFn: async ({ id, ...input }: CreateEventInput & { id: string }) => {
-      const { data, error } = await supabase
-        .from('events')
-        .update(input)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      const response = await apiClient.update<Event>('admin/events', id, input as Partial<Event>);
+      if (response.error) throw new Error(response.error.message);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
@@ -98,12 +81,7 @@ export function useDeleteEvent() {
 
   return useMutation({
     mutationFn: async (eventId: string) => {
-      const { error } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', eventId);
-
-      if (error) throw error;
+      await apiClient.delete('admin/events', eventId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
@@ -120,18 +98,12 @@ export function useEventRegistrationsList(eventId?: string) {
   return useQuery({
     queryKey: ['admin-event-registrations', eventId],
     queryFn: async () => {
-      let query = supabase
-        .from('event_registrations')
-        .select('*')
-        .order('registered_at', { ascending: false });
-
-      if (eventId) {
-        query = query.eq('event_id', eventId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const params = new URLSearchParams();
+      if (eventId) params.append('event_id', eventId);
+      
+      return await apiClient.get<EventRegistration[]>(
+        `/api/admin/event-registrations?${params.toString()}`
+      );
     },
     enabled: !!eventId,
   });

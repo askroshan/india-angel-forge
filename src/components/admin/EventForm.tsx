@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Event, EVENT_TYPE_LABELS } from "@/hooks/useEvents";
 import { CreateEventInput } from "@/hooks/useAdminEvents";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { toast } from "sonner";
 import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 
@@ -137,19 +137,21 @@ export function EventForm({ open, onOpenChange, event, onSubmit, isLoading }: Ev
       // Generate unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `events/${fileName}`;
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('event-images')
-        .upload(filePath, file);
+      // Create FormData for file upload
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('path', `events/${fileName}`);
 
-      if (uploadError) throw uploadError;
+      // Upload via API
+      const { data: uploadData, error: uploadError } = await apiClient.post<{ url: string }>(
+        '/api/storage/upload',
+        formDataUpload
+      );
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-images')
-        .getPublicUrl(filePath);
+      if (uploadError) throw new Error(uploadError.message);
+
+      const publicUrl = uploadData?.url || '';
 
       setFormData(prev => ({ ...prev, image_url: publicUrl }));
       setImagePreview(publicUrl);
@@ -174,7 +176,7 @@ export function EventForm({ open, onOpenChange, event, onSubmit, isLoading }: Ev
         const urlParts = formData.image_url.split('/event-images/');
         if (urlParts.length > 1) {
           const filePath = urlParts[1];
-          await supabase.storage.from('event-images').remove([filePath]);
+          await apiClient.delete('storage', filePath);
         }
       } catch (error) {
         console.error('Failed to delete image:', error);

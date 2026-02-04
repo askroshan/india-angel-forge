@@ -296,7 +296,7 @@ const Founders = () => {
             <p className="text-xl text-primary-foreground/90">
               Join 40+ companies that have raised capital through India Angel Forum
             </p>
-            <Button size="lg" variant="hero">
+            <Button size="lg" variant="hero" asChild>
               <Link to="/apply/founder">Start Your Application</Link>
             </Button>
           </div>

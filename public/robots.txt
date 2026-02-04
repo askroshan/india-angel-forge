@@ -1,3 +1,6 @@
+# India Angel Forum - Robots.txt
+# https://indiaangelforum.com
+
 User-agent: Googlebot
 Allow: /
 
@@ -10,5 +13,33 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
+# AI Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://indiaangelforum.com/api/sitemap
+
+# Additional context for AI
+# See /llms.txt for AI-specific information

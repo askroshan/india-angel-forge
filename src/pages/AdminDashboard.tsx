@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,84 +34,77 @@ const AdminDashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingRole, setCheckingRole] = useState(true);
   const [founderApps, setFounderApps] = useState<FounderApplication[]>([]);
   const [investorApps, setInvestorApps] = useState<InvestorApplication[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  useEffect(() => {
-    const checkAdminRole = async () => {
-      if (!user) {
-        setCheckingRole(false);
-        return;
-      }
-
-      // Use the has_role function to check if user is admin
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
-      });
-
-      if (error) {
-        console.error('Error checking admin role:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(data === true);
-      }
-      setCheckingRole(false);
-    };
-
-    if (!loading) {
-      checkAdminRole();
-    }
-  }, [user, loading]);
+  // Check if user has admin role from AuthContext
+  // Note: ProtectedRoute already verifies this, but we keep it for data fetching logic
+  const isAdmin = user?.roles?.includes('admin') ?? false;
 
   useEffect(() => {
     const fetchApplications = async () => {
-      if (!isAdmin) return;
+      if (!isAdmin || !user) return;
 
       setLoadingData(true);
 
-      const [founderRes, investorRes] = await Promise.all([
-        supabase
-          .from('founder_applications')
-          .select('id, company_name, founder_name, founder_email, stage, status, created_at')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('investor_applications')
-          .select('id, full_name, email, membership_type, status, created_at')
-          .order('created_at', { ascending: false })
-      ]);
+      try {
+        // Use fetch directly with token from localStorage
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
 
-      if (founderRes.data) setFounderApps(founderRes.data);
-      if (investorRes.data) setInvestorApps(investorRes.data);
+        const [founderRes, investorRes] = await Promise.all([
+          fetch('/api/applications/founders', { headers }).then(r => r.ok ? r.json() : []),
+          fetch('/api/applications/investors', { headers }).then(r => r.ok ? r.json() : [])
+        ]);
+
+        setFounderApps(founderRes || []);
+        setInvestorApps(investorRes || []);
+      } catch (error) {
+        console.error('[AdminDashboard] Error fetching applications:', error);
+      }
       
       setLoadingData(false);
     };
 
-    if (isAdmin) {
+    if (!loading && isAdmin) {
       fetchApplications();
     }
-  }, [isAdmin]);
+  }, [user, loading, isAdmin]);
 
   const updateApplicationStatus = async (
     table: 'founder_applications' | 'investor_applications',
     id: string,
     status: string
   ) => {
-    const { error } = await supabase
-      .from(table)
-      .update({ status })
-      .eq('id', id);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
+      const endpoint = table === 'founder_applications' 
+        ? `/api/applications/founders/${id}` 
+        : `/api/applications/investors/${id}`;
+      
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status }),
       });
-    } else {
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
       toast({
         title: "Success",
         description: "Application status updated",
@@ -120,18 +112,18 @@ const AdminDashboard = () => {
       
       // Refresh data
       if (table === 'founder_applications') {
-        const { data } = await supabase
-          .from('founder_applications')
-          .select('id, company_name, founder_name, founder_email, stage, status, created_at')
-          .order('created_at', { ascending: false });
-        if (data) setFounderApps(data);
+        const data = await fetch('/api/applications/founders', { headers }).then(r => r.ok ? r.json() : []);
+        setFounderApps(data || []);
       } else {
-        const { data } = await supabase
-          .from('investor_applications')
-          .select('id, full_name, email, membership_type, status, created_at')
-          .order('created_at', { ascending: false });
-        if (data) setInvestorApps(data);
+        const data = await fetch('/api/applications/investors', { headers }).then(r => r.ok ? r.json() : []);
+        setInvestorApps(data || []);
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
     }
   };
 
@@ -145,7 +137,8 @@ const AdminDashboard = () => {
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
   };
 
-  if (loading || checkingRole) {
+  // Show loading spinner while auth is loading
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -153,12 +146,16 @@ const AdminDashboard = () => {
     );
   }
 
+  // ProtectedRoute handles auth redirect, but we add this as a safety check
   if (!user) {
     navigate('/auth');
     return null;
   }
 
+  // Note: ProtectedRoute already handles access denial, this should never show
+  // if the route is properly wrapped, but keeping as a defensive check
   if (!isAdmin) {
+    console.warn('[AdminDashboard] User accessed without admin role - ProtectedRoute should have blocked this');
     return (
       <div className="min-h-screen flex flex-col">
         <Navigation />

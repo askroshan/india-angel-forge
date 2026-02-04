@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { Loader2 } from "lucide-react";
 
 const founderApplicationSchema = z.object({
@@ -96,10 +96,11 @@ export function FounderApplicationForm() {
         referral_source: values.referral_source || null,
       };
 
-      // Submit via edge function for server-side validation and rate limiting
-      const { data, error } = await supabase.functions.invoke("submit-founder-application", {
-        body: submissionData,
-      });
+      // Submit via API for server-side validation and rate limiting
+      const { data, error } = await apiClient.post<{ error?: string; details?: string[] }>(
+        '/api/applications/founder',
+        submissionData
+      );
 
       if (error) throw error;
       
