@@ -37,6 +37,14 @@ model User {
   dealInterests         DealInterest[]
   dealDocuments         DealDocument[]
   investmentCommitments InvestmentCommitment[]
+  // New relations
+  kycDocuments          KYCDocument[]
+  amlScreenings         AMLScreening[]
+  accreditations        Accreditation[]
+  documents             Document[]
+  companies             Company[]           @relation("FounderCompany")
+  commitments           Commitment[]
+  auditLogs             AuditLog[]
 
   @@map("users")
 }
@@ -296,12 +304,14 @@ model Deal {
   status      String?
   industry    String?
   stage       String?
+  sector      String?
   createdAt   DateTime @default(now()) @map("created_at")
 
   investor          User               @relation(fields: [investorId], references: [id], onDelete: Cascade)
   dueDiligenceItems DueDiligenceItem[]
   dealInterests     DealInterest[]
   dealDocuments     DealDocument[]
+  commitments       Commitment[]
 
   @@map("deals")
 }
@@ -408,4 +418,141 @@ model InvestmentCommitment {
   investor User         @relation(fields: [investorId], references: [id], onDelete: Cascade)
 
   @@map("investment_commitments")
+}
+
+// ==================== COMPLIANCE MODELS ====================
+
+model KYCDocument {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  documentType String    @map("document_type")
+  fileName     String    @map("file_name")
+  fileUrl      String    @map("file_url")
+  status       String    @default("pending")
+  reviewNotes  String?   @map("review_notes")
+  reviewedBy   String?   @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_documents")
+}
+
+model AMLScreening {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  status      String    @default("pending")
+  riskLevel   String?   @map("risk_level")
+  screenedAt  DateTime  @default(now()) @map("screened_at")
+  reviewNotes String?   @map("review_notes")
+  reviewedBy  String?   @map("reviewed_by")
+  reviewedAt  DateTime? @map("reviewed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("aml_screenings")
+}
+
+model Accreditation {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  status         String    @default("pending")
+  type           String?
+  verifiedAt     DateTime? @map("verified_at")
+  expiresAt      DateTime? @map("expires_at")
+  documentUrl    String?   @map("document_url")
+  reviewNotes    String?   @map("review_notes")
+  reviewedBy     String?   @map("reviewed_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accreditations")
+}
+
+// ==================== DOCUMENT MODELS ====================
+
+model Document {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  title       String
+  description String?
+  fileUrl     String   @map("file_url")
+  sharedWith  String?  @map("shared_with")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// ==================== COMPANY MODEL (for founders) ====================
+
+model Company {
+  id          String   @id @default(uuid())
+  founderId   String   @map("founder_id")
+  name        String
+  description String?
+  website     String?
+  sector      String?
+  stage       String?
+  teamSize    Int?     @map("team_size")
+  location    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  founder           User               @relation("FounderCompany", fields: [founderId], references: [id], onDelete: Cascade)
+  fundraisingRounds FundraisingRoundNew[]
+
+  @@map("companies")
+}
+
+model FundraisingRoundNew {
+  id           String   @id @default(uuid())
+  companyId    String   @map("company_id")
+  roundType    String   @map("round_type")
+  targetAmount Decimal  @map("target_amount") @db.Decimal(15, 2)
+  raisedAmount Decimal  @default(0) @map("raised_amount") @db.Decimal(15, 2)
+  valuation    Decimal? @db.Decimal(15, 2)
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("fundraising_rounds_new")
+}
+
+// ==================== COMMITMENT MODEL ====================
+
+model Commitment {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  dealId    String   @map("deal_id")
+  amount    Decimal  @db.Decimal(15, 2)
+  notes     String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("commitments")
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String?
+  entityId  String?  @map("entity_id")
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
 }
