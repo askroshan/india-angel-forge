@@ -45,6 +45,8 @@ model User {
   companies             Company[]              @relation("FounderCompany")
   commitments           Commitment[]
   auditLogs             AuditLog[]
+  payments              Payment[]
+  paymentMethods        PaymentMethod[]
 
   @@map("users")
 }
@@ -555,4 +557,169 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+// ==================== PAYMENT SYSTEM ====================
+
+enum PaymentGateway {
+  RAZORPAY
+  PAYU
+  PAYTM
+  CCAVENUE
+  INSTAMOJO
+  STRIPE
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentType {
+  MEMBERSHIP_FEE
+  DEAL_COMMITMENT
+  EVENT_REGISTRATION
+  SUBSCRIPTION
+  OTHER
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+  NET_BANKING
+  UPI
+  WALLET
+  INTERNATIONAL_CARD
+  BANK_TRANSFER
+}
+
+model Payment {
+  id                String         @id @default(uuid())
+  userId            String         @map("user_id")
+  amount            Decimal        @db.Decimal(15, 2)
+  currency          String         @default("INR")
+  gateway           PaymentGateway
+  status            PaymentStatus  @default(PENDING)
+  type              PaymentType
+  gatewayOrderId    String?        @unique @map("gateway_order_id")
+  gatewayPaymentId  String?        @unique @map("gateway_payment_id")
+  gatewaySignature  String?        @map("gateway_signature")
+  description       String?
+  metadata          Json?
+  failureReason     String?        @map("failure_reason")
+  refundAmount      Decimal?       @db.Decimal(15, 2) @map("refund_amount")
+  refundReason      String?        @map("refund_reason")
+  refundedAt        DateTime?      @map("refunded_at")
+  ipAddress         String?        @map("ip_address")
+  userAgent         String?        @map("user_agent")
+  encryptedData     String?        @map("encrypted_data") // Encrypted sensitive info
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  completedAt       DateTime?      @map("completed_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String?      @map("payment_method_id")
+
+  @@index([userId])
+  @@index([status])
+  @@index([gateway])
+  @@index([type])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model PaymentMethod {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  type              PaymentMethodType
+  isDefault         Boolean           @default(false) @map("is_default")
+  lastFourDigits    String?           @map("last_four_digits") // Last 4 digits of card
+  cardBrand         String?           @map("card_brand") // Visa, Mastercard, etc.
+  expiryMonth       Int?              @map("expiry_month")
+  expiryYear        Int?              @map("expiry_year")
+  bankName          String?           @map("bank_name")
+  upiId             String?           @map("upi_id")
+  encryptedToken    String?           @map("encrypted_token") // Encrypted payment token
+  gatewayCustomerId String?           @map("gateway_customer_id")
+  gateway           PaymentGateway
+  isActive          Boolean           @default(true) @map("is_active")
+  metadata          Json?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+  @@index([gateway])
+  @@map("payment_methods")
+}
+
+model PaymentWebhook {
+  id            String         @id @default(uuid())
+  gateway       PaymentGateway
+  eventType     String         @map("event_type")
+  eventId       String?        @unique @map("event_id")
+  payload       Json
+  signature     String?
+  isVerified    Boolean        @default(false) @map("is_verified")
+  isProcessed   Boolean        @default(false) @map("is_processed")
+  processedAt   DateTime?      @map("processed_at")
+  errorMessage  String?        @map("error_message")
+  retryCount    Int            @default(0) @map("retry_count")
+  ipAddress     String?        @map("ip_address")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([gateway])
+  @@index([eventType])
+  @@index([isProcessed])
+  @@index([createdAt])
+  @@map("payment_webhooks")
+}
+
+model PaymentRefund {
+  id               String    @id @default(uuid())
+  paymentId        String    @map("payment_id")
+  amount           Decimal   @db.Decimal(15, 2)
+  reason           String
+  status           String    @default("pending")
+  gatewayRefundId  String?   @unique @map("gateway_refund_id")
+  processedBy      String?   @map("processed_by")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  processedAt      DateTime? @map("processed_at")
+
+  @@index([paymentId])
+  @@index([status])
+  @@map("payment_refunds")
+}
+
+// ==================== TAX & COMPLIANCE ====================
+
+model TaxInformation {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  panNumber     String?  @unique @map("pan_number") // Indian PAN
+  gstNumber     String?  @map("gst_number") // GST Number
+  tanNumber     String?  @map("tan_number") // TAN for TDS
+  taxCountry    String   @default("IN") @map("tax_country")
+  taxIdType     String?  @map("tax_id_type") // SSN, TIN, etc. for international
+  taxId         String?  @map("tax_id")
+  isNRI         Boolean  @default(false) @map("is_nri")
+  nriCountry    String?  @map("nri_country")
+  tdsCertificate String? @map("tds_certificate") // Form 15CA/15CB for NRI
+  form60Filed   Boolean  @default(false) @map("form60_filed") // If PAN not available
+  form60Number  String?  @map("form60_number")
+  encryptedData String?  @map("encrypted_data")
+  verifiedAt    DateTime? @map("verified_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("tax_information")
 }

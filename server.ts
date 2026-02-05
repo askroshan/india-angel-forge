@@ -1372,6 +1372,348 @@ app.delete('/api/events/:id/waitlist', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== PAYMENT SYSTEM ====================
+
+import PaymentService from './server/services/payment.service';
+import { PaymentGateway, PaymentType, PaymentStatus } from '@prisma/client';
+import { encrypt } from './server/utils/encryption';
+
+/**
+ * POST /api/payments/create-order
+ * Create a new payment order (Razorpay, Stripe, etc.)
+ */
+app.post('/api/payments/create-order', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { amount, currency, type, gateway, description, metadata } = req.body;
+    const userId = req.user!.userId;
+
+    // Validate amount
+    const validation = PaymentService.validateAmount(amount);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: validation.error
+      });
+    }
+
+    // Validate required fields
+    if (!amount || !currency || !type || !gateway) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: amount, currency, type, gateway'
+      });
+    }
+
+    // Create payment intent
+    const paymentIntent = {
+      amount,
+      currency,
+      description: description || `Payment for ${type}`,
+      userId,
+      type: type as PaymentType,
+      metadata
+    };
+
+    // Create order with selected gateway
+    const result = await PaymentService.createPaymentOrder(
+      paymentIntent,
+      gateway as PaymentGateway
+    );
+
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    // Save payment to database
+    const payment = await prisma.payment.create({
+      data: {
+        userId,
+        amount,
+        currency,
+        gateway: gateway as PaymentGateway,
+        status: PaymentStatus.PENDING,
+        type: type as PaymentType,
+        gatewayOrderId: result.orderId,
+        description: paymentIntent.description,
+        metadata: metadata || {},
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent']
+      }
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'PAYMENT_CREATED',
+        entity: 'Payment',
+        entityId: payment.id,
+        details: JSON.stringify({
+          amount,
+          currency,
+          gateway,
+          orderId: result.orderId
+        }),
+        ipAddress: req.ip || req.socket.remoteAddress
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      ...result,
+      paymentId: payment.id
+    });
+  } catch (error) {
+    console.error('Create payment order error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create payment order'
+    });
+  }
+});
+
+/**
+ * POST /api/payments/verify
+ * Verify payment completion
+ */
+app.post('/api/payments/verify', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId, paymentId, signature, gateway } = req.body;
+    const userId = req.user!.userId;
+
+    if (!orderId || !paymentId || !signature || !gateway) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: 'Missing required fields: orderId, paymentId, signature, gateway'
+      });
+    }
+
+    // Find payment in database
+    const payment = await prisma.payment.findFirst({
+      where: {
+        gatewayOrderId: orderId,
+        userId
+      }
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        verified: false,
+        error: 'Payment not found'
+      });
+    }
+
+    // Verify signature
+    const verified = await PaymentService.verifyPayment(
+      { orderId, paymentId, signature },
+      gateway as PaymentGateway
+    );
+
+    if (!verified) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        error: 'Invalid payment signature'
+      });
+    }
+
+    // Update payment status
+    const updatedPayment = await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: PaymentStatus.COMPLETED,
+        gatewayPaymentId: paymentId,
+        gatewaySignature: signature,
+        completedAt: new Date()
+      }
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'PAYMENT_VERIFIED',
+        entity: 'Payment',
+        entityId: payment.id,
+        details: JSON.stringify({
+          orderId,
+          paymentId,
+          gateway
+        }),
+        ipAddress: req.ip || req.socket.remoteAddress
+      }
+    });
+
+    res.json({
+      success: true,
+      verified: true,
+      payment: updatedPayment
+    });
+  } catch (error) {
+    console.error('Verify payment error:', error);
+    res.status(500).json({
+      success: false,
+      verified: false,
+      error: 'Failed to verify payment'
+    });
+  }
+});
+
+/**
+ * GET /api/payments/history
+ * Get payment history for authenticated user
+ */
+app.get('/api/payments/history', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const payments = await prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ payments });
+  } catch (error) {
+    console.error('Get payment history error:', error);
+    res.status(500).json({ error: 'Failed to retrieve payment history' });
+  }
+});
+
+/**
+ * POST /api/payments/refund
+ * Process payment refund
+ */
+app.post('/api/payments/refund', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { paymentId, amount, reason } = req.body;
+    const userId = req.user!.userId;
+
+    if (!paymentId || !amount || !reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: paymentId, amount, reason'
+      });
+    }
+
+    // Find payment
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId }
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment not found'
+      });
+    }
+
+    // Check authorization (only payment owner or admin can refund)
+    const userRoles = req.user!.roles || [];
+    if (payment.userId !== userId && !userRoles.includes('admin')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to refund this payment'
+      });
+    }
+
+    if (payment.status !== PaymentStatus.COMPLETED) {
+      return res.status(400).json({
+        success: false,
+        error: 'Can only refund completed payments'
+      });
+    }
+
+    // Process refund through gateway
+    const refundResult = await PaymentService.refundPayment(
+      {
+        paymentId: payment.gatewayPaymentId!,
+        amount,
+        reason
+      },
+      payment.gateway
+    );
+
+    if (!refundResult.success) {
+      return res.status(500).json(refundResult);
+    }
+
+    // Update payment status
+    const updatedPayment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: PaymentStatus.REFUNDED,
+        refundAmount: amount,
+        refundReason: reason,
+        refundedAt: new Date()
+      }
+    });
+
+    // Create refund record
+    await prisma.paymentRefund.create({
+      data: {
+        paymentId,
+        amount,
+        reason,
+        status: 'completed',
+        gatewayRefundId: refundResult.refundId,
+        processedBy: userId,
+        processedAt: new Date()
+      }
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'PAYMENT_REFUNDED',
+        entity: 'Payment',
+        entityId: paymentId,
+        details: JSON.stringify({
+          amount,
+          reason,
+          refundId: refundResult.refundId
+        }),
+        ipAddress: req.ip || req.socket.remoteAddress
+      }
+    });
+
+    res.json({
+      success: true,
+      payment: updatedPayment,
+      refund: refundResult
+    });
+  } catch (error) {
+    console.error('Refund payment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process refund'
+    });
+  }
+});
+
+/**
+ * GET /api/audit/payments
+ * Get payment audit logs (admin only)
+ */
+app.get('/api/audit/payments', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        entity: 'Payment'
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+
+    res.json({ logs });
+  } catch (error) {
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ error: 'Failed to retrieve audit logs' });
+  }
+});
+
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {

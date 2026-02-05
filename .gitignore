@@ -24,3 +24,14 @@ dist-ssr
 *.sw?
 
 /generated/prisma
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Uploads and sensitive data
+uploads/
+*.key
+*.pem
