@@ -9,6 +9,14 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { emailService } from './server/services/email.service';
+import { invoiceService } from './server/services/invoice.service';
+import { invoiceQueueService } from './server/services/invoice-queue.service';
+import { invoiceCleanupService } from './server/services/invoice-cleanup.service';
+import { adminDigestService } from './server/services/admin-digest.service';
+import { createBullBoard } from '@bull-board/api';
+import { BullAdapter } from '@bull-board/api/bull';
+import { ExpressAdapter } from '@bull-board/express';
 
 dotenv.config();
 
@@ -1458,10 +1466,49 @@ app.post('/api/payments/create-order', authenticateToken, async (req: Authentica
       }
     });
 
+    // Create activity log
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        activityType: 'PAYMENT_CREATED',
+        entityType: 'Payment',
+        entityId: payment.id,
+        description: `Payment order created for ${currency} ${amount / 100}`,
+        metadata: { gateway, type, orderId: result.orderId }
+      }
+    });
+
+    // Get user details for email
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true }
+    });
+
+    // Check notification preferences
+    const preferences = await prisma.notificationPreference.findUnique({
+      where: { userId }
+    });
+
+    // Send email notification if preferences allow
+    if (!preferences || preferences.emailPayments) {
+      await emailService.sendPaymentInitiatedEmail(
+        user?.email || '',
+        user?.fullName || 'User',
+        {
+          amount,
+          currency,
+          orderId: result.orderId!,
+          paymentLink: result.checkoutUrl
+        },
+        userId
+      );
+    }
+
     res.status(201).json({
       success: true,
       ...result,
-      paymentId: payment.id
+      paymentId: payment.id,
+      payment
     });
   } catch (error) {
     console.error('Create payment order error:', error);
@@ -1512,6 +1559,54 @@ app.post('/api/payments/verify', authenticateToken, async (req: AuthenticatedReq
     );
 
     if (!verified) {
+      // Update payment status to FAILED
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.FAILED,
+          failureReason: 'Invalid payment signature'
+        }
+      });
+
+      // Create activity log for failure
+      await prisma.activityLog.create({
+        data: {
+          userId,
+          activityType: 'PAYMENT_FAILED',
+          entityType: 'Payment',
+          entityId: payment.id,
+          description: 'Payment verification failed - invalid signature',
+          metadata: { orderId, paymentId, reason: 'Invalid signature' }
+        }
+      });
+
+      // Get user details
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, fullName: true }
+      });
+
+      // Check notification preferences
+      const preferences = await prisma.notificationPreference.findUnique({
+        where: { userId }
+      });
+
+      // Send failure email
+      if (!preferences || preferences.emailPayments) {
+        await emailService.sendPaymentFailureEmail(
+          user?.email || '',
+          user?.fullName || 'User',
+          {
+            amount: Number(payment.amount),
+            currency: payment.currency,
+            orderId,
+            reason: 'Invalid payment signature',
+            retryLink: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/payments/retry/${payment.id}`
+          },
+          userId
+        );
+      }
+
       return res.status(400).json({
         success: false,
         verified: false,
@@ -1545,6 +1640,77 @@ app.post('/api/payments/verify', authenticateToken, async (req: AuthenticatedReq
         ipAddress: req.ip || req.socket.remoteAddress
       }
     });
+
+    // Create activity log
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        activityType: 'PAYMENT_COMPLETED',
+        entityType: 'Payment',
+        entityId: payment.id,
+        description: `Payment completed successfully for ${payment.currency} ${Number(payment.amount) / 100}`,
+        metadata: { gateway, orderId, paymentId }
+      }
+    });
+
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true }
+    });
+
+    // Queue invoice generation (async with retry)
+    let invoicePath = '';
+    try {
+      const invoiceData = {
+        userId,
+        paymentId: payment.id,
+        buyerName: user?.fullName || 'User',
+        buyerEmail: user?.email || '',
+        buyerPhone: undefined,
+        buyerPAN: undefined,
+        buyerAddress: undefined,
+        lineItems: [
+          {
+            description: `${payment.type} - ${payment.description || 'Payment'}`,
+            quantity: 1,
+            unitPrice: Number(payment.amount),
+            amount: Number(payment.amount)
+          }
+        ],
+        subtotal: Number(payment.amount),
+        totalAmount: Number(payment.amount)
+      };
+
+      // Add to queue instead of generating directly
+      await invoiceQueueService.addInvoiceJob(invoiceData);
+      console.log(`📄 Invoice queued for payment ${payment.id}`);
+      // Invoice will be generated asynchronously, don't block payment response
+    } catch (invoiceError) {
+      console.error('Failed to queue invoice generation:', invoiceError);
+      // Continue even if queueing fails
+    }
+
+    // Check notification preferences
+    const preferences = await prisma.notificationPreference.findUnique({
+      where: { userId }
+    });
+
+    // Send success email if preferences allow
+    if (!preferences || preferences.emailPayments) {
+      await emailService.sendPaymentSuccessEmail(
+        user?.email || '',
+        user?.fullName || 'User',
+        {
+          amount: Number(payment.amount),
+          currency: payment.currency,
+          transactionId: paymentId,
+          paymentDate: updatedPayment.completedAt!,
+          invoicePath
+        },
+        userId
+      );
+    }
 
     res.json({
       success: true,
@@ -1679,6 +1845,46 @@ app.post('/api/payments/refund', authenticateToken, async (req: AuthenticatedReq
       }
     });
 
+    // Create activity log
+    await prisma.activityLog.create({
+      data: {
+        userId: payment.userId,
+        activityType: 'PAYMENT_REFUNDED',
+        entityType: 'Payment',
+        entityId: paymentId,
+        description: `Refund processed for ${payment.currency} ${amount / 100}`,
+        metadata: { amount, reason, refundId: refundResult.refundId }
+      }
+    });
+
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: { email: true, fullName: true }
+    });
+
+    // Check notification preferences
+    const preferences = await prisma.notificationPreference.findUnique({
+      where: { userId: payment.userId }
+    });
+
+    // Send refund email
+    if (!preferences || preferences.emailPayments) {
+      await emailService.sendRefundProcessedEmail(
+        user?.email || '',
+        user?.fullName || 'User',
+        {
+          amount,
+          currency: payment.currency,
+          refundId: refundResult.refundId || 'N/A',
+          originalTransactionId: payment.gatewayPaymentId || payment.gatewayOrderId || 'N/A',
+          reason,
+          expectedDays: 7 // 5-7 business days typically
+        },
+        payment.userId
+      );
+    }
+
     res.json({
       success: true,
       payment: updatedPayment,
@@ -1714,6 +1920,140 @@ app.get('/api/audit/payments', authenticateToken, requireRole(['admin']), async 
   }
 });
 
+// ==================== ADMIN INVOICE MANAGEMENT ====================
+
+/**
+ * GET /api/admin/invoices/failed
+ * Get list of failed invoice generation jobs
+ */
+app.get('/api/admin/invoices/failed', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const failedJobs = await invoiceQueueService.getFailedJobs(100);
+    
+    const failedInvoices = await Promise.all(
+      failedJobs.map(async (job) => {
+        const user = await prisma.user.findUnique({
+          where: { id: job.data.userId },
+          select: { email: true, fullName: true },
+        });
+
+        return {
+          jobId: job.id?.toString(),
+          paymentId: job.data.paymentId,
+          userId: job.data.userId,
+          userEmail: user?.email || 'unknown',
+          userName: user?.fullName || 'Unknown User',
+          amount: job.data.totalAmount,
+          attempts: job.attemptsMade,
+          lastError: job.failedReason,
+          failedAt: job.processedOn ? new Date(job.processedOn) : new Date(job.timestamp),
+        };
+      })
+    );
+
+    res.json({ failedInvoices });
+  } catch (error) {
+    console.error('Get failed invoices error:', error);
+    res.status(500).json({ error: 'Failed to retrieve failed invoices' });
+  }
+});
+
+/**
+ * POST /api/admin/invoices/:paymentId/retry
+ * Manually retry invoice generation for a specific payment
+ */
+app.post('/api/admin/invoices/:paymentId/retry', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { paymentId } = req.params;
+
+    const job = await invoiceQueueService.retryInvoiceJob(paymentId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Payment not found or no failed job exists' });
+    }
+
+    res.json({ 
+      success: true, 
+      jobId: job.id?.toString(),
+      message: 'Invoice generation queued for retry' 
+    });
+  } catch (error) {
+    console.error('Retry invoice error:', error);
+    res.status(500).json({ error: 'Failed to retry invoice generation' });
+  }
+});
+
+/**
+ * POST /api/admin/invoices/retry-batch
+ * Batch retry multiple invoice generations (max 50)
+ */
+app.post('/api/admin/invoices/retry-batch', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { paymentIds } = req.body;
+
+    if (!Array.isArray(paymentIds)) {
+      return res.status(400).json({ error: 'paymentIds must be an array' });
+    }
+
+    if (paymentIds.length > 50) {
+      return res.status(400).json({ error: 'Batch retry limited to 50 invoices at a time' });
+    }
+
+    const result = await invoiceQueueService.retryBatchInvoices(paymentIds);
+
+    res.json({ 
+      success: true,
+      retried: result.success,
+      failed: result.failed,
+      message: `Queued ${result.success} invoices for retry, ${result.failed} failed`
+    });
+  } catch (error) {
+    console.error('Batch retry error:', error);
+    res.status(500).json({ error: 'Failed to retry invoices' });
+  }
+});
+
+/**
+ * GET /api/admin/invoices/queue-metrics
+ * Get invoice queue health metrics
+ */
+app.get('/api/admin/invoices/queue-metrics', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const metrics = await invoiceQueueService.getMetrics();
+    res.json({ metrics });
+  } catch (error) {
+    console.error('Get queue metrics error:', error);
+    res.status(500).json({ error: 'Failed to retrieve queue metrics' });
+  }
+});
+
+/**
+ * GET /api/admin/invoices/cleanup-stats
+ * Get invoice cleanup statistics
+ */
+app.get('/api/admin/invoices/cleanup-stats', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const stats = await invoiceCleanupService.getStatistics();
+    res.json({ stats });
+  } catch (error) {
+    console.error('Get cleanup stats error:', error);
+    res.status(500).json({ error: 'Failed to retrieve cleanup statistics' });
+  }
+});
+
+// ==================== BULL BOARD QUEUE DASHBOARD ====================
+
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/admin/queues');
+
+createBullBoard({
+  queues: [new BullAdapter(invoiceQueueService.getQueue())],
+  serverAdapter: serverAdapter,
+});
+
+// Bull Board requires admin authentication
+app.use('/admin/queues', authenticateToken, requireRole(['admin']), serverAdapter.getRouter());
+
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {
@@ -1721,9 +2061,19 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 API Server running on http://localhost:${PORT}`);
   console.log(`📝 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📊 Bull Board: http://localhost:${PORT}/admin/queues`);
+  
+  // Initialize background services
+  try {
+    await invoiceCleanupService.initialize();
+    await adminDigestService.initialize();
+    console.log('✅ Background services initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize background services:', error);
+  }
 });
 
 // Graceful shutdown

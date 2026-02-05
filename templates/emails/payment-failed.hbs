@@ -1,0 +1,155 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Failed</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #ef4444;
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #ef4444;
+      }
+      .error-badge {
+        background-color: #fee2e2;
+        color: #991b1b;
+        padding: 10px 20px;
+        border-radius: 50px;
+        display: inline-block;
+        margin: 20px 0;
+        font-weight: 600;
+      }
+      .content {
+        padding: 30px 0;
+      }
+      h1 {
+        color: #1f2937;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+      .details {
+        background-color: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 15px;
+        margin: 20px 0;
+      }
+      .details p {
+        margin: 8px 0;
+      }
+      .details strong {
+        color: #1f2937;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 30px;
+        background-color: #ef4444;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        margin: 20px 0;
+      }
+      .button:hover {
+        background-color: #dc2626;
+      }
+      .footer {
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 14px;
+      }
+      .troubleshooting {
+        background-color: #f3f4f6;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 6px;
+      }
+      .troubleshooting h3 {
+        margin-top: 0;
+        color: #1f2937;
+      }
+      .troubleshooting ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">India Angel Forum</div>
+      </div>
+
+      <div class="content">
+        <div style="text-align: center;">
+          <span class="error-badge">✗ Payment Failed</span>
+        </div>
+
+        <h1>Payment Could Not Be Completed</h1>
+
+        <p>Dear {{userName}},</p>
+
+        <p>Unfortunately, your payment could not be processed. Please review the
+          details below and try again.</p>
+
+        <div class="details">
+          <p><strong>Amount:</strong> {{amount}}</p>
+          <p><strong>Order ID:</strong> {{orderId}}</p>
+          <p><strong>Failure Reason:</strong> {{reason}}</p>
+        </div>
+
+        <div class="troubleshooting">
+          <h3>Common Solutions:</h3>
+          <ul>
+            <li>Ensure you have sufficient funds in your account</li>
+            <li>Check if your card/bank allows online transactions</li>
+            <li>Verify card details (number, expiry, CVV) are correct</li>
+            <li>Try using a different payment method</li>
+            <li>Contact your bank if the issue persists</li>
+          </ul>
+        </div>
+
+        <p style="text-align: center;">
+          <a href="{{retryLink}}" class="button">Retry Payment</a>
+        </p>
+
+        <p>If you continue to face issues, please contact our support team for
+          assistance.</p>
+
+        <p>Best regards,<br />
+          <strong>India Angel Forum Team</strong></p>
+      </div>
+
+      <div class="footer">
+        <p>© 2026 India Angel Forum. All rights reserved.</p>
+        <p>This is an automated email. Please do not reply to this email.</p>
+        <p>Support:
+          <a
+            href="mailto:support@indiaangelforum.com"
+          >support@indiaangelforum.com</a></p>
+      </div>
+    </div>
+  </body>
+</html>
