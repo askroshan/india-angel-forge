@@ -381,6 +381,120 @@ const { error } = await stripe.confirmPayment({
 - success@razorpay
 - failure@razorpay
 
+## Async Invoice Generation Flow
+
+As of Phase 1 GREEN, invoice generation has been moved to an asynchronous queue system for improved reliability and performance.
+
+### Architecture
+
+```
+Payment Verification Success
+          ↓
+    Queue Invoice Job (Bull + Redis)
+          ↓
+    Return Success Response (non-blocking)
+          ↓
+Background Worker Processes Job
+          ↓
+    Generate PDF (pdfkit)
+          ↓
+    Save to Database & Storage
+          ↓
+    Send Email with Attachment
+          ↓
+[Success] → Complete
+[Failure] → Retry (3 attempts: 1min, 5min, 15min)
+          ↓
+[All Retries Failed] → Admin Digest Email
+```
+
+### Key Features
+
+1. **Non-Blocking Response**: Payment verification returns immediately without waiting for PDF generation
+2. **Automatic Retries**: 3 retry attempts with exponential backoff (1min → 5min → 15min)
+3. **Job Deduplication**: Uses `invoice-${paymentId}` job ID to prevent duplicate invoices
+4. **Admin Monitoring**: Failed jobs included in daily digest email at 9 AM UTC
+5. **Bull Board Dashboard**: Real-time queue monitoring at `/admin/queues`
+
+### Code Example
+
+```typescript
+// server.ts - Payment verification endpoint
+app.post('/api/payments/verify', async (req, res) => {
+  // ... payment verification logic ...
+  
+  // Queue invoice generation (async, non-blocking)
+  await invoiceQueueService.addInvoiceJob({
+    userId: payment.userId,
+    paymentId: payment.id,
+    buyerName: user.fullName || user.email,
+    buyerEmail: user.email,
+    lineItems: [/* ... */],
+    subtotal: payment.amount,
+    totalAmount: payment.amount,
+  });
+  
+  // Return immediately
+  return res.status(200).json({
+    success: true,
+    message: 'Payment verified. Invoice will be generated shortly.',
+    paymentId: payment.id,
+  });
+});
+```
+
+### Admin Operations
+
+#### Retry Failed Invoice
+```typescript
+// Single retry
+await invoiceQueueService.retryInvoiceJob(paymentId);
+
+// Batch retry (max 50)
+await invoiceQueueService.retryBatchInvoices([paymentId1, paymentId2, ...]);
+```
+
+#### Monitor Queue
+```typescript
+// Get metrics
+const metrics = await invoiceQueueService.getMetrics();
+// Returns: { waiting, active, completed, failed, delayed, total }
+
+// Get failed jobs
+const failedJobs = await invoiceQueueService.getFailedJobs(100);
+```
+
+### Configuration
+
+```env
+# Redis for queue (default: redis://localhost:6379)
+REDIS_URL=redis://localhost:6379
+
+# Admin email for alerts
+ADMIN_EMAIL=admin@indiaangelforum.com
+
+# Invoice storage
+INVOICE_DIR=./invoices
+ARCHIVE_DIR=./archives
+
+# Retention policies
+INVOICE_RETENTION_YEARS=2
+ARCHIVE_RETENTION_YEARS=7
+
+# Monitoring
+DISK_SPACE_ALERT_THRESHOLD_GB=10
+```
+
+### Monitoring Dashboard
+
+Access Bull Board at `/admin/queues` (admin auth required) to:
+- View real-time job status
+- Inspect job details and errors
+- Manually retry failed jobs
+- Monitor queue health metrics
+
+For more details, see [PHASE1_GREEN_COMPLETE.md](PHASE1_GREEN_COMPLETE.md).
+
 ## Production Deployment Checklist
 
 - [ ] Generate strong encryption keys

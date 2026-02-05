@@ -35,6 +35,11 @@ class AdminDigestService {
 
   /**
    * Initialize cron job for daily digest
+   * 
+   * @remarks
+   * Schedules daily digest email at 9 AM UTC.
+   * Email is only sent if there are failed invoices or critical issues.
+   * Provides admin visibility into system health and failures requiring attention.
    */
   async initialize() {
     // Schedule daily digest at 9 AM UTC
@@ -50,6 +55,17 @@ class AdminDigestService {
 
   /**
    * Generate and send daily digest email
+   * 
+   * @private
+   * @remarks
+   * Process:
+   * 1. Collect permanently failed invoice jobs (after all retries exhausted)
+   * 2. Get current queue health metrics
+   * 3. Skip email if no issues to report (no spam)
+   * 4. Generate formatted HTML email with metrics and failed jobs table
+   * 5. Send to admin email address
+   * 
+   * Runs daily at 9 AM UTC via cron.
    */
   private async sendDailyDigest() {
     try {
@@ -87,6 +103,14 @@ class AdminDigestService {
 
   /**
    * Get failed invoice jobs from queue
+   * 
+   * @returns Promise resolving to array of failed invoice digests with user details
+   * 
+   * @private
+   * @remarks
+   * Retrieves up to 100 permanently failed jobs and enriches with user information
+   * from database. Each digest entry includes payment ID, user details, attempt count,
+   * error message, and failure timestamp.
    */
   private async getFailedInvoices(): Promise<FailedInvoiceDigest[]> {
     try {
@@ -121,6 +145,19 @@ class AdminDigestService {
 
   /**
    * Generate digest email HTML and text content
+   * 
+   * @param failedInvoices - Array of failed invoice digests with user details
+   * @param queueMetrics - Queue health metrics (waiting/active/completed/failed/delayed)
+   * @returns Object containing HTML and plain text email content
+   * 
+   * @private
+   * @remarks
+   * Creates formatted digest email with:
+   * - Queue metrics dashboard (color-coded badges)
+   * - Failed invoices table with user details and errors
+   * - Recommended actions for admin
+   * - High queue backlog warning if >20 jobs waiting
+   * - Links to admin dashboards (Invoice Management, Bull Board)
    */
   private generateDigestEmail(failedInvoices: FailedInvoiceDigest[], queueMetrics: any) {
     const date = new Date().toISOString().split('T')[0];
@@ -301,6 +338,15 @@ This digest is sent daily at 9:00 AM UTC.
 
   /**
    * Truncate error messages for email display
+   * 
+   * @param error - Full error message
+   * @param maxLength - Maximum length before truncation (default 100)
+   * @returns Truncated error message with ellipsis if needed
+   * 
+   * @private
+   * @remarks
+   * Prevents digest emails from becoming too large with verbose error messages.
+   * Full errors are available in Bull Board dashboard.
    */
   private truncateError(error: string, maxLength: number = 100): string {
     if (!error) return 'Unknown error';
@@ -310,6 +356,29 @@ This digest is sent daily at 9:00 AM UTC.
 
   /**
    * Send immediate alert (for critical issues)
+   * 
+   * @param subject - Alert subject line
+   * @param message - Alert message body
+   * @param severity - Alert severity level (critical/warning/info)
+   * 
+   * @remarks
+   * Sends ad-hoc alert email for issues requiring immediate attention.
+   * Unlike daily digest, these are sent immediately when triggered.
+   * 
+   * Use cases:
+   * - Critical system errors
+   * - Security alerts
+   * - Threshold breaches
+   * - Manual admin notifications
+   * 
+   * @example
+   * ```typescript
+   * await adminDigestService.sendImmediateAlert(
+   *   'Database Connection Lost',
+   *   'Unable to connect to primary database. Failover initiated.',
+   *   'critical'
+   * );
+   * ```
    */
   async sendImmediateAlert(subject: string, message: string, severity: 'critical' | 'warning' | 'info' = 'warning') {
     try {
@@ -346,6 +415,12 @@ This digest is sent daily at 9:00 AM UTC.
 
   /**
    * Manual digest trigger (for testing)
+   * 
+   * @returns Promise resolving when digest is sent
+   * 
+   * @remarks
+   * Triggers digest email immediately for testing or on-demand reporting.
+   * Useful for verifying digest format or checking current system status.
    */
   async triggerManualDigest() {
     console.log('🔧 Manual digest triggered');

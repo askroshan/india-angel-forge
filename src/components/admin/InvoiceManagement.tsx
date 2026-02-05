@@ -26,6 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, RefreshCw, AlertCircle, CheckCircle2, ExternalLink, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 interface FailedInvoice {
   jobId: string;
@@ -461,5 +462,19 @@ export function InvoiceManagement() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Wrap with error boundary for production
+export default function InvoiceManagementWithErrorBoundary() {
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log to error tracking service
+        console.error('Invoice Management Error:', error, errorInfo);
+      }}
+    >
+      <InvoiceManagement />
+    </ErrorBoundary>
   );
 }

@@ -5,7 +5,7 @@ import { prisma } from '../../db';
 
 /**
  * Invoice Service for India Angel Forum
- * Generates PDF invoices using pdfkit
+ * Generates PDF invoices using pdfkit with Indian formatting
  */
 
 export interface InvoiceLineItem {
@@ -33,6 +33,13 @@ export interface InvoiceData {
   notes?: string;
 }
 
+// PDF template cache for optimization
+interface PDFTemplateCache {
+  header?: Buffer;
+  footer?: Buffer;
+  companyLogo?: Buffer;
+}
+
 class InvoiceService {
   private readonly invoiceDir: string;
   private readonly sellerDetails = {
@@ -41,14 +48,48 @@ class InvoiceService {
     pan: 'PAN_NUMBER_HERE', // TODO: Add actual PAN
     address: 'Mumbai, Maharashtra, India',
   };
+  private templateCache: PDFTemplateCache = {};
 
   constructor() {
     this.invoiceDir = process.env.INVOICE_DIR || './invoices';
     this.ensureDirectoryExists();
+    this.preloadTemplateAssets();
+  }
+
+  /**
+   * Preload template assets for performance optimization
+   * 
+   * @private
+   * @remarks
+   * Loads company logo and other static assets into memory
+   * to avoid repeated file I/O during PDF generation.
+   */
+  private async preloadTemplateAssets() {
+    try {
+      // Load company logo if exists
+      const logoPath = path.join(process.cwd(), 'public', 'logo.png');
+      if (fs.existsSync(logoPath)) {
+        this.templateCache.companyLogo = fs.readFileSync(logoPath);
+      }
+    } catch (error) {
+      console.warn('Failed to preload template assets:', error);
+    }
   }
 
   /**
    * Generate invoice and save to database
+   * 
+   * @param data - Invoice data including buyer details and line items
+   * @returns Promise resolving to invoice record with PDF path
+   * 
+   * @remarks
+   * Process:
+   * 1. Generate sequential invoice number
+   * 2. Create invoice record in database
+   * 3. Generate PDF using pdfkit
+   * 4. Update record with PDF path
+   * 
+   * Uses cached template assets for improved performance.
    */
   async generateInvoice(data: InvoiceData): Promise<{ id: string; invoiceNumber: string; invoice: any; pdfPath: string }> {
     try {
@@ -110,6 +151,21 @@ class InvoiceService {
 
   /**
    * Generate PDF document
+   * 
+   * @param invoice - Invoice database record
+   * @returns Promise resolving to file path of generated PDF
+   * 
+   * @private
+   * @remarks
+   * Uses pdfkit to generate A4 PDF with:
+   * - Company header and logo (from cache if available)
+   * - Seller and buyer details
+   * - Line items table with Indian number formatting
+   * - Tax breakdown (CGST, SGST, IGST, TDS)
+   * - Total with amount in words (Lakh/Crore format)
+   * - Footer with notes and digital watermark
+   * 
+   * Template assets are cached for performance optimization.
    */
   private async generatePDF(invoice: any): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -122,7 +178,7 @@ class InvoiceService {
 
         doc.pipe(stream);
 
-        // Header
+        // Header (uses cached logo if available)
         this.addHeader(doc, invoice);
 
         // Seller & Buyer Details
@@ -151,9 +207,20 @@ class InvoiceService {
   }
 
   /**
-   * Add header to PDF
+   * Add header to PDF (uses cached logo for performance)
+   * 
+   * @private
    */
   private addHeader(doc: PDFKit.PDFDocument, invoice: any): void {
+    // Add company logo from cache if available
+    if (this.templateCache.companyLogo) {
+      try {
+        doc.image(this.templateCache.companyLogo, 50, 45, { width: 50 });
+      } catch (error) {
+        console.warn('Failed to add logo to PDF:', error);
+      }
+    }
+
     doc
       .fontSize(24)
       .font('Helvetica-Bold')

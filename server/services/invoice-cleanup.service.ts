@@ -35,7 +35,15 @@ class InvoiceCleanupService {
   }
 
   /**
-   * Initialize cron jobs
+   * Initialize cron jobs for automated cleanup
+   * 
+   * @remarks
+   * Schedules three cron jobs:
+   * - Daily 2 AM UTC: Archive and delete invoices >2 years old
+   * - Daily 3 AM UTC: Delete archive ZIPs >7 years old
+   * - Hourly: Check disk space and alert if <10GB free
+   * 
+   * All times are in UTC timezone to avoid regional inconsistencies.
    */
   async initialize() {
     // Ensure archive directory exists
@@ -72,6 +80,11 @@ class InvoiceCleanupService {
 
   /**
    * Ensure archive directory exists
+   * 
+   * @private
+   * @remarks
+   * Creates archive directory if it doesn't exist. Called during initialization
+   * to prevent errors when archiving invoices.
    */
   private async ensureArchiveDirectory() {
     try {
@@ -84,6 +97,17 @@ class InvoiceCleanupService {
 
   /**
    * Archive and delete invoices older than retention period
+   * 
+   * @private
+   * @remarks
+   * Process:
+   * 1. Query invoices older than INVOICE_RETENTION_YEARS (default 2 years)
+   * 2. Only processes invoices with status PAID, CANCELLED, or REFUNDED
+   * 3. Creates ZIP archive with all invoice PDFs (level 9 compression)
+   * 4. Hard deletes database records and PDF files
+   * 5. Sends email summary to admin
+   * 
+   * Runs daily at 2 AM UTC via cron.
    */
   private async cleanupOldInvoices() {
     const cutoffDate = new Date();
@@ -170,6 +194,15 @@ class InvoiceCleanupService {
 
   /**
    * Create ZIP archive of invoice PDFs
+   * 
+   * @param invoices - Array of invoice records with pdfPath
+   * @param archivePath - Full path where ZIP should be created
+   * @returns Promise resolving when archive is complete
+   * 
+   * @private
+   * @remarks
+   * Uses archiver library with level 9 compression (maximum).
+   * Missing PDFs are logged as warnings but don't fail the archive.
    */
   private async createArchive(invoices: any[], archivePath: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -209,6 +242,14 @@ class InvoiceCleanupService {
 
   /**
    * Delete archive ZIPs older than retention period
+   * 
+   * @private
+   * @remarks
+   * Deletes archive ZIPs older than ARCHIVE_RETENTION_YEARS (default 7 years).
+   * This ensures regulatory compliance while managing disk space.
+   * Only sends email if archives were actually deleted.
+   * 
+   * Runs daily at 3 AM UTC via cron (1 hour after invoice cleanup).
    */
   private async cleanupOldArchives() {
     const cutoffDate = new Date();
@@ -258,6 +299,14 @@ class InvoiceCleanupService {
 
   /**
    * Check available disk space and alert if low
+   * 
+   * @private
+   * @remarks
+   * Monitors disk space and emails admin if free space falls below threshold.
+   * Alert is throttled to once per 24 hours to prevent spam.
+   * Uses check-disk-space library to get filesystem statistics.
+   * 
+   * Runs hourly via cron.
    */
   private async checkDiskSpace() {
     try {
@@ -315,6 +364,14 @@ class InvoiceCleanupService {
 
   /**
    * Send cleanup summary email to admin
+   * 
+   * @param type - Type of cleanup (invoice or archive)
+   * @param data - Cleanup results and statistics
+   * 
+   * @private
+   * @remarks
+   * Sends formatted HTML email with cleanup results to admin.
+   * Includes counts, archive names, and any failures.
    */
   private async sendCleanupSummary(type: 'invoice' | 'archive', data: any) {
     try {
@@ -369,6 +426,14 @@ class InvoiceCleanupService {
 
   /**
    * Send cleanup error email to admin
+   * 
+   * @param type - Type of cleanup that failed (invoice or archive)
+   * @param error - Error object or message
+   * 
+   * @private
+   * @remarks
+   * Sends alert email when cleanup job fails.
+   * Includes error message for debugging.
    */
   private async sendCleanupError(type: 'invoice' | 'archive', error: any) {
     try {
@@ -397,6 +462,16 @@ class InvoiceCleanupService {
 
   /**
    * Manual cleanup trigger (for admin use)
+   * 
+   * @returns Promise resolving when all cleanup tasks complete
+   * 
+   * @remarks
+   * Executes all cleanup tasks immediately:
+   * - Invoice archival and deletion
+   * - Archive cleanup
+   * - Disk space check
+   * 
+   * Used for testing or emergency cleanup outside scheduled times.
    */
   async triggerManualCleanup() {
     console.log('🔧 Manual cleanup triggered');
@@ -407,6 +482,22 @@ class InvoiceCleanupService {
 
   /**
    * Get cleanup statistics
+   * 
+   * @returns Promise resolving to statistics object or null on error
+   * 
+   * @remarks
+   * Returns comprehensive cleanup service statistics:
+   * - Invoice count and retention policy
+   * - Archive count and location
+   * - Disk space (free/total/used percentage/status)
+   * 
+   * Used by admin dashboard to monitor storage health.
+   * 
+   * @example
+   * ```typescript
+   * const stats = await invoiceCleanupService.getStatistics();
+   * console.log(`Disk status: ${stats.diskSpace.status}`);
+   * ```
    */
   async getStatistics() {
     try {
