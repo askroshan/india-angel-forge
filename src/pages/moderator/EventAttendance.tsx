@@ -182,11 +182,11 @@ export default function EventAttendance() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
-      <main className="flex-1 container mx-auto px-4 py-8"
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Event Attendance</h1>
-        <p className="text-muted-foreground">Manage event check-ins and track attendance</p>
-      </div>
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Event Attendance</h1>
+          <p className="text-muted-foreground">Manage event check-ins and track attendance</p>
+        </div>
 
       {/* Event Details Card */}
       <Card className="mb-6">

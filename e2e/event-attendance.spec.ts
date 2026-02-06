@@ -19,9 +19,9 @@ import { test, expect } from '@playwright/test';
 
 // Test data setup constants
 const TEST_INVESTOR = {
-  email: 'admin@indiaangelforum.test',
-  password: 'Admin@12345',
-  name: 'Admin User',
+  email: 'investor.standard@test.com',
+  password: 'Investor@12345',
+  name: 'Rahul Sharma',
 };
 
 const TEST_ADMIN = {
@@ -55,7 +55,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/');
+    await page.waitForURL((url: URL) => url.pathname === '/', { timeout: 10000 });
     
     // Navigate to events
     await page.goto('/events');
@@ -120,7 +120,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/');
+    await page.waitForURL((url: URL) => url.pathname === '/', { timeout: 10000 });
     
     // Navigate to admin events
     await page.goto('/admin/events');
@@ -196,7 +196,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/');
+    await page.waitForURL((url: URL) => url.pathname === '/', { timeout: 10000 });
     
     // Navigate to event attendance page
     await page.goto('/admin/events');
@@ -275,7 +275,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/');
+    await page.waitForURL((url: URL) => url.pathname === '/', { timeout: 10000 });
     
     // Navigate to event attendance page
     await page.goto('/admin/events');

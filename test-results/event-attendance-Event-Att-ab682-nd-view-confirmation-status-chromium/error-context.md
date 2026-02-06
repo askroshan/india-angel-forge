@@ -1,0 +1,125 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - link "Skip to main content" [ref=e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "India Angel Forum" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: India Angel Forum
+        - generic [ref=e10]:
+          - link "For Founders" [ref=e11] [cursor=pointer]:
+            - /url: /founders
+          - link "For Investors" [ref=e12] [cursor=pointer]:
+            - /url: /investors
+          - link "Portfolio" [ref=e13] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Events" [ref=e14] [cursor=pointer]:
+            - /url: /events
+          - link "About" [ref=e15] [cursor=pointer]:
+            - /url: /about
+        - generic [ref=e16]:
+          - link "Login" [ref=e17] [cursor=pointer]:
+            - /url: /auth
+          - link "Join Now" [ref=e18] [cursor=pointer]:
+            - /url: /investors#join
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - heading "Welcome" [level=3] [ref=e23]
+          - paragraph [ref=e24]: Sign in to your account or create a new one
+        - generic [ref=e26]:
+          - tablist [ref=e27]:
+            - tab "Sign In" [selected] [ref=e28] [cursor=pointer]
+            - tab "Sign Up" [ref=e29] [cursor=pointer]
+          - tabpanel "Sign In" [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]:
+                - text: Email
+                - textbox "Email" [ref=e33]:
+                  - /placeholder: you@example.com
+                  - text: investor.standard@test.com
+              - generic [ref=e34]:
+                - text: Password
+                - textbox "Password" [ref=e35]:
+                  - /placeholder: ••••••••
+                  - text: Investor@12345
+              - button "Sign In" [ref=e36] [cursor=pointer]
+            - button "Forgot your password?" [ref=e38] [cursor=pointer]
+        - generic [ref=e39]:
+          - text: By continuing, you agree to our
+          - link "Terms of Service" [ref=e40] [cursor=pointer]:
+            - /url: /terms
+          - text: and
+          - link "Privacy Policy" [ref=e41] [cursor=pointer]:
+            - /url: /privacy
+          - text: .
+    - contentinfo [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - heading "India Angel Forum" [level=3] [ref=e46]
+            - paragraph [ref=e47]: India's largest angel network connecting accredited investors with exceptional founders.
+            - paragraph [ref=e48]: A product of Kosansh Solutions Inc
+            - generic [ref=e49]:
+              - link "Follow us on LinkedIn" [ref=e50] [cursor=pointer]:
+                - /url: https://linkedin.com/company/indiaangelforum
+                - img [ref=e51]
+              - link "Follow us on Twitter" [ref=e55] [cursor=pointer]:
+                - /url: https://twitter.com/indiaangelforum
+                - img [ref=e56]
+          - generic [ref=e58]:
+            - heading "For Founders" [level=4] [ref=e59]
+            - list [ref=e60]:
+              - listitem [ref=e61]:
+                - link "Apply for Funding" [ref=e62] [cursor=pointer]:
+                  - /url: /founders#apply
+              - listitem [ref=e63]:
+                - link "How It Works" [ref=e64] [cursor=pointer]:
+                  - /url: /founders#how-it-works
+              - listitem [ref=e65]:
+                - link "Forum Calendar" [ref=e66] [cursor=pointer]:
+                  - /url: /founders#calendar
+          - generic [ref=e67]:
+            - heading "For Investors" [level=4] [ref=e68]
+            - list [ref=e69]:
+              - listitem [ref=e70]:
+                - link "Join as Member" [ref=e71] [cursor=pointer]:
+                  - /url: /investors#join
+              - listitem [ref=e72]:
+                - link "Membership Plans" [ref=e73] [cursor=pointer]:
+                  - /url: /investors#plans
+              - listitem [ref=e74]:
+                - link "Deal Rooms & SPVs" [ref=e75] [cursor=pointer]:
+                  - /url: /investors#deals
+          - generic [ref=e76]:
+            - heading "Company" [level=4] [ref=e77]
+            - list [ref=e78]:
+              - listitem [ref=e79]:
+                - link "About Us" [ref=e80] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e81]:
+                - link "Portfolio" [ref=e82] [cursor=pointer]:
+                  - /url: /portfolio
+              - listitem [ref=e83]:
+                - link "Events" [ref=e84] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e85]:
+                - link "Contact Us" [ref=e86] [cursor=pointer]:
+                  - /url: /contact
+        - generic [ref=e87]:
+          - paragraph [ref=e88]: © 2026 India Angel Forum. All rights reserved.
+          - generic [ref=e89]:
+            - link "Terms & Policies" [ref=e90] [cursor=pointer]:
+              - /url: /terms
+            - link "Privacy Policy" [ref=e91] [cursor=pointer]:
+              - /url: /privacy
+            - link "Code of Conduct" [ref=e92] [cursor=pointer]:
+              - /url: /code-of-conduct
+```
