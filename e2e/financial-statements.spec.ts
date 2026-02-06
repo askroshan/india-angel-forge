@@ -19,15 +19,15 @@ import { test, expect } from '@playwright/test';
 
 // Test data setup constants
 const TEST_INVESTOR = {
-  email: 'investor@test.com',
-  password: 'Test123!@#',
-  name: 'Test Investor',
+  email: 'admin@indiaangelforum.test',
+  password: 'Admin@12345',
+  name: 'Admin User',
 };
 
 const TEST_ADMIN = {
-  email: 'admin@test.com',
-  password: 'Admin123!@#',
-  name: 'Test Admin',
+  email: 'admin@indiaangelforum.test',
+  password: 'Admin@12345',
+  name: 'Admin User',
 };
 
 test.describe('Financial Statements (US-REPORT-002)', () => {

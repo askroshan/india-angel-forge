@@ -21,9 +21,9 @@ import { test, expect } from '@playwright/test';
 
 // Test data setup constants
 const TEST_USER = {
-  email: 'investor@test.com',
-  password: 'Test123!@#',
-  name: 'Test Investor',
+  email: 'admin@indiaangelforum.test',
+  password: 'Admin@12345',
+  name: 'Admin User',
 };
 
 const TRANSACTIONS_PER_PAGE = 20;
