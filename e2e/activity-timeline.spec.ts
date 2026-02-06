@@ -33,6 +33,10 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
     await page.fill('input[type="password"]', TEST_USER.password);
     await page.click('button[type="submit"]');
     await page.waitForURL('/');
+    
+    // Navigate to activity timeline
+    await page.goto('/activity');
+    await page.waitForSelector('[data-testid="activity-timeline"]', { timeout: 5000 });
   });
 
   /**

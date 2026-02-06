@@ -51,29 +51,26 @@
             - img
             - paragraph: No financial statements generated yet
             - paragraph: Financial statements will appear here once generated
-  - dialog "Generate Financial Statement" [active] [ref=e2]:
+  - dialog "Generate Financial Statement" [ref=e2]:
     - generic [ref=e3]:
       - heading "Generate Financial Statement" [level=2] [ref=e4]
       - paragraph [ref=e5]: Create a new financial statement for a specific period
     - generic [ref=e6]:
       - generic [ref=e7]:
         - generic [ref=e8]: Date From
-        - textbox "Date From" [ref=e9]: 2025-11-06
+        - textbox "Date From" [ref=e9]: 2024-04-01
       - generic [ref=e10]:
         - generic [ref=e11]: Date To
-        - textbox "Date To" [ref=e12]: 2026-02-06
+        - textbox "Date To" [active] [ref=e12]: 2026-02-06
       - generic [ref=e13]:
         - generic [ref=e14]: Format
         - combobox "Format" [ref=e15] [cursor=pointer]:
-          - generic: Summary - Totals only
+          - generic: Detailed - Shows all transactions
           - img [ref=e16]
-      - generic [ref=e18]:
-        - img [ref=e19]
-        - generic [ref=e21]: Generating statement...
-    - generic [ref=e22]:
-      - button "Cancel" [ref=e23] [cursor=pointer]
-      - button "Generate Statement" [ref=e24] [cursor=pointer]
-    - button "Close" [ref=e25] [cursor=pointer]:
-      - img [ref=e26]
-      - generic [ref=e29]: Close
+    - generic [ref=e18]:
+      - button "Cancel" [ref=e19] [cursor=pointer]
+      - button "Generate Statement" [ref=e20] [cursor=pointer]
+    - button "Close" [ref=e21] [cursor=pointer]:
+      - img [ref=e22]
+      - generic [ref=e25]: Close
 ```

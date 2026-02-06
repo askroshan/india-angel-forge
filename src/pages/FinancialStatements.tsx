@@ -602,7 +602,9 @@ export default function FinancialStatements() {
           <Card data-testid="no-statements">
             <CardContent className="pt-6 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">No statements found</p>
+              <p className="text-lg font-medium mb-2">
+                {hasActiveFilter ? 'No statements found' : 'No financial statements generated yet'}
+              </p>
               <p className="text-muted-foreground">
                 {hasActiveFilter
                   ? 'Try adjusting your filters'

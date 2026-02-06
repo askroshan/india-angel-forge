@@ -49,7 +49,7 @@
         - generic:
           - generic:
             - img
-            - paragraph: No statements found
+            - paragraph: No financial statements generated yet
             - paragraph: Financial statements will appear here once generated
   - dialog "Generate Financial Statement" [active] [ref=e2]:
     - generic [ref=e3]:

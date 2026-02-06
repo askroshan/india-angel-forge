@@ -143,6 +143,7 @@ const App = () => (
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/verify-certificate" element={<CertificateVerification />} />
             <Route path="/membership" element={
               <ProtectedRoute>
                 <Membership />
