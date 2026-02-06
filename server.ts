@@ -17,6 +17,7 @@ import { adminDigestService } from './server/services/admin-digest.service';
 import { createBullBoard } from '@bull-board/api';
 import { BullAdapter } from '@bull-board/api/bull';
 import { ExpressAdapter } from '@bull-board/express';
+import paymentsHistoryRouter from './server/routes/payments-history';
 
 dotenv.config();
 
@@ -2053,6 +2054,10 @@ createBullBoard({
 
 // Bull Board requires admin authentication
 app.use('/admin/queues', authenticateToken, requireRole(['admin']), serverAdapter.getRouter());
+
+// ==================== PAYMENTS HISTORY ROUTES ====================
+
+app.use('/api/payments', paymentsHistoryRouter);
 
 // ==================== HEALTH CHECK ====================
 
