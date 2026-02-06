@@ -10,7 +10,7 @@ interface StatementGenerationParams {
   userId: number;
   month: number;
   year: number;
-  format: 'SUMMARY' | 'DETAILED';
+  format: 'summary' | 'detailed';
 }
 
 interface StatementData {
@@ -189,7 +189,7 @@ async function generateStatementData(
     sgst: totalSgst,
     igst: totalIgst,
     tds: totalTds,
-    transactions: format === 'DETAILED' ? transactionDetails : [],
+    transactions: format === 'detailed' ? transactionDetails : [],
   };
 }
 
@@ -280,7 +280,7 @@ async function generateStatementPDF(
   doc.moveDown(10);
 
   // Detailed transactions (if format is DETAILED)
-  if (format === 'DETAILED' && statementData.transactions.length > 0) {
+  if (format === 'detailed' && statementData.transactions.length > 0) {
     doc.addPage();
     doc.fontSize(14).font('Helvetica-Bold').text('Transaction Details', { underline: true });
     doc.moveDown();

@@ -28,7 +28,7 @@ const generateStatementSchema = z.object({
   userId: z.number().int().positive(),
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000).max(2100),
-  format: z.enum(['SUMMARY', 'DETAILED']),
+  format: z.enum(['summary', 'detailed']),
 });
 
 /**

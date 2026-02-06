@@ -70,7 +70,7 @@ export default function FinancialStatements() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateDateFrom, setGenerateDateFrom] = useState<string>('');
   const [generateDateTo, setGenerateDateTo] = useState<string>('');
-  const [generateFormat, setGenerateFormat] = useState<'SUMMARY' | 'DETAILED'>('DETAILED');
+  const [generateFormat, setGenerateFormat] = useState<'summary' | 'detailed'>('detailed');
   const [generationProgress, setGenerationProgress] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
   
@@ -364,16 +364,16 @@ export default function FinancialStatements() {
                   <Label htmlFor="format">Format</Label>
                   <Select 
                     value={generateFormat} 
-                    onValueChange={(value) => setGenerateFormat(value as 'SUMMARY' | 'DETAILED')}
+                    onValueChange={(value) => setGenerateFormat(value as 'summary' | 'detailed')}
                   >
                     <SelectTrigger id="format" data-testid="statement-format">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DETAILED" data-testid="format-detailed">
+                      <SelectItem value="detailed" data-testid="format-detailed">
                         Detailed - Shows all transactions
                       </SelectItem>
-                      <SelectItem value="SUMMARY" data-testid="format-summary">
+                      <SelectItem value="summary" data-testid="format-summary">
                         Summary - Totals only
                       </SelectItem>
                     </SelectContent>
@@ -599,7 +599,7 @@ export default function FinancialStatements() {
       {/* Statements List */}
       <div data-testid="statement-list">
         {filteredStatements.length === 0 ? (
-          <Card>
+          <Card data-testid="no-statements">
             <CardContent className="pt-6 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-lg font-medium mb-2">No statements found</p>
