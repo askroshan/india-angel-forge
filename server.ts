@@ -21,6 +21,7 @@ import paymentsHistoryRouter from './server/routes/payments-history';
 import eventAttendanceRouter from './server/routes/event-attendance';
 import certificatesRouter from './server/routes/certificates';
 import financialStatementsRouter from './server/routes/financial-statements';
+import activityRouter from './server/routes/activity';
 
 dotenv.config();
 
@@ -2073,6 +2074,10 @@ app.use('/api/certificates', certificatesRouter);
 // ==================== FINANCIAL STATEMENTS ROUTES ====================
 
 app.use('/api/financial-statements', financialStatementsRouter);
+
+// ==================== ACTIVITY TIMELINE ROUTES ====================
+
+app.use('/api/activity', activityRouter);
 
 // ==================== HEALTH CHECK ====================
 

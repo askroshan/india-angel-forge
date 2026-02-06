@@ -66,6 +66,7 @@ import Certificates from "./pages/Certificates";
 import CertificateVerification from "./pages/CertificateVerification";
 import TransactionHistory from "./pages/TransactionHistory";
 import FinancialStatements from "./pages/FinancialStatements";
+import ActivityTimeline from "./pages/ActivityTimeline";
 
 /**
  * Role definitions for route protection
@@ -340,6 +341,11 @@ const App = () => (
             <Route path="/certificates" element={
               <ProtectedRoute>
                 <Certificates />
+              </ProtectedRoute>
+            } />
+            <Route path="/activity" element={
+              <ProtectedRoute>
+                <ActivityTimeline />
               </ProtectedRoute>
             } />
             {/* Public Certificate Verification - No Auth Required */}
