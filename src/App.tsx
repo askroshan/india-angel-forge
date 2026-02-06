@@ -57,6 +57,7 @@ import AccreditationVerification from "./pages/compliance/AccreditationVerificat
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminEvents from "./pages/admin/AdminEvents";
+import AttendanceStatistics from "./pages/admin/AttendanceStatistics";
 import ApplicationScreening from "./pages/moderator/ApplicationScreening";
 import ContentModeration from "./pages/moderator/ContentModeration";
 import EventAttendance from "./pages/moderator/EventAttendance";
@@ -294,6 +295,11 @@ const App = () => (
             <Route path="/admin/events" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AdminEvents />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/events/statistics" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <AttendanceStatistics />
               </ProtectedRoute>
             } />
             <Route path="/admin/audit-logs" element={
