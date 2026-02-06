@@ -18,6 +18,8 @@ import { createBullBoard } from '@bull-board/api';
 import { BullAdapter } from '@bull-board/api/bull';
 import { ExpressAdapter } from '@bull-board/express';
 import paymentsHistoryRouter from './server/routes/payments-history';
+import eventAttendanceRouter from './server/routes/event-attendance';
+import certificatesRouter from './server/routes/certificates';
 
 dotenv.config();
 
@@ -2058,6 +2060,14 @@ app.use('/admin/queues', authenticateToken, requireRole(['admin']), serverAdapte
 // ==================== PAYMENTS HISTORY ROUTES ====================
 
 app.use('/api/payments', paymentsHistoryRouter);
+
+// ==================== EVENT ATTENDANCE ROUTES ====================
+
+app.use('/api/events', eventAttendanceRouter);
+
+// ==================== CERTIFICATE ROUTES ====================
+
+app.use('/api/certificates', certificatesRouter);
 
 // ==================== HEALTH CHECK ====================
 
