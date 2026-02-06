@@ -56,6 +56,7 @@ import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
+import AdminEvents from "./pages/admin/AdminEvents";
 import ApplicationScreening from "./pages/moderator/ApplicationScreening";
 import ContentModeration from "./pages/moderator/ContentModeration";
 import EventAttendance from "./pages/moderator/EventAttendance";
@@ -290,6 +291,11 @@ const App = () => (
                 <UserRoleManagement />
               </ProtectedRoute>
             } />
+            <Route path="/admin/events" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <AdminEvents />
+              </ProtectedRoute>
+            } />
             <Route path="/admin/audit-logs" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AuditLogs />
@@ -306,7 +312,7 @@ const App = () => (
                 <ContentModeration />
               </ProtectedRoute>
             } />
-            <Route path="/moderator/events" element={
+            <Route path="/moderator/events/:eventId/attendance" element={
               <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
                 <EventAttendance />
               </ProtectedRoute>

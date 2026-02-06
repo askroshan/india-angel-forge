@@ -89,7 +89,7 @@ export default function Certificates() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="certificates-page">
+    <div className="container mx-auto px-4 py-8" data-testid="certificate-list">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">My Certificates</h1>
         <p className="text-muted-foreground">

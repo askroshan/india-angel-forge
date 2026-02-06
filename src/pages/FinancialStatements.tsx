@@ -129,7 +129,7 @@ export default function FinancialStatements() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="financial-statements-page">
+    <div className="container mx-auto px-4 py-8" data-testid="financial-statements">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Financial Statements</h1>
         <p className="text-muted-foreground">

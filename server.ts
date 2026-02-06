@@ -1732,25 +1732,8 @@ app.post('/api/payments/verify', authenticateToken, async (req: AuthenticatedReq
   }
 });
 
-/**
- * GET /api/payments/history
- * Get payment history for authenticated user
- */
-app.get('/api/payments/history', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-
-    const payments = await prisma.payment.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({ payments });
-  } catch (error) {
-    console.error('Get payment history error:', error);
-    res.status(500).json({ error: 'Failed to retrieve payment history' });
-  }
-});
+// Note: Enhanced payment history route moved to /server/routes/payments-history.ts
+// Accessible via Phase 2 router at /api/payments/history
 
 /**
  * POST /api/payments/refund

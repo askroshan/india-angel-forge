@@ -12,6 +12,7 @@ import { authenticateUser } from '../middleware/auth';
 import { prisma } from '../../db';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import PDFDocument from 'pdfkit';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ const historyQuerySchema = z.object({
   dateTo: z.string().optional(),
   
   // Type filter
-  type: z.enum(['INVESTMENT', 'MEMBERSHIP_FEE', 'EVENT_FEE', 'REFUND']).optional(),
+  type: z.enum(['MEMBERSHIP_FEE', 'DEAL_COMMITMENT', 'EVENT_REGISTRATION', 'SUBSCRIPTION', 'OTHER']).optional(),
   
   // Status filter
   status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']).optional(),
@@ -139,7 +140,7 @@ router.get('/history', authenticateUser, async (req, res) => {
     
     // Execute queries in parallel
     const [payments, totalCount] = await Promise.all([
-      db.payment.findMany({
+      prisma.payment.findMany({
         where,
         orderBy,
         skip,
@@ -167,7 +168,7 @@ router.get('/history', authenticateUser, async (req, res) => {
           },
         },
       }),
-      db.payment.count({ where }),
+      prisma.payment.count({ where }),
     ]);
     
     // Calculate pagination metadata
@@ -243,7 +244,7 @@ router.get('/history/export/csv', authenticateUser, async (req, res) => {
     }
     
     // Fetch all matching payments (no pagination for export)
-    const payments = await db.payment.findMany({
+    const payments = await prisma.payment.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -336,8 +337,8 @@ router.get('/history/export/pdf', authenticateUser, async (req, res) => {
     
     // Fetch user and payments
     const [user, payments] = await Promise.all([
-      db.user.findUnique({ where: { id: userId } }),
-      db.payment.findMany({
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.payment.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -356,7 +357,6 @@ router.get('/history/export/pdf', authenticateUser, async (req, res) => {
     ]);
     
     // Generate PDF using pdfkit
-    const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ margin: 50 });
     
     // Set response headers

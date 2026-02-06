@@ -288,6 +288,107 @@ async function main() {
   console.log(`✅ Created ${eventTypes.length} event types`);
 
   console.log('\n✨ Reference data seeding completed!\n');
+  
+  // Phase 2 Test Data: Payments, Activities for E2E Tests
+  console.log('\n💳 Seeding Phase 2 test data...\n');
+  
+  // Get admin user for test data
+  const adminUser = await prisma.user.findUnique({
+    where: { email: 'admin@indiaangelforum.test' },
+  });
+  
+  if (adminUser) {
+    // Delete existing test payments and activities first
+    await prisma.payment.deleteMany({ where: { userId: adminUser.id } });
+    await prisma.activityLog.deleteMany({ where: { userId: adminUser.id } });
+    
+    // Create sample payments for transaction history (20+ for pagination testing)
+    const samplePayments = [
+      // Recent payments (February 2026)
+      { userId: adminUser.id, amount: 75000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'PENDING' as any, gateway: 'RAZORPAY' as any, description: 'Investment in HealthTech Startup', gatewayOrderId: 'order_TEST001', createdAt: new Date('2026-02-04T16:00:00Z') },
+      { userId: adminUser.id, amount: 5000, currency: 'INR', type: 'EVENT_REGISTRATION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Monthly Angel Forum - February 2026', gatewayOrderId: 'order_TEST002', gatewayPaymentId: 'pay_TEST002', createdAt: new Date('2026-02-01T12:00:00Z'), completedAt: new Date('2026-02-01T12:01:00Z') },
+      { userId: adminUser.id, amount: 150000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in AI/ML Startup', gatewayOrderId: 'order_TEST003', gatewayPaymentId: 'pay_TEST003', createdAt: new Date('2026-02-03T09:15:00Z'), completedAt: new Date('2026-02-03T09:20:00Z') },
+      
+      // January 2026 payments
+      { userId: adminUser.id, amount: 100000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in SaaS Startup B', gatewayOrderId: 'order_TEST004', gatewayPaymentId: 'pay_TEST004', createdAt: new Date('2026-01-28T14:30:00Z'), completedAt: new Date('2026-01-28T14:35:00Z') },
+      { userId: adminUser.id, amount: 50000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in Tech Startup A', gatewayOrderId: 'order_TEST005', gatewayPaymentId: 'pay_TEST005', createdAt: new Date('2026-01-25T10:00:00Z'), completedAt: new Date('2026-01-25T10:05:00Z') },
+      { userId: adminUser.id, amount: 8000, currency: 'INR', type: 'EVENT_REGISTRATION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Deep Tech Summit Registration', gatewayOrderId: 'order_TEST006', gatewayPaymentId: 'pay_TEST006', createdAt: new Date('2026-01-22T11:30:00Z'), completedAt: new Date('2026-01-22T11:32:00Z') },
+      { userId: adminUser.id, amount: 200000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in FinTech Startup', gatewayOrderId: 'order_TEST007', gatewayPaymentId: 'pay_TEST007', createdAt: new Date('2026-01-20T16:45:00Z'), completedAt: new Date('2026-01-20T16:50:00Z') },
+      { userId: adminUser.id, amount: 3500, currency: 'INR', type: 'SUBSCRIPTION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Quarterly Newsletter Subscription', gatewayOrderId: 'order_TEST008', gatewayPaymentId: 'pay_TEST008', createdAt: new Date('2026-01-18T08:20:00Z'), completedAt: new Date('2026-01-18T08:21:00Z') },
+      { userId: adminUser.id, amount: 125000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in EdTech Platform', gatewayOrderId: 'order_TEST009', gatewayPaymentId: 'pay_TEST009', createdAt: new Date('2026-01-15T13:10:00Z'), completedAt: new Date('2026-01-15T13:15:00Z') },
+      { userId: adminUser.id, amount: 25000, currency: 'INR', type: 'MEMBERSHIP_FEE' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Annual Membership Fee 2026', gatewayOrderId: 'order_TEST010', gatewayPaymentId: 'pay_TEST010', createdAt: new Date('2026-01-10T09:00:00Z'), completedAt: new Date('2026-01-10T09:02:00Z') },
+      { userId: adminUser.id, amount: 80000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in CleanTech Startup', gatewayOrderId: 'order_TEST011', gatewayPaymentId: 'pay_TEST011', createdAt: new Date('2026-01-08T15:30:00Z'), completedAt: new Date('2026-01-08T15:35:00Z') },
+      { userId: adminUser.id, amount: 6000, currency: 'INR', type: 'EVENT_REGISTRATION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Networking Night - January', gatewayOrderId: 'order_TEST012', gatewayPaymentId: 'pay_TEST012', createdAt: new Date('2026-01-05T17:00:00Z'), completedAt: new Date('2026-01-05T17:01:00Z') },
+      
+      // December 2025 payments
+      { userId: adminUser.id, amount: 175000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in BioTech Startup', gatewayOrderId: 'order_TEST013', gatewayPaymentId: 'pay_TEST013', createdAt: new Date('2025-12-28T10:20:00Z'), completedAt: new Date('2025-12-28T10:25:00Z') },
+      { userId: adminUser.id, amount: 95000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in AgriTech Solution', gatewayOrderId: 'order_TEST014', gatewayPaymentId: 'pay_TEST014', createdAt: new Date('2025-12-22T14:15:00Z'), completedAt: new Date('2025-12-22T14:20:00Z') },
+      { userId: adminUser.id, amount: 12000, currency: 'INR', type: 'EVENT_REGISTRATION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Year-End Angel Conference', gatewayOrderId: 'order_TEST015', gatewayPaymentId: 'pay_TEST015', createdAt: new Date('2025-12-18T11:00:00Z'), completedAt: new Date('2025-12-18T11:02:00Z') },
+      { userId: adminUser.id, amount: 110000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in E-commerce Platform', gatewayOrderId: 'order_TEST016', gatewayPaymentId: 'pay_TEST016', createdAt: new Date('2025-12-15T09:45:00Z'), completedAt: new Date('2025-12-15T09:50:00Z') },
+      { userId: adminUser.id, amount: 50000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'FAILED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in Gaming Startup (Failed)', gatewayOrderId: 'order_TEST017', createdAt: new Date('2025-12-10T16:30:00Z') },
+      { userId: adminUser.id, amount: 135000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in IoT Solutions', gatewayOrderId: 'order_TEST018', gatewayPaymentId: 'pay_TEST018', createdAt: new Date('2025-12-08T13:20:00Z'), completedAt: new Date('2025-12-08T13:25:00Z') },
+      
+      // November 2025 payments
+      { userId: adminUser.id, amount: 90000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in LogisticsTech', gatewayOrderId: 'order_TEST019', gatewayPaymentId: 'pay_TEST019', createdAt: new Date('2025-11-25T10:00:00Z'), completedAt: new Date('2025-11-25T10:05:00Z') },
+      { userId: adminUser.id, amount: 7500, currency: 'INR', type: 'EVENT_REGISTRATION' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Startup Pitch Event - November', gatewayOrderId: 'order_TEST020', gatewayPaymentId: 'pay_TEST020', createdAt: new Date('2025-11-20T15:30:00Z'), completedAt: new Date('2025-11-20T15:31:00Z') },
+      { userId: adminUser.id, amount: 160000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in Cybersecurity Startup', gatewayOrderId: 'order_TEST021', gatewayPaymentId: 'pay_TEST021', createdAt: new Date('2025-11-15T11:45:00Z'), completedAt: new Date('2025-11-15T11:50:00Z') },
+      { userId: adminUser.id, amount: 45000, currency: 'INR', type: 'DEAL_COMMITMENT' as any, status: 'REFUNDED' as any, gateway: 'RAZORPAY' as any, description: 'Investment in MediaTech (Refunded)', gatewayOrderId: 'order_TEST022', gatewayPaymentId: 'pay_TEST022', refundAmount: 45000, refundReason: 'Deal cancelled by mutual agreement', createdAt: new Date('2025-11-10T14:00:00Z'), completedAt: new Date('2025-11-10T14:05:00Z'), refundedAt: new Date('2025-11-12T10:00:00Z') },
+      { userId: adminUser.id, amount: 5000, currency: 'INR', type: 'OTHER' as any, status: 'COMPLETED' as any, gateway: 'RAZORPAY' as any, description: 'Document Processing Fee', gatewayOrderId: 'order_TEST023', gatewayPaymentId: 'pay_TEST023', createdAt: new Date('2025-11-05T09:30:00Z'), completedAt: new Date('2025-11-05T09:31:00Z') },
+    ];
+    
+    for (const payment of samplePayments) {
+      await prisma.payment.create({ data: payment });
+    }
+    console.log(`✅ Created ${samplePayments.length} sample payments`);
+    
+    // Create sample activities for activity timeline (25+ for infinite scroll testing)
+    const sampleActivities = [
+      // February 2026 activities
+      { userId: adminUser.id, activityType: 'PAYMENT_CREATED', entityType: 'payment', entityId: 'payment-001', description: 'Payment created for HealthTech investment: ₹75,000', createdAt: new Date('2026-02-04T16:00:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-003', description: 'Committed ₹1,50,000 to AI/ML Startup', createdAt: new Date('2026-02-03T09:20:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-003', description: 'Payment completed: AI/ML Startup investment', createdAt: new Date('2026-02-03T09:21:00Z') },
+      { userId: adminUser.id, activityType: 'EVENT_REGISTERED', entityType: 'event', entityId: 'monthly-angel-forum-february-2026', description: 'Registered for Monthly Angel Forum - February 2026', createdAt: new Date('2026-02-01T12:01:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-002', description: 'Event registration payment completed: ₹5,000', createdAt: new Date('2026-02-01T12:02:00Z') },
+      
+      // January 2026 activities
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-004', description: 'Committed ₹1,00,000 to SaaS Startup B', createdAt: new Date('2026-01-28T14:35:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-004', description: 'Investment payment completed for SaaS Startup B', createdAt: new Date('2026-01-28T14:36:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-005', description: 'Committed ₹50,000 to Tech Startup A', createdAt: new Date('2026-01-25T10:05:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-005', description: 'Tech Startup A investment finalized', createdAt: new Date('2026-01-25T10:06:00Z') },
+      { userId: adminUser.id, activityType: 'EVENT_REGISTERED', entityType: 'event', entityId: 'deep-tech-summit', description: 'Registered for Deep Tech Summit', createdAt: new Date('2026-01-22T11:32:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-007', description: 'Committed ₹2,00,000 to FinTech Startup', createdAt: new Date('2026-01-20T16:50:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-007', description: 'FinTech investment payment successful', createdAt: new Date('2026-01-20T16:51:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-009', description: 'Committed ₹1,25,000 to EdTech Platform', createdAt: new Date('2026-01-15T13:15:00Z') },
+      { userId: adminUser.id, activityType: 'PROFILE_UPDATED', entityType: 'user', entityId: adminUser.id, description: 'Updated investment portfolio preferences', createdAt: new Date('2026-01-12T10:00:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-010', description: 'Annual Membership Fee paid: ₹25,000', createdAt: new Date('2026-01-10T09:02:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-011', description: 'Committed ₹80,000 to CleanTech Startup', createdAt: new Date('2026-01-08T15:35:00Z') },
+      { userId: adminUser.id, activityType: 'DOCUMENT_UPLOADED', entityType: 'document', entityId: 'doc-001', description: 'Uploaded updated PAN Card for verification', createdAt: new Date('2026-01-07T14:20:00Z') },
+      { userId: adminUser.id, activityType: 'EVENT_REGISTERED', entityType: 'event', entityId: 'networking-night-jan', description: 'Registered for Networking Night - January', createdAt: new Date('2026-01-05T17:01:00Z') },
+      
+      // December 2025 activities
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-013', description: 'Committed ₹1,75,000 to BioTech Startup', createdAt: new Date('2025-12-28T10:25:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_COMPLETED', entityType: 'payment', entityId: 'payment-013', description: 'BioTech investment payment processed', createdAt: new Date('2025-12-28T10:26:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-014', description: 'Committed ₹95,000 to AgriTech Solution', createdAt: new Date('2025-12-22T14:20:00Z') },
+      { userId: adminUser.id, activityType: 'EVENT_REGISTERED', entityType: 'event', entityId: 'year-end-conference', description: 'Registered for Year-End Angel Conference', createdAt: new Date('2025-12-18T11:02:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-016', description: 'Committed ₹1,10,000 to E-commerce Platform', createdAt: new Date('2025-12-15T09:50:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_FAILED', entityType: 'payment', entityId: 'payment-017', description: 'Payment failed for Gaming Startup investment', createdAt: new Date('2025-12-10T16:35:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-018', description: 'Committed ₹1,35,000 to IoT Solutions', createdAt: new Date('2025-12-08T13:25:00Z') },
+      
+      // November 2025 activities
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-019', description: 'Committed ₹90,000 to LogisticsTech', createdAt: new Date('2025-11-25T10:05:00Z') },
+      { userId: adminUser.id, activityType: 'EVENT_REGISTERED', entityType: 'event', entityId: 'startup-pitch-nov', description: 'Registered for Startup Pitch Event', createdAt: new Date('2025-11-20T15:31:00Z') },
+      { userId: adminUser.id, activityType: 'DEAL_COMMITTED', entityType: 'payment', entityId: 'payment-021', description: 'Committed ₹1,60,000 to Cybersecurity Startup', createdAt: new Date('2025-11-15T11:50:00Z') },
+      { userId: adminUser.id, activityType: 'PAYMENT_REFUNDED', entityType: 'payment', entityId: 'payment-022', description: 'Refund processed for MediaTech investment: ₹45,000', createdAt: new Date('2025-11-12T10:00:00Z') },
+      { userId: adminUser.id, activityType: 'PROFILE_UPDATED', entityType: 'user', entityId: adminUser.id, description: 'Updated contact information and investment thesis', createdAt: new Date('2025-11-08T16:00:00Z') },
+    ];
+    
+    for (const activity of sampleActivities) {
+      await prisma.activityLog.create({ data: activity });
+    }
+    console.log(`✅ Created ${sampleActivities.length} sample activities`);
+  }
+  
+  console.log('\n🎉 Phase 2 test data seeding completed!\n');
 }
 
 main()
