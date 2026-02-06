@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 import fs from 'fs/promises';
 import path from 'path';
-import { sendEmail } from '../utils/email';
+import { emailService } from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -441,19 +441,20 @@ export async function emailFinancialStatement(statementId: number) {
   const period = `${new Date(statement.year, statement.month - 1).toLocaleString('en-IN', { month: 'long' })} ${statement.year}`;
 
   // Send email
-  await sendEmail({
+  await emailService.sendEmail({
     to: user.email,
     subject: `Financial Statement - ${period}`,
-    template: 'financial-statement',
-    data: {
-      userName: user.name || 'User',
-      period,
-      statementNumber: statement.statementNumber,
-      totalAmount: formatAmount(statement.totalAmount),
-      totalTax: formatAmount(statement.totalTax),
-      netAmount: formatAmount(statement.netAmount),
-      pdfUrl: `${process.env.APP_URL}${statement.pdfUrl}`,
-    },
+    html: `
+      <h2>Financial Statement - ${period}</h2>
+      <p>Dear ${user.name || 'User'},</p>
+      <p>Your financial statement for ${period} is ready.</p>
+      <p><strong>Statement Number:</strong> ${statement.statementNumber}</p>
+      <p><strong>Total Amount:</strong> ${formatAmount(statement.totalAmount)}</p>
+      <p><strong>Total Tax:</strong> ${formatAmount(statement.totalTax)}</p>
+      <p><strong>Net Amount:</strong> ${formatAmount(statement.netAmount)}</p>
+      <p><a href="${process.env.APP_URL || 'http://localhost:8080'}${statement.pdfUrl}">Download PDF</a></p>
+      <p>Best regards,<br/>India Angel Forum</p>
+    `,
   });
 
   // Update statement with email timestamp

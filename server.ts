@@ -14,9 +14,9 @@ import { invoiceService } from './server/services/invoice.service';
 import { invoiceQueueService } from './server/services/invoice-queue.service';
 import { invoiceCleanupService } from './server/services/invoice-cleanup.service';
 import { adminDigestService } from './server/services/admin-digest.service';
-import { createBullBoard } from '@bull-board/api';
-import { BullAdapter } from '@bull-board/api/bull';
-import { ExpressAdapter } from '@bull-board/express';
+// import { createBullBoard } from '@bull-board/api';
+// import { BullMQAdapter } from '@bull-board/api/bullMQ';
+// import { ExpressAdapter } from '@bull-board/express';
 import paymentsHistoryRouter from './server/routes/payments-history';
 import eventAttendanceRouter from './server/routes/event-attendance';
 import certificatesRouter from './server/routes/certificates';
@@ -2048,16 +2048,17 @@ app.get('/api/admin/invoices/cleanup-stats', authenticateToken, requireRole(['ad
 
 // ==================== BULL BOARD QUEUE DASHBOARD ====================
 
-const serverAdapter = new ExpressAdapter();
-serverAdapter.setBasePath('/admin/queues');
-
-createBullBoard({
-  queues: [new BullAdapter(invoiceQueueService.getQueue())],
-  serverAdapter: serverAdapter,
-});
-
-// Bull Board requires admin authentication
-app.use('/admin/queues', authenticateToken, requireRole(['admin']), serverAdapter.getRouter());
+// TODO: Fix Bull Board imports - temporarily commented out for Phase 2 testing
+// const serverAdapter = new ExpressAdapter();
+// serverAdapter.setBasePath('/admin/queues');
+// 
+// createBullBoard({
+//   queues: [new BullMQAdapter(invoiceQueueService.getQueue())],
+//   serverAdapter: serverAdapter,
+// });
+// 
+// // Bull Board requires admin authentication
+// app.use('/admin/queues', authenticateToken, requireRole(['admin']), serverAdapter.getRouter());
 
 // ==================== PAYMENTS HISTORY ROUTES ====================
 

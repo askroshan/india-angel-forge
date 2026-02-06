@@ -8,7 +8,7 @@
 
 import { Router } from 'express';
 import { authenticateUser, requireRoles } from '../middleware/auth';
-import { db } from '../../db';
+import { prisma } from '../../db';
 import { z } from 'zod';
 
 const router = Router();
@@ -24,7 +24,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     const userId = req.user!.id;
     
     // Check if event exists
-    const event = await db.event.findUnique({
+    const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, title: true, capacity: true, eventDate: true },
     });
@@ -45,7 +45,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     }
     
     // Check if already RSVPed
-    const existing = await db.eventAttendance.findUnique({
+    const existing = await prisma.eventAttendance.findUnique({
       where: { userId_eventId: { userId, eventId } },
     });
     
@@ -58,7 +58,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     
     // Check capacity
     if (event.capacity) {
-      const confirmedCount = await db.eventAttendance.count({
+      const confirmedCount = await prisma.eventAttendance.count({
         where: {
           eventId,
           rsvpStatus: 'CONFIRMED',
@@ -67,7 +67,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
       
       if (confirmedCount >= event.capacity) {
         // Add to waitlist
-        const attendance = await db.eventAttendance.create({
+        const attendance = await prisma.eventAttendance.create({
           data: {
             userId,
             eventId,
@@ -83,7 +83,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     }
     
     // Create confirmed RSVP
-    const attendance = await db.eventAttendance.create({
+    const attendance = await prisma.eventAttendance.create({
       data: {
         userId,
         eventId,
@@ -92,7 +92,7 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     });
     
     // Log activity
-    await db.activityLog.create({
+    await prisma.activityLog.create({
       data: {
         userId,
         activityType: 'EVENT_REGISTERED',
@@ -125,7 +125,7 @@ router.delete('/:eventId/rsvp', authenticateUser, async (req, res) => {
     const { eventId } = req.params;
     const userId = req.user!.id;
     
-    const attendance = await db.eventAttendance.findUnique({
+    const attendance = await prisma.eventAttendance.findUnique({
       where: { userId_eventId: { userId, eventId } },
     });
     
@@ -137,13 +137,13 @@ router.delete('/:eventId/rsvp', authenticateUser, async (req, res) => {
     }
     
     // Update to CANCELLED
-    await db.eventAttendance.update({
+    await prisma.eventAttendance.update({
       where: { userId_eventId: { userId, eventId } },
       data: { rsvpStatus: 'CANCELLED' },
     });
     
     // Log activity
-    await db.activityLog.create({
+    await prisma.activityLog.create({
       data: {
         userId,
         activityType: 'EVENT_CANCELLED',
@@ -175,7 +175,7 @@ router.get('/:eventId/attendance', authenticateUser, requireRoles(['admin']), as
   try {
     const { eventId } = req.params;
     
-    const attendees = await db.eventAttendance.findMany({
+    const attendees = await prisma.eventAttendance.findMany({
       where: { eventId },
       include: {
         user: {
@@ -212,7 +212,7 @@ router.post('/:eventId/attendance/check-in', authenticateUser, requireRoles(['ad
     const { eventId } = req.params;
     const { userId } = req.body;
     
-    const attendance = await db.eventAttendance.findUnique({
+    const attendance = await prisma.eventAttendance.findUnique({
       where: { userId_eventId: { userId, eventId } },
     });
     
@@ -231,7 +231,7 @@ router.post('/:eventId/attendance/check-in', authenticateUser, requireRoles(['ad
     }
     
     // Update with check-in time
-    const updated = await db.eventAttendance.update({
+    const updated = await prisma.eventAttendance.update({
       where: { userId_eventId: { userId, eventId } },
       data: {
         checkInTime: new Date(),
@@ -262,7 +262,7 @@ router.post('/:eventId/attendance/check-out', authenticateUser, requireRoles(['a
     const { eventId } = req.params;
     const { userId } = req.body;
     
-    const attendance = await db.eventAttendance.findUnique({
+    const attendance = await prisma.eventAttendance.findUnique({
       where: { userId_eventId: { userId, eventId } },
     });
     
@@ -281,7 +281,7 @@ router.post('/:eventId/attendance/check-out', authenticateUser, requireRoles(['a
     }
     
     // Update with check-out time
-    const updated = await db.eventAttendance.update({
+    const updated = await prisma.eventAttendance.update({
       where: { userId_eventId: { userId, eventId } },
       data: {
         checkOutTime: new Date(),
@@ -312,18 +312,18 @@ router.get('/:eventId/statistics', authenticateUser, requireRoles(['admin']), as
     
     // Get counts by status
     const [total, confirmed, waitlist, cancelled, noShow, attended, partial, absent] = await Promise.all([
-      db.eventAttendance.count({ where: { eventId } }),
-      db.eventAttendance.count({ where: { eventId, rsvpStatus: 'CONFIRMED' } }),
-      db.eventAttendance.count({ where: { eventId, rsvpStatus: 'WAITLIST' } }),
-      db.eventAttendance.count({ where: { eventId, rsvpStatus: 'CANCELLED' } }),
-      db.eventAttendance.count({ where: { eventId, rsvpStatus: 'NO_SHOW' } }),
-      db.eventAttendance.count({ where: { eventId, attendanceStatus: 'ATTENDED' } }),
-      db.eventAttendance.count({ where: { eventId, attendanceStatus: 'PARTIAL' } }),
-      db.eventAttendance.count({ where: { eventId, attendanceStatus: 'ABSENT' } }),
+      prisma.eventAttendance.count({ where: { eventId } }),
+      prisma.eventAttendance.count({ where: { eventId, rsvpStatus: 'CONFIRMED' } }),
+      prisma.eventAttendance.count({ where: { eventId, rsvpStatus: 'WAITLIST' } }),
+      prisma.eventAttendance.count({ where: { eventId, rsvpStatus: 'CANCELLED' } }),
+      prisma.eventAttendance.count({ where: { eventId, rsvpStatus: 'NO_SHOW' } }),
+      prisma.eventAttendance.count({ where: { eventId, attendanceStatus: 'ATTENDED' } }),
+      prisma.eventAttendance.count({ where: { eventId, attendanceStatus: 'PARTIAL' } }),
+      prisma.eventAttendance.count({ where: { eventId, attendanceStatus: 'ABSENT' } }),
     ]);
     
     // Count checked in (has checkInTime)
-    const checkedIn = await db.eventAttendance.count({
+    const checkedIn = await prisma.eventAttendance.count({
       where: {
         eventId,
         checkInTime: { not: null },

@@ -7,7 +7,7 @@
  */
 
 import PDFDocument from 'pdfkit';
-import { db } from '../../db';
+import { prisma } from '../../db';
 import QRCode from 'qrcode';
 import { promises as fs } from 'fs';
 import path from 'path';

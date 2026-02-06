@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import { authenticateUser, requireRoles } from '../middleware/auth';
 import { certificateService } from '../services/certificate.service';
-import { db } from '../../db';
+import { prisma } from '../../db';
 
 const router = Router();
 
@@ -56,7 +56,7 @@ router.get('/', authenticateUser, async (req, res) => {
   try {
     const userId = req.user!.id;
     
-    const certificates = await db.certificate.findMany({
+    const certificates = await prisma.certificate.findMany({
       where: { userId },
       include: {
         event: {
@@ -92,7 +92,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
     const { id } = req.params;
     const userId = req.user!.id;
     
-    const certificate = await db.certificate.findFirst({
+    const certificate = await prisma.certificate.findFirst({
       where: {
         id,
         userId,

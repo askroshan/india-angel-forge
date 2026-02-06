@@ -9,7 +9,7 @@
 
 import { Router } from 'express';
 import { authenticateUser } from '../middleware/auth';
-import { db } from '../../db';
+import { prisma } from '../../db';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
