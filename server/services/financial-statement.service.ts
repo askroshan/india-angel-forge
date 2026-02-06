@@ -7,7 +7,7 @@ import { emailService } from './email.service';
 const prisma = new PrismaClient();
 
 interface StatementGenerationParams {
-  userId: number;
+  userId: string;
   month: number;
   year: number;
   format: 'summary' | 'detailed';
@@ -124,10 +124,10 @@ function calculateTaxBreakdown(amount: number, isInterstate: boolean) {
  * @returns Statement data
  */
 async function generateStatementData(
-  userId: number,
+  userId: string,
   month: number,
   year: number,
-  format: 'SUMMARY' | 'DETAILED'
+  format: 'summary' | 'detailed'
 ): Promise<StatementData> {
   // Get date range for the month
   const startDate = new Date(year, month - 1, 1);
@@ -214,7 +214,7 @@ function formatAmount(amount: number): string {
  */
 async function generateStatementPDF(
   statementData: StatementData,
-  format: 'SUMMARY' | 'DETAILED',
+  format: 'summary' | 'detailed',
   userName: string,
   userEmail: string
 ): Promise<string> {
@@ -388,26 +388,32 @@ export async function generateFinancialStatement(params: StatementGenerationPara
     data: {
       userId,
       statementNumber: statementData.statementNumber,
+      dateFrom: new Date(year, month - 1, 1),
+      dateTo: new Date(year, month, 0),
       month,
       year,
       format,
-      totalAmount,
+      totalInvested: statementData.totalAmount,
+      totalRefunded: 0,
+      netInvestment: netAmount,
       totalTax,
-      netAmount,
       cgst: statementData.cgst,
       sgst: statementData.sgst,
       igst: statementData.igst,
       tds: statementData.tds,
       pdfUrl,
       emailedTo: [],
+      generatedAt: new Date(),
     },
   });
 
   // Log activity
-  await prisma.activity.create({
+  await prisma.activityLog.create({
     data: {
-      userId,
+      userId: String(userId),
       activityType: 'STATEMENT_GENERATED',
+      entityType: 'financial_statement',
+      entityId: statement.id,
       description: `Financial statement ${statementData.statementNumber} generated for ${statementData.period}`,
       metadata: {
         statementId: statement.id,
@@ -467,10 +473,12 @@ export async function emailFinancialStatement(statementId: number) {
   });
 
   // Log activity
-  await prisma.activity.create({
+  await prisma.activityLog.create({
     data: {
       userId: user.id,
       activityType: 'STATEMENT_EMAILED',
+      entityType: 'financial_statement',
+      entityId: statement.id,
       description: `Financial statement ${statement.statementNumber} emailed to ${user.email}`,
       metadata: {
         statementId: statement.id,
@@ -490,7 +498,7 @@ export async function emailFinancialStatement(statementId: number) {
  * @returns List of financial statements
  */
 export async function getUserStatements(
-  userId: number,
+  userId: string,
   filters: { year?: number; month?: number; format?: string } = {}
 ) {
   const where: any = { userId };
