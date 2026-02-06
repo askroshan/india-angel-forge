@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import { authenticateUser, requireRoles } from '../middleware/auth';
 import { prisma } from '../../db';
+import { certificateService } from '../services/certificate.service';
 import { z } from 'zod';
 
 const router = Router();
@@ -314,11 +315,38 @@ router.post('/:eventId/attendance/check-out', authenticateUser, requireRoles(['a
         checkOutTime: new Date(),
       },
     });
-    
-    return res.json({
-      success: true,
-      data: { attendance: updated },
-    });
+
+    // Auto-generate certificate after successful check-out
+    try {
+      const result = await certificateService.generateCertificate(userId, eventId);
+      
+      // Update attendance with certificate ID
+      await prisma.eventAttendance.update({
+        where: { userId_eventId: { userId, eventId } },
+        data: {
+          certificateId: result.certificate.id,
+        },
+      });
+
+      return res.json({
+        success: true,
+        data: { 
+          attendance: updated,
+          certificate: result.certificate,
+          message: 'Check-out successful. Certificate generated.',
+        },
+      });
+    } catch (certError) {
+      console.warn('Failed to generate certificate after check-out:', certError);
+      // Return success for check-out even if certificate generation fails
+      return res.json({
+        success: true,
+        data: { 
+          attendance: updated,
+          message: 'Check-out successful. Certificate generation pending.',
+        },
+      });
+    }
   } catch (error) {
     console.error('Error checking out attendee:', error);
     return res.status(500).json({
