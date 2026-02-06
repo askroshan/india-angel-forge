@@ -270,7 +270,19 @@ app.get('/api/admin/users', authenticateToken, requireRole(['admin']), async (re
 
 app.get('/api/events', async (req, res) => {
   try {
+    const filter = req.query.filter as string | undefined;
+    const now = new Date();
+    
+    let whereClause: any = {};
+    
+    if (filter === 'upcoming') {
+      whereClause = { eventDate: { gte: now }, status: 'upcoming' };
+    } else if (filter === 'past') {
+      whereClause = { eventDate: { lt: now } };
+    }
+    
     const events = await prisma.event.findMany({
+      where: whereClause,
       orderBy: { eventDate: 'asc' },
     });
     res.json(events);

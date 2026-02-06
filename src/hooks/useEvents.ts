@@ -6,25 +6,30 @@ import { toast } from "sonner";
 export interface Event {
   id: string;
   title: string;
-  slug: string;
-  description: string;
-  event_type: 'monthly_forum' | 'sector_summit' | 'angel_education' | 'portfolio_gathering' | 'annual_summit';
-  date: string;
-  start_time: string;
-  end_time: string;
-  location: string;
-  venue_name: string | null;
-  venue_address: string | null;
-  max_attendees: number | null;
-  is_featured: boolean;
-  is_members_only: boolean;
-  registration_deadline: string | null;
-  image_url: string | null;
-  agenda: { time: string; title: string }[] | null;
-  speakers: { name: string; role: string; topic: string }[] | null;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
-  created_at: string;
-  updated_at: string;
+  description: string | null;
+  eventDate: string;
+  location: string | null;
+  capacity: number | null;
+  registrationDeadline: string | null;
+  status: string;
+  eventTypeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Legacy/optional fields for backward compatibility
+  slug?: string;
+  event_type?: 'monthly_forum' | 'sector_summit' | 'angel_education' | 'portfolio_gathering' | 'annual_summit';
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  venue_name?: string | null;
+  venue_address?: string | null;
+  max_attendees?: number | null;
+  is_featured?: boolean;
+  is_members_only?: boolean;
+  registration_deadline?: string | null;
+  image_url?: string | null;
+  agenda?: { time: string; title: string }[] | null;
+  speakers?: { name: string; role: string; topic: string }[] | null;
 }
 
 export interface EventRegistration {

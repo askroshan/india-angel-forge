@@ -21,12 +21,13 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
     return format(date, 'h:mm a');
   };
 
-  const spotsLeft = event.max_attendees 
-    ? event.max_attendees - (registrationCount || 0)
+  const spotsLeft = (event.capacity ?? event.max_attendees) 
+    ? (event.capacity ?? event.max_attendees)! - (registrationCount || 0)
     : null;
 
   const isRegistrationOpen = event.status === 'upcoming' && 
-    (!event.registration_deadline || new Date(event.registration_deadline) >= new Date());
+    (!event.registrationDeadline && !event.registration_deadline || 
+     new Date(event.registrationDeadline || event.registration_deadline!) >= new Date());
 
   return (
     <Card 
@@ -55,9 +56,11 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
                     </Badge>
                   )}
                 </div>
-                <Badge variant="outline" className="font-medium">
-                  {EVENT_TYPE_LABELS[event.event_type]}
-                </Badge>
+                {event.event_type && (
+                  <Badge variant="outline" className="font-medium">
+                    {EVENT_TYPE_LABELS[event.event_type]}
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -66,12 +69,14 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
             <div className="grid sm:grid-cols-2 gap-3 pt-2">
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-accent flex-shrink-0" />
-                <span>{format(parseISO(event.date), 'EEEE, MMMM d, yyyy')}</span>
+                <span>{format(parseISO(event.eventDate || event.date!), 'EEEE, MMMM d, yyyy')}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-accent flex-shrink-0" />
-                <span>{formatTime(event.start_time)} - {formatTime(event.end_time)} IST</span>
-              </div>
+              {event.start_time && event.end_time && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-accent flex-shrink-0" />
+                  <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4 text-accent flex-shrink-0" />
                 <span>{event.venue_name || event.location}</span>
