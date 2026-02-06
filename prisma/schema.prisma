@@ -1098,25 +1098,34 @@ model Certificate {
 // ==================== FINANCIAL STATEMENTS ====================
 
 model FinancialStatement {
-  id              String   @id @default(cuid())
-  statementNumber String   @unique @map("statement_number") // FS-2026-02-00001
-  userId          String   @map("user_id")
-  dateFrom        DateTime @map("date_from")
-  dateTo          DateTime @map("date_to")
-  totalInvested   Decimal  @default(0) @map("total_invested") @db.Decimal(15, 2)
-  totalRefunded   Decimal  @default(0) @map("total_refunded") @db.Decimal(15, 2)
-  netInvestment   Decimal  @default(0) @map("net_investment") @db.Decimal(15, 2)
-  totalTax        Decimal  @default(0) @map("total_tax") @db.Decimal(15, 2)
-  format          String   @default("detailed") // detailed | summary
-  pdfUrl          String   @map("pdf_url")
-  emailedTo       String[] @default([]) @map("emailed_to")
-  generatedAt     DateTime @default(now()) @map("generated_at")
+  id              String    @id @default(cuid())
+  statementNumber String    @unique @map("statement_number") // FS-2026-02-00001
+  userId          String    @map("user_id")
+  dateFrom        DateTime  @map("date_from")
+  dateTo          DateTime  @map("date_to")
+  month           Int       // 1-12
+  year            Int       // 2024, 2025, etc.
+  totalInvested   Decimal   @default(0) @map("total_invested") @db.Decimal(15, 2)
+  totalRefunded   Decimal   @default(0) @map("total_refunded") @db.Decimal(15, 2)
+  netInvestment   Decimal   @default(0) @map("net_investment") @db.Decimal(15, 2)
+  totalTax        Decimal   @default(0) @map("total_tax") @db.Decimal(15, 2)
+  cgst            Decimal   @default(0) @db.Decimal(15, 2) // 9% CGST
+  sgst            Decimal   @default(0) @db.Decimal(15, 2) // 9% SGST
+  igst            Decimal   @default(0) @db.Decimal(15, 2) // 18% IGST
+  tds             Decimal   @default(0) @db.Decimal(15, 2) // 1% TDS
+  format          String    @default("detailed") // detailed | summary
+  pdfUrl          String    @map("pdf_url")
+  emailedTo       String[]  @default([]) @map("emailed_to")
+  emailedAt       DateTime? @map("emailed_at") // When last emailed
+  generatedAt     DateTime  @default(now()) @map("generated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([dateFrom])
   @@index([dateTo])
+  @@index([month])
+  @@index([year])
   @@index([generatedAt])
   @@map("financial_statements")
 }

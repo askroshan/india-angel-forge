@@ -70,7 +70,11 @@ export async function seedFinancialStatements() {
 
         // Calculate totals
         const totalAmount = Number(paymentsInPeriod.reduce((sum, p) => sum + Number(p.amount), 0).toFixed(2));
-        const totalTax = Number((totalAmount * 0.19).toFixed(2)); // 18% GST + 1% TDS
+        const cgst = Number((totalAmount * 0.09).toFixed(2)); // 9% CGST
+        const sgst = Number((totalAmount * 0.09).toFixed(2)); // 9% SGST
+        const igst = 0; // Assuming intrastate (use CGST+SGST)
+        const tds = Number((totalAmount * 0.01).toFixed(2)); // 1% TDS
+        const totalTax = Number((cgst + sgst + igst + tds).toFixed(2));
         const netAmount = Number((totalAmount - totalTax).toFixed(2));
 
         // Generate statement number
@@ -82,13 +86,20 @@ export async function seedFinancialStatements() {
           statementNumber: statementNumber,
           dateFrom: startDate,
           dateTo: endDate,
+          month,
+          year,
           format: 'detailed',
           totalInvested: totalAmount,
           totalRefunded: 0,
           netInvestment: netAmount,
           totalTax,
+          cgst,
+          sgst,
+          igst,
+          tds,
           pdfUrl: `/statements/${statementNumber}.pdf`,
-          emailedTo: monthsAgo === 0 ? [user.email] : [], // Latest statement is emailed
+          emailedTo: monthsAgo === 0 ? [user.email] : [],
+          emailedAt: monthsAgo === 0 ? new Date() : null,
           generatedAt: new Date(year, month - 1, 25), // Generated on 25th of the month
         };
 
@@ -104,13 +115,20 @@ export async function seedFinancialStatements() {
             statementNumber: summaryNumber,
             dateFrom: startDate,
             dateTo: endDate,
+            month,
+            year,
             format: 'summary',
             totalInvested: totalAmount,
             totalRefunded: 0,
             netInvestment: netAmount,
             totalTax,
+            cgst,
+            sgst,
+            igst,
+            tds,
             pdfUrl: `/statements/${summaryNumber}.pdf`,
             emailedTo: [],
+            emailedAt: null,
             generatedAt: new Date(year, month - 1, 26), // Generated on 26th of the month
           };
 

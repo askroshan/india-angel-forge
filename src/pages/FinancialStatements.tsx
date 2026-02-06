@@ -14,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 interface FinancialStatement {
   id: string;
   statementNumber: string;
+  month: number;
+  year: number;
   dateFrom: Date;
   dateTo: Date;
   format: 'detailed' | 'summary';
@@ -21,8 +23,13 @@ interface FinancialStatement {
   totalRefunded: number;
   netInvestment: number;
   totalTax: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  tds: number;
   pdfUrl: string;
   emailedTo: string[];
+  emailedAt: string | null;
   generatedAt: string;
   userId: string;
 }
@@ -149,7 +156,7 @@ export default function FinancialStatements() {
       const fromDate = new Date(filterDateFrom);
       const toDate = new Date(filterDateTo);
       filtered = filtered.filter((s) => {
-        const statementDate = new Date(s.createdAt);
+        const statementDate = new Date(s.generatedAt);
         return statementDate >= fromDate && statementDate <= toDate;
       });
     }
@@ -220,7 +227,7 @@ export default function FinancialStatements() {
     }
   };
 
-  const handleEmailStatement = async (statementId: number) => {
+  const handleEmailStatement = async (statementId: string) => {
     try {
       setIsEmailing(true);
       setEmailSuccess(false);
@@ -627,14 +634,14 @@ export default function FinancialStatements() {
                 </CardHeader>
                 <CardContent>
                   {/* Summary View */}
-                  {statement.format === 'SUMMARY' && selectedStatement?.id === statement.id && (
+                  {statement.format === 'summary' && selectedStatement?.id === statement.id && (
                     <div className="mb-6 p-4 bg-muted rounded-lg" data-testid="statement-summary-view">
                       <h4 className="font-semibold mb-3">Summary Totals</h4>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total Invested:</span>
                           <span className="font-medium" data-testid="total-invested">
-                            {formatAmount(statement.totalAmount)}
+                            {formatAmount(statement.totalInvested)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -646,7 +653,7 @@ export default function FinancialStatements() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Net Investment:</span>
                           <span className="font-medium" data-testid="net-investment">
-                            {formatAmount(statement.netAmount)}
+                            {formatAmount(statement.netInvestment)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -670,7 +677,7 @@ export default function FinancialStatements() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total Amount:</span>
                           <span className="font-medium" data-testid="statement-amount">
-                            {formatAmount(statement.totalAmount)}
+                            {formatAmount(statement.totalInvested)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -682,7 +689,7 @@ export default function FinancialStatements() {
                         <div className="border-t pt-2 flex justify-between">
                           <span className="font-semibold">Net Amount:</span>
                           <span className="font-semibold" data-testid="statement-net">
-                            {formatAmount(statement.netAmount)}
+                            {formatAmount(statement.netInvestment)}
                           </span>
                         </div>
                       </div>
@@ -780,7 +787,7 @@ export default function FinancialStatements() {
                   <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>Generated on {formatDate(statement.createdAt)}</span>
+                      <span>Generated on {formatDate(statement.generatedAt)}</span>
                     </div>
                   </div>
                 </CardContent>
