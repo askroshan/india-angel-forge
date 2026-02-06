@@ -1,0 +1,95 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - link "Skip to main content" [ref=e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "India Angel Forum" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: India Angel Forum
+        - generic [ref=e10]:
+          - link "For Founders" [ref=e11] [cursor=pointer]:
+            - /url: /founders
+          - link "For Investors" [ref=e12] [cursor=pointer]:
+            - /url: /investors
+          - link "Portfolio" [ref=e13] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Events" [ref=e14] [cursor=pointer]:
+            - /url: /events
+          - link "About" [ref=e15] [cursor=pointer]:
+            - /url: /about
+        - button "admin" [ref=e17] [cursor=pointer]:
+          - img
+          - generic [ref=e18]: admin
+    - main [ref=e19]:
+      - alert [ref=e20]:
+        - generic [ref=e21]: Event not found
+    - contentinfo [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - heading "India Angel Forum" [level=3] [ref=e26]
+            - paragraph [ref=e27]: India's largest angel network connecting accredited investors with exceptional founders.
+            - paragraph [ref=e28]: A product of Kosansh Solutions Inc
+            - generic [ref=e29]:
+              - link "Follow us on LinkedIn" [ref=e30] [cursor=pointer]:
+                - /url: https://linkedin.com/company/indiaangelforum
+                - img [ref=e31]
+              - link "Follow us on Twitter" [ref=e35] [cursor=pointer]:
+                - /url: https://twitter.com/indiaangelforum
+                - img [ref=e36]
+          - generic [ref=e38]:
+            - heading "For Founders" [level=4] [ref=e39]
+            - list [ref=e40]:
+              - listitem [ref=e41]:
+                - link "Apply for Funding" [ref=e42] [cursor=pointer]:
+                  - /url: /founders#apply
+              - listitem [ref=e43]:
+                - link "How It Works" [ref=e44] [cursor=pointer]:
+                  - /url: /founders#how-it-works
+              - listitem [ref=e45]:
+                - link "Forum Calendar" [ref=e46] [cursor=pointer]:
+                  - /url: /founders#calendar
+          - generic [ref=e47]:
+            - heading "For Investors" [level=4] [ref=e48]
+            - list [ref=e49]:
+              - listitem [ref=e50]:
+                - link "Join as Member" [ref=e51] [cursor=pointer]:
+                  - /url: /investors#join
+              - listitem [ref=e52]:
+                - link "Membership Plans" [ref=e53] [cursor=pointer]:
+                  - /url: /investors#plans
+              - listitem [ref=e54]:
+                - link "Deal Rooms & SPVs" [ref=e55] [cursor=pointer]:
+                  - /url: /investors#deals
+          - generic [ref=e56]:
+            - heading "Company" [level=4] [ref=e57]
+            - list [ref=e58]:
+              - listitem [ref=e59]:
+                - link "About Us" [ref=e60] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e61]:
+                - link "Portfolio" [ref=e62] [cursor=pointer]:
+                  - /url: /portfolio
+              - listitem [ref=e63]:
+                - link "Events" [ref=e64] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e65]:
+                - link "Contact Us" [ref=e66] [cursor=pointer]:
+                  - /url: /contact
+        - generic [ref=e67]:
+          - paragraph [ref=e68]: © 2026 India Angel Forum. All rights reserved.
+          - generic [ref=e69]:
+            - link "Terms & Policies" [ref=e70] [cursor=pointer]:
+              - /url: /terms
+            - link "Privacy Policy" [ref=e71] [cursor=pointer]:
+              - /url: /privacy
+            - link "Code of Conduct" [ref=e72] [cursor=pointer]:
+              - /url: /code-of-conduct
+```
