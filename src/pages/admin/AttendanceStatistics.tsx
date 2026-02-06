@@ -56,6 +56,7 @@ export default function AttendanceStatistics() {
     }
 
     fetchEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user, navigate]);
 
   const fetchEvents = async () => {
