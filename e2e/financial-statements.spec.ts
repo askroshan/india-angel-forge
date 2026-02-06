@@ -38,7 +38,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
   });
 
   /**

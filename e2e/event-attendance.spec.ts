@@ -55,7 +55,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to events
     await page.goto('/events');
@@ -120,7 +120,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to admin events
     await page.goto('/admin/events');
@@ -196,7 +196,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to event attendance page
     await page.goto('/admin/events');
@@ -275,7 +275,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to event attendance page
     await page.goto('/admin/events');
@@ -322,7 +322,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', attendeeEmail || TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to certificates page
     await page.goto('/dashboard/certificates');
@@ -365,7 +365,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     await page.goto('/dashboard/certificates');
     await page.waitForLoadState('networkidle');
@@ -430,7 +430,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email);
     await page.fill('input[type="password"]', TEST_ADMIN.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to events statistics
     await page.goto('/admin/events/statistics');
@@ -502,7 +502,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to my events
     await page.goto('/dashboard/my-events');
@@ -579,7 +579,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.fill('input[type="email"]', TEST_INVESTOR.email);
     await page.fill('input[type="password"]', TEST_INVESTOR.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
     
     // Navigate to certificates page
     await page.goto('/dashboard/certificates');

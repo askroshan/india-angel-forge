@@ -35,7 +35,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
     await page.fill('input[type="email"]', TEST_USER.email);
     await page.fill('input[type="password"]', TEST_USER.password);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('/');
   });
 
   /**
