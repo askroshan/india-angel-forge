@@ -1103,8 +1103,8 @@ model FinancialStatement {
   userId          String    @map("user_id")
   dateFrom        DateTime  @map("date_from")
   dateTo          DateTime  @map("date_to")
-  month           Int       // 1-12
-  year            Int       // 2024, 2025, etc.
+  month           Int // 1-12
+  year            Int // 2024, 2025, etc.
   totalInvested   Decimal   @default(0) @map("total_invested") @db.Decimal(15, 2)
   totalRefunded   Decimal   @default(0) @map("total_refunded") @db.Decimal(15, 2)
   netInvestment   Decimal   @default(0) @map("net_investment") @db.Decimal(15, 2)

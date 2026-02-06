@@ -38,8 +38,7 @@ export default function ActivityTimeline() {
     hasMore: false,
     nextCursor: null,
     count: 0,
-  });
-
+  });  const [expandedActivityId, setExpandedActivityId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -328,24 +327,50 @@ export default function ActivityTimeline() {
       ) : (
         <div className="space-y-3" data-testid="activity-feed">
           {activities.map((activity, index) => (
-            <Card key={`${activity.id}-${index}`} data-testid={`activity-item-${activity.id}`}>
+            <Card 
+              key={`${activity.id}-${index}`} 
+              data-testid="activity-item"
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setExpandedActivityId(
+                expandedActivityId === activity.id ? null : activity.id
+              )}
+            >
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 text-2xl" data-testid={`activity-icon-${activity.id}`}>
+                  <div className="flex-shrink-0 text-2xl" data-testid="activity-type-icon">
                     {getActivityIcon(activity.type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge className={getActivityColor(activity.type)} data-testid={`activity-type-${activity.id}`}>
+                      <Badge className={getActivityColor(activity.type)} data-testid="activity-type">
                         {activity.type.replace(/_/g, ' ')}
                       </Badge>
-                      <span className="text-sm text-muted-foreground" data-testid={`activity-time-${activity.id}`}>
+                      <span className="text-sm text-muted-foreground" data-testid="activity-timestamp">
                         {formatDate(activity.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm" data-testid={`activity-description-${activity.id}`}>
+                    <p className="text-sm" data-testid="activity-description">
                       {activity.description}
                     </p>
+
+                    {/* Expanded details */}
+                    {expandedActivityId === activity.id && activity.metadata && (
+                      <div className="mt-4 pt-4 border-t" data-testid="activity-details">
+                        <h4 className="text-sm font-semibold mb-2">Additional Details</h4>
+                        <div className="grid gap-2 text-sm">
+                          {Object.entries(activity.metadata).map(([key, value]) => (
+                            <div key={key} className="flex justify-between">
+                              <span className="text-muted-foreground capitalize">
+                                {key.replace(/([A-Z])/g, ' $1').trim()}:
+                              </span>
+                              <span className="font-medium">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
