@@ -9,6 +9,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { seedEventAttendance } from './event-attendance-seed';
+import { seedFinancialStatements } from './financial-statements-seed';
 
 const prisma = new PrismaClient();
 
@@ -391,6 +392,9 @@ async function main() {
 
   // Seed Event Attendance records
   await seedEventAttendance();
+  
+  // Seed Financial Statements
+  await seedFinancialStatements();
   
   console.log('\n🎉 Phase 2 test data seeding completed!\n');
 }
