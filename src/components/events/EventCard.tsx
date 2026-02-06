@@ -33,6 +33,7 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
       className={`border-2 hover:border-accent transition-all ${
         event.is_featured ? "border-accent shadow-lg" : ""
       }`}
+      data-testid="event-card"
     >
       <CardContent className="p-6">
         <div className="grid md:grid-cols-[1fr,auto] gap-6">

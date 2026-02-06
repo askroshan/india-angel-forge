@@ -141,10 +141,10 @@ export default function EventDetail() {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">{event.title}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4" data-testid="event-title">{event.title}</h1>
           
           <div className="flex flex-wrap gap-6 text-muted-foreground">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="event-date">
               <Calendar className="h-5 w-5 text-accent" />
               <span>{format(parseISO(event.date), 'EEEE, MMMM d, yyyy')}</span>
             </div>
@@ -223,7 +223,7 @@ export default function EventDetail() {
             <Card className="sticky top-24">
               <CardContent className="p-6 space-y-6">
                 {/* Venue */}
-                <div>
+                <div data-testid="event-location">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-accent" />
                     Venue
@@ -287,9 +287,9 @@ export default function EventDetail() {
                 {event.status === 'upcoming' && (
                   <>
                     {isRegistered ? (
-                      <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800" data-testid="rsvp-status">
                         <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="font-medium text-green-700 dark:text-green-300">
+                        <span className="font-medium text-green-700 dark:text-green-300" data-testid="rsvp-success-message">
                           You're registered!
                         </span>
                       </div>
@@ -322,6 +322,7 @@ export default function EventDetail() {
                         size="lg" 
                         className="w-full"
                         onClick={() => setShowRegistration(true)}
+                        data-testid="rsvp-button"
                       >
                         Register Now
                       </Button>
