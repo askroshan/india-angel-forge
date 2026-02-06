@@ -15,6 +15,7 @@ import {
   EVENT_TYPE_LABELS 
 } from "@/hooks/useEvents";
 import { useWaitlistPosition, useWaitlistCount, useLeaveWaitlist } from "@/hooks/useWaitlist";
+import { useMyRSVP, useRSVPToEvent, useCancelRSVP } from "@/hooks/useEventAttendance";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Calendar, 
@@ -38,6 +39,9 @@ export default function EventDetail() {
   const { data: waitlistEntry } = useWaitlistPosition(event?.id || "");
   const { data: waitlistCount } = useWaitlistCount(event?.id || "");
   const leaveWaitlistMutation = useLeaveWaitlist();
+  const { data: myRSVP } = useMyRSVP(event?.id || "");
+  const rsvpMutation = useRSVPToEvent();
+  const cancelRSVPMutation = useCancelRSVP();
   const { user } = useAuth();
   const [showRegistration, setShowRegistration] = useState(false);
   const [showWaitlist, setShowWaitlist] = useState(false);
@@ -45,6 +49,20 @@ export default function EventDetail() {
   const isRegistered = myRegistrations?.some(
     r => r.event_id === event?.id && r.status === 'registered'
   );
+
+  const hasRSVP = myRSVP?.data?.attendance?.rsvpStatus === 'CONFIRMED';
+
+  const handleRSVP = () => {
+    if (event?.id) {
+      rsvpMutation.mutate(event.id);
+    }
+  };
+
+  const handleCancelRSVP = () => {
+    if (event?.id) {
+      cancelRSVPMutation.mutate(event.id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -286,12 +304,26 @@ export default function EventDetail() {
                 {/* Registration Button */}
                 {event.status === 'upcoming' && (
                   <>
-                    {isRegistered ? (
-                      <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800" data-testid="rsvp-status">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="font-medium text-green-700 dark:text-green-300" data-testid="rsvp-success-message">
-                          You're registered!
-                        </span>
+                    {(isRegistered || hasRSVP) ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800" data-testid="rsvp-status">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-medium text-green-700 dark:text-green-300" data-testid="rsvp-success-message">
+                            You're registered!
+                          </span>
+                        </div>
+                        {hasRSVP && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            data-testid="cancel-rsvp-button"
+                            onClick={handleCancelRSVP}
+                            disabled={cancelRSVPMutation.isPending}
+                          >
+                            Cancel RSVP
+                          </Button>
+                        )}
                       </div>
                     ) : waitlistEntry ? (
                       <div className="space-y-3">
@@ -321,8 +353,9 @@ export default function EventDetail() {
                         variant="accent" 
                         size="lg" 
                         className="w-full"
-                        onClick={() => setShowRegistration(true)}
+                        onClick={handleRSVP}
                         data-testid="rsvp-button"
+                        disabled={rsvpMutation.isPending}
                       >
                         Register Now
                       </Button>

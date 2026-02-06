@@ -14,6 +14,33 @@ import { z } from 'zod';
 const router = Router();
 
 /**
+ * GET /api/events/:eventId/my-rsvp
+ * 
+ * Get current user's RSVP status for an event
+ */
+router.get('/:eventId/my-rsvp', authenticateUser, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user!.id;
+
+    const attendance = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId } },
+    });
+
+    return res.json({
+      success: true,
+      data: { attendance },
+    });
+  } catch (error) {
+    console.error('Error fetching RSVP status:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch RSVP status',
+    });
+  }
+});
+
+/**
  * POST /api/events/:eventId/rsvp
  * 
  * RSVP to an event
