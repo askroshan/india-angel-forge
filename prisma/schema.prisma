@@ -54,6 +54,10 @@ model User {
   threadsAsParticipant1  MessageThread[]         @relation("ThreadsAsParticipant1")
   threadsAsParticipant2  MessageThread[]         @relation("ThreadsAsParticipant2")
   activityLogs           ActivityLog[]
+  // Phase 2 relations
+  eventAttendance        EventAttendance[]
+  certificates           Certificate[]
+  financialStatements    FinancialStatement[]
 
   @@map("users")
 }
@@ -86,6 +90,9 @@ model Event {
   eventType     EventType?          @relation(fields: [eventTypeId], references: [id])
   registrations EventRegistration[]
   waitlist      EventWaitlist[]
+  // Phase 2 relations
+  attendance    EventAttendance[]
+  certificates  Certificate[]
 
   @@index([eventTypeId])
   @@map("events")
@@ -654,6 +661,7 @@ model Payment {
   @@index([gateway])
   @@index([type])
   @@index([createdAt])
+  @@index([userId, createdAt])
   @@map("payments")
 }
 
@@ -995,6 +1003,7 @@ model ActivityLog {
 
   @@index([userId, createdAt])
   @@index([activityType, createdAt])
+  @@index([createdAt])
   @@map("activity_logs")
 }
 
@@ -1015,4 +1024,99 @@ enum ActivityType {
   MESSAGE_RECEIVED
   DOCUMENT_UPLOADED
   DOCUMENT_SHARED
+  CERTIFICATE_ISSUED
+  STATEMENT_GENERATED
+  PROFILE_UPDATED
+}
+
+// ==================== EVENT ATTENDANCE ====================
+
+model EventAttendance {
+  id               String            @id @default(cuid())
+  userId           String            @map("user_id")
+  eventId          String            @map("event_id")
+  rsvpStatus       RsvpStatus        @default(CONFIRMED) @map("rsvp_status")
+  attendanceStatus AttendanceStatus? @map("attendance_status")
+  checkInTime      DateTime?         @map("check_in_time")
+  checkOutTime     DateTime?         @map("check_out_time")
+  certificateId    String?           @unique @map("certificate_id")
+  certificateUrl   String?           @map("certificate_url")
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  certificate Certificate?
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([rsvpStatus])
+  @@index([attendanceStatus])
+  @@map("event_attendance")
+}
+
+enum RsvpStatus {
+  CONFIRMED
+  WAITLIST
+  CANCELLED
+  NO_SHOW
+}
+
+enum AttendanceStatus {
+  ATTENDED
+  PARTIAL
+  ABSENT
+}
+
+// ==================== CERTIFICATES ====================
+
+model Certificate {
+  id              String   @id @default(cuid())
+  certificateId   String   @unique @map("certificate_id") // CERT-2026-001234
+  userId          String   @map("user_id")
+  eventId         String   @map("event_id")
+  attendeeName    String   @map("attendee_name")
+  eventName       String   @map("event_name")
+  eventDate       DateTime @map("event_date")
+  duration        Int // minutes
+  pdfUrl          String   @map("pdf_url")
+  verificationUrl String   @map("verification_url")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendance EventAttendance? @relation(fields: [certificateId], references: [certificateId])
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([certificateId])
+  @@map("certificates")
+}
+
+// ==================== FINANCIAL STATEMENTS ====================
+
+model FinancialStatement {
+  id              String   @id @default(cuid())
+  statementNumber String   @unique @map("statement_number") // FS-2026-02-00001
+  userId          String   @map("user_id")
+  dateFrom        DateTime @map("date_from")
+  dateTo          DateTime @map("date_to")
+  totalInvested   Decimal  @default(0) @map("total_invested") @db.Decimal(15, 2)
+  totalRefunded   Decimal  @default(0) @map("total_refunded") @db.Decimal(15, 2)
+  netInvestment   Decimal  @default(0) @map("net_investment") @db.Decimal(15, 2)
+  totalTax        Decimal  @default(0) @map("total_tax") @db.Decimal(15, 2)
+  format          String   @default("detailed") // detailed | summary
+  pdfUrl          String   @map("pdf_url")
+  emailedTo       String[] @default([]) @map("emailed_to")
+  generatedAt     DateTime @default(now()) @map("generated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([dateFrom])
+  @@index([dateTo])
+  @@index([generatedAt])
+  @@map("financial_statements")
 }
