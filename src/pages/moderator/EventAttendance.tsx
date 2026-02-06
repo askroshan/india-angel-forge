@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 import { 
   Calendar, 
   MapPin, 
@@ -15,32 +16,25 @@ import {
   XCircle, 
   Clock, 
   QrCode,
-  AlertTriangle 
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  total_registrations: number;
-  attended_count: number;
-  no_show_count: number;
-  pending_count: number;
-}
-
-interface Registration {
-  id: string;
-  event_id: string;
-  user_id: string;
-  user_name: string;
-  user_email: string;
-  user_role: string;
-  registered_at: string;
-  attendance_status: 'PENDING' | 'ATTENDED' | 'NO_SHOW';
-  checked_in_at: string | null;
-  no_show_history_count: number;
+interface Attendee {
+  userId: string;
+  eventId: string;
+  rsvpStatus: 'CONFIRMED' | 'WAITLIST' | 'CANCELLED' | 'NO_SHOW';
+  attendanceStatus: 'ATTENDED' | 'PARTIAL' | 'ABSENT' | null;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  certificateId: string | null;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+  };
 }
 
 export default function EventAttendance() {
@@ -49,89 +43,146 @@ export default function EventAttendance() {
   const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Fetch event details
-  const { data: event, isLoading: eventLoading, error: eventError } = useQuery<Event>({
-    queryKey: ['moderator-event', eventId],
+  const { data: eventResponse, isLoading: eventLoading } = useQuery({
+    queryKey: ['event', eventId],
     queryFn: async () => {
-      return await apiClient.get<Event>(`/api/moderator/events/${eventId}`);
-    },
-  });
-
-  // Fetch registrations
-  const { data: registrations = [], isLoading: registrationsLoading } = useQuery<Registration[]>({
-    queryKey: ['moderator-event-registrations', eventId],
-    queryFn: async () => {
-      return await apiClient.get<Registration[]>(`/api/moderator/events/${eventId}/registrations`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/events/${eventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch event');
+      return response.json();
     },
     enabled: !!eventId,
   });
 
-  // Update attendance mutation
-  const updateAttendanceMutation = useMutation({
-    mutationFn: async ({ registrationId, status }: { registrationId: string; status: string }) => {
-      return await apiClient.patch<Registration>(
-        `/api/moderator/events/${eventId}/registrations/${registrationId}`,
-        { attendance_status: status }
-      );
+  // Fetch attendance list
+  const { data: attendanceResponse, isLoading: attendanceLoading } = useQuery({
+    queryKey: ['event-attendance', eventId],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/events/${eventId}/attendance`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch attendance');
+      return response.json();
+    },
+    enabled: !!eventId,
+  });
+
+  // Check-in mutation
+  const checkInMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/events/${eventId}/attendance/check-in`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) throw new Error('Failed to check in');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-event', eventId] });
-      queryClient.invalidateQueries({ queryKey: ['moderator-event-registrations', eventId] });
-      toast.success('Attendance updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
+      toast.success('Attendee checked in successfully');
     },
-    onError: () => {
-      toast.error('Failed to update attendance');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to check in attendee');
     },
   });
 
-  const handleMarkAttended = (registrationId: string) => {
-    updateAttendanceMutation.mutate({ registrationId, status: 'ATTENDED' });
+  // Check-out mutation
+  const checkOutMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/events/${eventId}/attendance/check-out`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) throw new Error('Failed to check out');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
+      toast.success('Attendee checked out successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to check out attendee');
+    },
+  });
+
+  const handleCheckIn = (userId: string) => {
+    checkInMutation.mutate(userId);
   };
 
-  const handleMarkNoShow = (registrationId: string) => {
-    updateAttendanceMutation.mutate({ registrationId, status: 'NO_SHOW' });
+  const handleCheckOut = (userId: string) => {
+    checkOutMutation.mutate(userId);
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ATTENDED':
-        return <Badge className="bg-green-500">ATTENDED</Badge>;
-      case 'NO_SHOW':
-        return <Badge variant="destructive">NO SHOW</Badge>;
-      case 'PENDING':
-        return <Badge variant="outline">PENDING</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getStatusBadge = (attendee: Attendee) => {
+    if (attendee.checkOutTime) {
+      return <Badge variant="default" className="bg-green-600" data-testid="attendance-status">Checked Out</Badge>;
     }
+    if (attendee.checkInTime) {
+      return <Badge variant="default" className="bg-blue-600" data-testid="attendance-status">Checked In</Badge>;
+    }
+    if (attendee.rsvpStatus === 'CONFIRMED') {
+      return <Badge variant="outline" data-testid="attendance-status">Confirmed</Badge>;
+    }
+    if (attendee.rsvpStatus === 'WAITLIST') {
+      return <Badge variant="secondary" data-testid="attendance-status">Waitlist</Badge>;
+    }
+    if (attendee.rsvpStatus === 'NO_SHOW') {
+      return <Badge variant="destructive" data-testid="attendance-status">No Show</Badge>;
+    }
+    return <Badge variant="outline" data-testid="attendance-status">{attendee.rsvpStatus}</Badge>;
   };
 
-  if (eventError) {
+  if (eventLoading || attendanceLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive">
-          <AlertDescription>Error loading event. Please try again later.</AlertDescription>
-        </Alert>
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 container mx-auto py-8">
+          <div>Loading...</div>
+        </main>
+        <Footer />
       </div>
     );
   }
 
-  if (eventLoading || registrationsLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
+  const event = eventResponse?.data;
+  const attendees: Attendee[] = attendanceResponse?.data?.attendees || [];
+  
   if (!event) {
-    return null;
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 container mx-auto py-8">
+          <Alert variant="destructive">
+            <AlertDescription>Event not found</AlertDescription>
+          </Alert>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
-  const attendanceRate = event.total_registrations > 0 
-    ? Math.round((event.attended_count / event.total_registrations) * 100) 
-    : 0;
+  const confirmedCount = attendees.filter(a => a.rsvpStatus === 'CONFIRMED').length;
+  const checkedInCount = attendees.filter(a => a.checkInTime).length;
+  const checkedOutCount = attendees.filter(a => a.checkOutTime).length;
+  const attendanceRate = confirmedCount > 0 ? Math.round((checkedInCount / confirmedCount) * 100) : 0;
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      <main className="flex-1 container mx-auto px-4 py-8"
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Event Attendance</h1>
         <p className="text-muted-foreground">Manage event check-ins and track attendance</p>
@@ -144,18 +195,11 @@ export default function EventAttendance() {
             <div>
               <CardTitle className="text-2xl">{event.title}</CardTitle>
               <CardDescription className="mt-2 space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid="event-date">
                   <Calendar className="h-4 w-4" />
-                  {new Date(event.date).toLocaleDateString('en-IN', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {format(new Date(event.eventDate || event.date), 'EEEE, MMMM d, yyyy • h:mm a')}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid="event-location">
                   <MapPin className="h-4 w-4" />
                   {event.location}
                 </div>
@@ -173,30 +217,30 @@ export default function EventAttendance() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
-                Total Registrations
+                Total Confirmed
               </div>
-              <div className="text-2xl font-bold">{event.total_registrations}</div>
+              <div className="text-2xl font-bold" data-testid="attendance-count">{confirmedCount}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                Checked In
+              </div>
+              <div className="text-2xl font-bold text-blue-600">{checkedInCount}</div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                Attended
+                Checked Out
               </div>
-              <div className="text-2xl font-bold text-green-600">{event.attended_count}</div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <XCircle className="h-4 w-4 text-red-500" />
-                No Show
-              </div>
-              <div className="text-2xl font-bold text-red-600">{event.no_show_count}</div>
+              <div className="text-2xl font-bold text-green-600">{checkedOutCount}</div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 Pending
               </div>
-              <div className="text-2xl font-bold">{event.pending_count}</div>
+              <div className="text-2xl font-bold">{confirmedCount - checkedInCount}</div>
             </div>
           </div>
 
@@ -226,74 +270,101 @@ export default function EventAttendance() {
         </Card>
       )}
 
-      {/* Registrations List */}
+      {/* Attendees List */}
       <Card>
         <CardHeader>
-          <CardTitle>Registrations ({registrations.length})</CardTitle>
+          <CardTitle>Attendees ({attendees.length})</CardTitle>
           <CardDescription>View and manage attendee check-ins</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {registrations.map((registration) => (
-              <div
-                key={registration.id}
-                className={`flex items-center justify-between p-4 border rounded-lg ${
-                  registration.no_show_history_count > 1 ? 'border-yellow-500 bg-yellow-50' : ''
-                }`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <div className="font-semibold">{registration.user_name}</div>
-                      <div className="text-sm text-muted-foreground">{registration.user_email}</div>
-                    </div>
-                    {registration.no_show_history_count > 1 && (
-                      <div className="flex items-center gap-1 text-yellow-600 text-sm">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>Frequent no-show ({registration.no_show_history_count} times)</span>
+          <div className="space-y-4" data-testid="attendee-list">
+            {attendees.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No attendees yet
+              </div>
+            ) : (
+              attendees.map((attendee) => (
+                <div
+                  key={attendee.userId}
+                  data-testid="attendee-row"
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <div className="font-semibold" data-testid="attendee-name">{attendee.user.fullName}</div>
+                        <div className="text-sm text-muted-foreground">{attendee.user.email}</div>
                       </div>
-                    )}
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      {attendee.checkInTime && (
+                        <span data-testid="check-in-time">
+                          Checked in: {format(new Date(attendee.checkInTime), 'MMM d, yyyy • h:mm a')}
+                        </span>
+                      )}
+                      {attendee.checkOutTime && (
+                        <span data-testid="check-out-time">
+                          Checked out: {format(new Date(attendee.checkOutTime), 'MMM d, yyyy • h:mm a')}
+                        </span>
+                      )}
+                      {attendee.checkInTime && attendee.checkOutTime && (
+                        <span data-testid="attendance-duration">
+                          Duration: {Math.round((new Date(attendee.checkOutTime).getTime() - new Date(attendee.checkInTime).getTime()) / 60000)} min
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                    <span className="capitalize">{registration.user_role}</span>
-                    <span>Registered: {new Date(registration.registered_at).toLocaleDateString('en-IN')}</span>
-                    {registration.checked_in_at && (
-                      <span>Checked in: {new Date(registration.checked_in_at).toLocaleString('en-IN')}</span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  {getStatusBadge(registration.attendance_status)}
-                  
-                  {registration.attendance_status === 'PENDING' && (
-                    <div className="flex gap-2">
+                  <div className="flex items-center gap-3">
+                    {getStatusBadge(attendee)}
+                    
+                    {attendee.rsvpStatus === 'CONFIRMED' && !attendee.checkInTime && (
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkAttended(registration.id)}
-                        disabled={updateAttendanceMutation.isPending}
+                        variant="default"
+                        data-testid="check-in-button"
+                        onClick={() => handleCheckIn(attendee.userId)}
+                        disabled={checkInMutation.isPending}
                       >
                         <CheckCircle2 className="mr-1 h-4 w-4" />
-                        Mark Attended
+                        Check In
                       </Button>
+                    )}
+
+                    {attendee.checkInTime && !attendee.checkOutTime && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700"
+                        data-testid="check-out-button"
+                        onClick={() => handleCheckOut(attendee.userId)}
+                        disabled={checkOutMutation.isPending}
+                      >
+                        <CheckCircle2 className="mr-1 h-4 w-4" />
+                        Check Out
+                      </Button>
+                    )}
+
+                    {attendee.certificateId && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleMarkNoShow(registration.id)}
-                        disabled={updateAttendanceMutation.isPending}
+                        data-testid="download-certificate"
+                        onClick={() => window.open(`/api/certificates/${attendee.certificateId}/download`, '_blank')}
                       >
-                        <XCircle className="mr-1 h-4 w-4" />
-                        No Show
+                        <Download className="mr-1 h-4 w-4" />
+                        Certificate
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
+      </main>
+      <Footer />
     </div>
   );
 }
