@@ -1,0 +1,94 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - link "Skip to main content" [ref=e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "India Angel Forum" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: India Angel Forum
+        - generic [ref=e10]:
+          - link "For Founders" [ref=e11] [cursor=pointer]:
+            - /url: /founders
+          - link "For Investors" [ref=e12] [cursor=pointer]:
+            - /url: /investors
+          - link "Portfolio" [ref=e13] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Events" [ref=e14] [cursor=pointer]:
+            - /url: /events
+          - link "About" [ref=e15] [cursor=pointer]:
+            - /url: /about
+        - button "admin" [ref=e17] [cursor=pointer]:
+          - img
+          - generic [ref=e18]: admin
+    - main [ref=e19]:
+      - generic [ref=e20]: Loading...
+    - contentinfo [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - heading "India Angel Forum" [level=3] [ref=e25]
+            - paragraph [ref=e26]: India's largest angel network connecting accredited investors with exceptional founders.
+            - paragraph [ref=e27]: A product of Kosansh Solutions Inc
+            - generic [ref=e28]:
+              - link "Follow us on LinkedIn" [ref=e29] [cursor=pointer]:
+                - /url: https://linkedin.com/company/indiaangelforum
+                - img [ref=e30]
+              - link "Follow us on Twitter" [ref=e34] [cursor=pointer]:
+                - /url: https://twitter.com/indiaangelforum
+                - img [ref=e35]
+          - generic [ref=e37]:
+            - heading "For Founders" [level=4] [ref=e38]
+            - list [ref=e39]:
+              - listitem [ref=e40]:
+                - link "Apply for Funding" [ref=e41] [cursor=pointer]:
+                  - /url: /founders#apply
+              - listitem [ref=e42]:
+                - link "How It Works" [ref=e43] [cursor=pointer]:
+                  - /url: /founders#how-it-works
+              - listitem [ref=e44]:
+                - link "Forum Calendar" [ref=e45] [cursor=pointer]:
+                  - /url: /founders#calendar
+          - generic [ref=e46]:
+            - heading "For Investors" [level=4] [ref=e47]
+            - list [ref=e48]:
+              - listitem [ref=e49]:
+                - link "Join as Member" [ref=e50] [cursor=pointer]:
+                  - /url: /investors#join
+              - listitem [ref=e51]:
+                - link "Membership Plans" [ref=e52] [cursor=pointer]:
+                  - /url: /investors#plans
+              - listitem [ref=e53]:
+                - link "Deal Rooms & SPVs" [ref=e54] [cursor=pointer]:
+                  - /url: /investors#deals
+          - generic [ref=e55]:
+            - heading "Company" [level=4] [ref=e56]
+            - list [ref=e57]:
+              - listitem [ref=e58]:
+                - link "About Us" [ref=e59] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e60]:
+                - link "Portfolio" [ref=e61] [cursor=pointer]:
+                  - /url: /portfolio
+              - listitem [ref=e62]:
+                - link "Events" [ref=e63] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e64]:
+                - link "Contact Us" [ref=e65] [cursor=pointer]:
+                  - /url: /contact
+        - generic [ref=e66]:
+          - paragraph [ref=e67]: © 2026 India Angel Forum. All rights reserved.
+          - generic [ref=e68]:
+            - link "Terms & Policies" [ref=e69] [cursor=pointer]:
+              - /url: /terms
+            - link "Privacy Policy" [ref=e70] [cursor=pointer]:
+              - /url: /privacy
+            - link "Code of Conduct" [ref=e71] [cursor=pointer]:
+              - /url: /code-of-conduct
+```

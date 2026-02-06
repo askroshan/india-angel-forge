@@ -1,0 +1,79 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - list
+    - region "Notifications alt+T"
+    - link:
+      - /url: "#main-content"
+      - text: Skip to main content
+    - generic:
+      - generic:
+        - generic:
+          - heading [level=1]: Financial Statements
+          - paragraph: View and download your financial statements with tax details
+        - button [expanded]:
+          - img
+          - text: Generate New Statement
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=3]: Filters
+              - paragraph: Filter statements by year, month, format, or date range
+        - generic:
+          - generic:
+            - generic:
+              - generic: Year
+              - combobox:
+                - generic: All years
+                - img
+            - generic:
+              - generic: Month
+              - combobox:
+                - generic: All months
+                - img
+            - generic:
+              - generic: Format
+              - combobox:
+                - generic: All formats
+                - img
+            - generic:
+              - generic: From Date
+              - textbox
+            - generic:
+              - generic: To Date
+              - textbox
+      - generic:
+        - generic:
+          - generic:
+            - img
+            - paragraph: No statements found
+            - paragraph: Financial statements will appear here once generated
+  - dialog "Generate Financial Statement" [active] [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Generate Financial Statement" [level=2] [ref=e4]
+      - paragraph [ref=e5]: Create a new financial statement for a specific period
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: Date From
+        - textbox "Date From" [ref=e9]: 2025-11-06
+      - generic [ref=e10]:
+        - generic [ref=e11]: Date To
+        - textbox "Date To" [ref=e12]: 2026-02-06
+      - generic [ref=e13]:
+        - generic [ref=e14]: Format
+        - combobox "Format" [ref=e15] [cursor=pointer]:
+          - generic: Summary - Totals only
+          - img [ref=e16]
+      - generic [ref=e18]:
+        - img [ref=e19]
+        - generic [ref=e21]: Generating statement...
+    - generic [ref=e22]:
+      - button "Cancel" [ref=e23] [cursor=pointer]
+      - button "Generate Statement" [ref=e24] [cursor=pointer]
+    - button "Close" [ref=e25] [cursor=pointer]:
+      - img [ref=e26]
+      - generic [ref=e29]: Close
+```
