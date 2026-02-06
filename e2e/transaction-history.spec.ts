@@ -52,7 +52,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
     const startTime = Date.now();
     
     // Navigate to transaction history
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     const loadTime = Date.now() - startTime;
@@ -99,7 +99,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Filter state persists during session
    */
   test('TH-E2E-002: should filter transactions by date range', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Open date filter
@@ -151,7 +151,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Filter interaction time < 500ms
    */
   test('TH-E2E-003: should filter by transaction type', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Open type filter
@@ -202,7 +202,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Status badges display correctly
    */
   test('TH-E2E-004: should filter by transaction status', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Open status filter
@@ -251,7 +251,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Gateway logos/names display correctly
    */
   test('TH-E2E-005: should filter by payment gateway', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Open gateway filter
@@ -294,7 +294,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Currency symbol (₹) displays correctly
    */
   test('TH-E2E-006: should filter by amount range', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Open amount filter
@@ -343,7 +343,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Clear search button works
    */
   test('TH-E2E-007: should search transactions by ID and description', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Verify search box
@@ -359,7 +359,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
     const transactionId = await transactionIdElement.textContent();
     
     // Go back to list
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Search by transaction ID (partial)
@@ -403,7 +403,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - Default sort is "Newest First"
    */
   test('TH-E2E-008: should sort transactions by date and amount', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Verify sort dropdown
@@ -461,7 +461,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - CSV respects current filters
    */
   test('TH-E2E-009: should export transactions to CSV', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Verify export button
@@ -512,7 +512,7 @@ test.describe('Transaction History (US-HISTORY-001)', () => {
    * - PDF respects current filters
    */
   test('TH-E2E-010: should export transactions to PDF', async ({ page }) => {
-    await page.goto('/dashboard/transactions');
+    await page.goto('/transaction-history');
     await page.waitForLoadState('networkidle');
     
     // Verify export button

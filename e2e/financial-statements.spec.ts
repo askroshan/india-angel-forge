@@ -55,7 +55,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    */
   test('FS-E2E-001: should generate detailed financial statement', async ({ page }) => {
     // Navigate to financial statements
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Verify page elements
@@ -132,7 +132,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - Summary PDF is smaller in size
    */
   test('FS-E2E-002: should generate summary financial statement', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Click generate button
@@ -204,7 +204,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - Indian tax formatting (₹ symbol, lakh/crore)
    */
   test('FS-E2E-003: should display tax breakdown in statement', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Check if statements exist
@@ -270,7 +270,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - Email address stored in statement record
    */
   test('FS-E2E-004: should email financial statement', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Ensure at least one statement exists
@@ -337,7 +337,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - PDF includes company branding/logo
    */
   test('FS-E2E-005: should download financial statement PDF', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     const statements = page.locator('[data-testid="statement-item"]');
@@ -402,7 +402,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - Pagination works for many statements
    */
   test('FS-E2E-006: should display statement generation history', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Verify page header
@@ -472,7 +472,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - Filtered results are accurate
    */
   test('FS-E2E-007: should filter statements by date range', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     // Check if statements exist
@@ -542,7 +542,7 @@ test.describe('Financial Statements (US-REPORT-002)', () => {
    * - PDF is in portrait A4 format
    */
   test('FS-E2E-008: should use Indian formatting in PDF', async ({ page }) => {
-    await page.goto('/dashboard/financial-statements');
+    await page.goto('/financial-statements');
     await page.waitForLoadState('networkidle');
     
     const statements = page.locator('[data-testid="statement-item"]');

@@ -91,7 +91,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await expect(page.locator('[data-testid="cancel-rsvp-button"]')).toBeVisible();
     
     // Navigate to user's events
-    await page.goto('/dashboard/my-events');
+    await page.goto('/events');
     await page.waitForLoadState('networkidle');
     
     // Verify event appears in list
@@ -325,7 +325,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.waitForURL('/');
     
     // Navigate to certificates page
-    await page.goto('/dashboard/certificates');
+    await page.goto('/certificates');
     await page.waitForLoadState('networkidle');
     
     // Verify certificate appears in list
@@ -367,7 +367,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/');
     
-    await page.goto('/dashboard/certificates');
+    await page.goto('/certificates');
     await page.waitForLoadState('networkidle');
     
     const certificateItem = page.locator('[data-testid="certificate-item"]').first();
@@ -505,7 +505,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.waitForURL('/');
     
     // Navigate to my events
-    await page.goto('/dashboard/my-events');
+    await page.goto('/events');
     await page.waitForLoadState('networkidle');
     
     // Find upcoming event with CONFIRMED status
@@ -551,7 +551,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await expect(page.locator('[data-testid="rsvp-button"]')).toBeVisible();
     
     // Go back to my events list
-    await page.goto('/dashboard/my-events');
+    await page.goto('/events');
     await page.waitForLoadState('networkidle');
     
     // Verify event status updated in list
@@ -582,7 +582,7 @@ test.describe('Event Attendance Tracking (US-HISTORY-002)', () => {
     await page.waitForURL('/');
     
     // Navigate to certificates page
-    await page.goto('/dashboard/certificates');
+    await page.goto('/certificates');
     await page.waitForLoadState('networkidle');
     
     // Verify certificates list

@@ -51,7 +51,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
     const startTime = Date.now();
     
     // Navigate to activity timeline
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     const loadTime = Date.now() - startTime;
@@ -133,7 +133,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
    * - Filter state persists during session
    */
   test('AT-E2E-002: should filter activities by type', async ({ page }) => {
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     // Verify activity items exist
@@ -213,7 +213,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
    * - Filter interaction time < 500ms
    */
   test('AT-E2E-003: should filter activities by date range', async ({ page }) => {
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     const activityItems = page.locator('[data-testid="activity-item"]');
@@ -303,7 +303,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
    * - Scroll performance is smooth (no jank)
    */
   test('AT-E2E-004: should load more activities with infinite scroll', async ({ page }) => {
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     const activityItems = page.locator('[data-testid="activity-item"]');
@@ -375,7 +375,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
    * - Can collapse activity details
    */
   test('AT-E2E-005: should expand and show activity details', async ({ page }) => {
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     const activityItems = page.locator('[data-testid="activity-item"]');
@@ -483,7 +483,7 @@ test.describe('Activity Timeline (US-HISTORY-003)', () => {
    * - Filename includes date range
    */
   test('AT-E2E-006: should export activity timeline to CSV', async ({ page }) => {
-    await page.goto('/dashboard/activity');
+    await page.goto('/activity');
     await page.waitForLoadState('networkidle');
     
     const activityItems = page.locator('[data-testid="activity-item"]');
