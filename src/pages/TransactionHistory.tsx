@@ -69,7 +69,7 @@ export default function TransactionHistory() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   
   const [filters, setFilters] = useState<Filters>({
     sortBy: 'date',
@@ -118,8 +118,10 @@ export default function TransactionHistory() {
   };
 
   useEffect(() => {
-    fetchTransactions();
-  }, [page, filters.sortBy, filters.sortOrder]);
+    if (token) {
+      fetchTransactions();
+    }
+  }, [page, filters.sortBy, filters.sortOrder, token]);
 
   // Apply filters
   const applyFilters = () => {
@@ -220,7 +222,7 @@ export default function TransactionHistory() {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6" data-testid="transaction-history">
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -292,11 +294,11 @@ export default function TransactionHistory() {
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Types</SelectItem>
-                      <SelectItem value="INVESTMENT" data-testid="type-investment">Investment</SelectItem>
+                      <SelectItem value="DEAL_COMMITMENT" data-testid="type-deal">Deal Commitment</SelectItem>
                       <SelectItem value="MEMBERSHIP_FEE" data-testid="type-membership">Membership Fee</SelectItem>
-                      <SelectItem value="EVENT_FEE" data-testid="type-event">Event Fee</SelectItem>
-                      <SelectItem value="REFUND" data-testid="type-refund">Refund</SelectItem>
+                      <SelectItem value="EVENT_REGISTRATION" data-testid="type-event">Event Registration</SelectItem>
+                      <SelectItem value="SUBSCRIPTION" data-testid="type-subscription">Subscription</SelectItem>
+                      <SelectItem value="OTHER" data-testid="type-other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -309,7 +311,6 @@ export default function TransactionHistory() {
                       <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Statuses</SelectItem>
                       <SelectItem value="PENDING" data-testid="status-pending">Pending</SelectItem>
                       <SelectItem value="COMPLETED" data-testid="status-completed">Completed</SelectItem>
                       <SelectItem value="FAILED" data-testid="status-failed">Failed</SelectItem>
@@ -326,7 +327,6 @@ export default function TransactionHistory() {
                       <SelectValue placeholder="All Gateways" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Gateways</SelectItem>
                       <SelectItem value="RAZORPAY" data-testid="gateway-razorpay">Razorpay</SelectItem>
                       <SelectItem value="STRIPE" data-testid="gateway-stripe">Stripe</SelectItem>
                     </SelectContent>
@@ -441,7 +441,7 @@ export default function TransactionHistory() {
                       <p className="text-sm text-gray-600 mb-1" data-testid="transaction-description">
                         {transaction.description || 'No description'}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400" data-testid="transaction-id">
                         ID: {transaction.id}
                       </p>
                     </div>

@@ -233,7 +233,7 @@ export default function ActivityTimeline() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="activity-timeline-page">
+    <div className="container mx-auto px-4 py-8" data-testid="activity-timeline">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Activity Timeline</h1>
         <p className="text-muted-foreground">
@@ -314,7 +314,7 @@ export default function ActivityTimeline() {
 
       {/* Activity Feed */}
       {activities.length === 0 ? (
-        <Card>
+        <Card data-testid="no-activities">
           <CardContent className="pt-6 text-center">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-lg font-medium mb-2">No activities found</p>
