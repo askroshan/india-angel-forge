@@ -62,6 +62,9 @@ import EventAttendance from "./pages/moderator/EventAttendance";
 import AdvisoryHours from "./pages/operator/AdvisoryHours";
 import AdvisoryProfile from "./pages/operator/AdvisoryProfile";
 import MentorshipHub from "./pages/operator/MentorshipHub";
+import Certificates from "./pages/Certificates";
+import CertificateVerification from "./pages/CertificateVerification";
+import TransactionHistory from "./pages/TransactionHistory";
 
 /**
  * Role definitions for route protection
@@ -322,6 +325,19 @@ const App = () => (
                 <MentorshipHub />
               </ProtectedRoute>
             } />
+            {/* Phase 2 Routes - Transaction History & Certificates */}
+            <Route path="/transaction-history" element={
+              <ProtectedRoute>
+                <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/certificates" element={
+              <ProtectedRoute>
+                <Certificates />
+              </ProtectedRoute>
+            } />
+            {/* Public Certificate Verification - No Auth Required */}
+            <Route path="/verify/:certificateId" element={<CertificateVerification />} />
             {/* Access Denied Page */}
             <Route path="/access-denied" element={<AccessDenied />} />
             {/* Legal & Contact Pages */}
