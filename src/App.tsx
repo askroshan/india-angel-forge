@@ -65,6 +65,7 @@ import MentorshipHub from "./pages/operator/MentorshipHub";
 import Certificates from "./pages/Certificates";
 import CertificateVerification from "./pages/CertificateVerification";
 import TransactionHistory from "./pages/TransactionHistory";
+import FinancialStatements from "./pages/FinancialStatements";
 
 /**
  * Role definitions for route protection
@@ -329,6 +330,11 @@ const App = () => (
             <Route path="/transaction-history" element={
               <ProtectedRoute>
                 <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/financial-statements" element={
+              <ProtectedRoute>
+                <FinancialStatements />
               </ProtectedRoute>
             } />
             <Route path="/certificates" element={

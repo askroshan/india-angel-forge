@@ -20,6 +20,7 @@ import { ExpressAdapter } from '@bull-board/express';
 import paymentsHistoryRouter from './server/routes/payments-history';
 import eventAttendanceRouter from './server/routes/event-attendance';
 import certificatesRouter from './server/routes/certificates';
+import financialStatementsRouter from './server/routes/financial-statements';
 
 dotenv.config();
 
@@ -2068,6 +2069,10 @@ app.use('/api/events', eventAttendanceRouter);
 // ==================== CERTIFICATE ROUTES ====================
 
 app.use('/api/certificates', certificatesRouter);
+
+// ==================== FINANCIAL STATEMENTS ROUTES ====================
+
+app.use('/api/financial-statements', financialStatementsRouter);
 
 // ==================== HEALTH CHECK ====================
 
