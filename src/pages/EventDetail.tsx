@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import EventRegistrationForm from "@/components/events/EventRegistrationForm";
@@ -15,6 +16,7 @@ import {
   EVENT_TYPE_LABELS 
 } from "@/hooks/useEvents";
 import { useWaitlistPosition, useWaitlistCount, useLeaveWaitlist } from "@/hooks/useWaitlist";
+import { useMyRSVP, useRSVPToEvent, useCancelRSVP } from "@/hooks/useEventAttendance";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Calendar, 
@@ -38,13 +40,41 @@ export default function EventDetail() {
   const { data: waitlistEntry } = useWaitlistPosition(event?.id || "");
   const { data: waitlistCount } = useWaitlistCount(event?.id || "");
   const leaveWaitlistMutation = useLeaveWaitlist();
+  const { data: myRSVP } = useMyRSVP(event?.id || "");
+  const rsvpMutation = useRSVPToEvent();
+  const cancelRSVPMutation = useCancelRSVP();
   const { user } = useAuth();
   const [showRegistration, setShowRegistration] = useState(false);
   const [showWaitlist, setShowWaitlist] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState(false);
 
   const isRegistered = myRegistrations?.some(
     r => r.event_id === event?.id && r.status === 'registered'
   );
+
+  const hasRSVP = myRSVP?.data?.attendance?.rsvpStatus === 'CONFIRMED' && !cancelSuccess;
+
+  const handleRSVP = () => {
+    if (event?.id) {
+      rsvpMutation.mutate(event.id);
+    }
+  };
+
+  const handleCancelRSVP = () => {
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancelRSVP = () => {
+    if (event?.id) {
+      cancelRSVPMutation.mutate(event.id, {
+        onSuccess: () => {
+          setShowCancelDialog(false);
+          setCancelSuccess(true);
+        },
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -88,7 +118,8 @@ export default function EventDetail() {
     );
   }
 
-  const formatTime = (time: string) => {
+  const formatTime = (time?: string) => {
+    if (!time) return '';
     const [hours, minutes] = time.split(':');
     const date = new Date();
     date.setHours(parseInt(hours), parseInt(minutes));
@@ -121,9 +152,11 @@ export default function EventDetail() {
       <section className="container mx-auto px-4 pb-8">
         <div className="max-w-4xl">
           <div className="flex flex-wrap gap-2 mb-4">
+            {event.event_type && (
             <Badge variant="outline" className="font-medium">
               {EVENT_TYPE_LABELS[event.event_type]}
             </Badge>
+            )}
             {event.is_featured && (
               <Badge variant="default" className="bg-accent text-accent-foreground gap-1">
                 <Star className="h-3 w-3" />
@@ -141,17 +174,19 @@ export default function EventDetail() {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">{event.title}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4" data-testid="event-title">{event.title}</h1>
           
           <div className="flex flex-wrap gap-6 text-muted-foreground">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="event-date">
               <Calendar className="h-5 w-5 text-accent" />
-              <span>{format(parseISO(event.date), 'EEEE, MMMM d, yyyy')}</span>
+              <span>{format(parseISO(event.eventDate || event.date || new Date().toISOString()), 'EEEE, MMMM d, yyyy')}</span>
             </div>
+            {(event.start_time || event.end_time) && (
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-accent" />
               <span>{formatTime(event.start_time)} - {formatTime(event.end_time)} IST</span>
             </div>
+            )}
           </div>
         </div>
       </section>
@@ -223,7 +258,7 @@ export default function EventDetail() {
             <Card className="sticky top-24">
               <CardContent className="p-6 space-y-6">
                 {/* Venue */}
-                <div>
+                <div data-testid="event-location">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-accent" />
                     Venue
@@ -286,12 +321,49 @@ export default function EventDetail() {
                 {/* Registration Button */}
                 {event.status === 'upcoming' && (
                   <>
-                    {isRegistered ? (
-                      <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="font-medium text-green-700 dark:text-green-300">
-                          You're registered!
-                        </span>
+                    {cancelSuccess ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800" data-testid="rsvp-status">
+                          <span className="font-medium text-red-700 dark:text-red-300">
+                            Cancelled
+                          </span>
+                        </div>
+                        <div className="text-sm text-red-600 text-center" data-testid="cancel-success">
+                          Your RSVP has been cancelled
+                        </div>
+                        <Button 
+                          variant="accent" 
+                          size="lg" 
+                          className="w-full"
+                          onClick={() => { setCancelSuccess(false); handleRSVP(); }}
+                          data-testid="rsvp-button"
+                        >
+                          Register Again
+                        </Button>
+                      </div>
+                    ) : (isRegistered || hasRSVP) ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800" data-testid="rsvp-status">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-medium text-green-700 dark:text-green-300">
+                            Confirmed
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-600 text-center" data-testid="rsvp-success-message">
+                          You're registered for this event!
+                        </div>
+                        {hasRSVP && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            data-testid="cancel-rsvp-button"
+                            onClick={handleCancelRSVP}
+                            disabled={cancelRSVPMutation.isPending}
+                          >
+                            Cancel RSVP
+                          </Button>
+                        )}
                       </div>
                     ) : waitlistEntry ? (
                       <div className="space-y-3">
@@ -321,7 +393,9 @@ export default function EventDetail() {
                         variant="accent" 
                         size="lg" 
                         className="w-full"
-                        onClick={() => setShowRegistration(true)}
+                        onClick={handleRSVP}
+                        data-testid="rsvp-button"
+                        disabled={rsvpMutation.isPending}
                       >
                         Register Now
                       </Button>
@@ -377,6 +451,31 @@ export default function EventDetail() {
         open={showWaitlist}
         onOpenChange={setShowWaitlist}
       />
+
+      {/* Cancel RSVP Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent data-testid="cancel-confirmation-dialog">
+          <DialogHeader>
+            <DialogTitle>Cancel RSVP</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your RSVP for this event? This action can be undone by registering again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Keep RSVP
+            </Button>
+            <Button
+              variant="destructive"
+              data-testid="confirm-cancel"
+              onClick={confirmCancelRSVP}
+              disabled={cancelRSVPMutation.isPending}
+            >
+              {cancelRSVPMutation.isPending ? 'Cancelling...' : 'Yes, Cancel RSVP'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

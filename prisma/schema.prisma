@@ -19,32 +19,45 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  roles                 UserRole[]
-  founderApplications   FounderApplication[]
-  investorApplications  InvestorApplication[]
-  eventRegistrations    EventRegistration[]
-  eventWaitlist         EventWaitlist[]
-  companyProfiles       CompanyProfile[]
-  pitchSessions         PitchSession[]
-  pitchMaterials        PitchMaterial[]
-  portfolioCompanies    PortfolioCompany[]
-  portfolioUpdates      PortfolioUpdate[]
-  sharedDocuments       SharedDocument[]
-  deals                 Deal[]
-  dueDiligenceItems     DueDiligenceItem[]
-  spvs                  Spv[]
-  spvMemberships        SpvMember[]
-  dealInterests         DealInterest[]
-  dealDocuments         DealDocument[]
-  investmentCommitments InvestmentCommitment[]
+  roles                  UserRole[]
+  founderApplications    FounderApplication[]
+  investorApplications   InvestorApplication[]
+  eventRegistrations     EventRegistration[]
+  eventWaitlist          EventWaitlist[]
+  companyProfiles        CompanyProfile[]
+  pitchSessions          PitchSession[]
+  pitchMaterials         PitchMaterial[]
+  portfolioCompanies     PortfolioCompany[]
+  portfolioUpdates       PortfolioUpdate[]
+  sharedDocuments        SharedDocument[]
+  deals                  Deal[]
+  dueDiligenceItems      DueDiligenceItem[]
+  spvs                   Spv[]
+  spvMemberships         SpvMember[]
+  dealInterests          DealInterest[]
+  dealDocuments          DealDocument[]
+  investmentCommitments  InvestmentCommitment[]
   // New relations
-  kycDocuments          KYCDocument[]
-  amlScreenings         AMLScreening[]
-  accreditations        Accreditation[]
-  documents             Document[]
-  companies             Company[]              @relation("FounderCompany")
-  commitments           Commitment[]
-  auditLogs             AuditLog[]
+  kycDocuments           KYCDocument[]
+  amlScreenings          AMLScreening[]
+  accreditations         Accreditation[]
+  documents              Document[]
+  companies              Company[]               @relation("FounderCompany")
+  commitments            Commitment[]
+  auditLogs              AuditLog[]
+  payments               Payment[]
+  paymentMethods         PaymentMethod[]
+  emailLogs              EmailLog[]
+  invoices               Invoice[]
+  notificationPreference NotificationPreference?
+  sentMessages           Message[]               @relation("SentMessages")
+  threadsAsParticipant1  MessageThread[]         @relation("ThreadsAsParticipant1")
+  threadsAsParticipant2  MessageThread[]         @relation("ThreadsAsParticipant2")
+  activityLogs           ActivityLog[]
+  // Phase 2 relations
+  eventAttendance        EventAttendance[]
+  certificates           Certificate[]
+  financialStatements    FinancialStatement[]
 
   @@map("users")
 }
@@ -70,12 +83,18 @@ model Event {
   capacity             Int?
   registrationDeadline DateTime? @map("registration_deadline")
   status               String    @default("upcoming")
+  eventTypeId          String?   @map("event_type_id")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
+  eventType     EventType?          @relation(fields: [eventTypeId], references: [id])
   registrations EventRegistration[]
   waitlist      EventWaitlist[]
+  // Phase 2 relations
+  attendance    EventAttendance[]
+  certificates  Certificate[]
 
+  @@index([eventTypeId])
   @@map("events")
 }
 
@@ -140,8 +159,13 @@ model FounderApplication {
   reviewedBy     String?   @map("reviewed_by")
   reviewNotes    String?   @map("review_notes")
   submittedAt    DateTime  @default(now()) @map("submitted_at")
+  metadata       Json?
 
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  industryDetail Industry?     @relation(fields: [industryId], references: [id])
+  industryId     String?
+  fundingStage   FundingStage? @relation(fields: [fundingStageId], references: [id])
+  fundingStageId String?
 
   @@map("founder_applications")
 }
@@ -163,6 +187,7 @@ model InvestorApplication {
   reviewedBy           String?   @map("reviewed_by")
   reviewNotes          String?   @map("review_notes")
   submittedAt          DateTime  @default(now()) @map("submitted_at")
+  metadata             Json?
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -188,6 +213,10 @@ model CompanyProfile {
   founder            User               @relation(fields: [founderId], references: [id], onDelete: Cascade)
   fundraisingRounds  FundraisingRound[]
   portfolioCompanies PortfolioCompany[]
+  industryDetail     Industry?          @relation(fields: [industryId], references: [id])
+  industryId         String?
+  fundingStage       FundingStage?      @relation(fields: [fundingStageId], references: [id])
+  fundingStageId     String?
 
   @@unique([founderId])
   @@map("company_profiles")
@@ -312,6 +341,10 @@ model Deal {
   dealInterests     DealInterest[]
   dealDocuments     DealDocument[]
   commitments       Commitment[]
+  industryDetail    Industry?          @relation(fields: [industryId], references: [id])
+  industryId        String?
+  fundingStage      FundingStage?      @relation(fields: [fundingStageId], references: [id])
+  fundingStageId    String?
 
   @@map("deals")
 }
@@ -555,4 +588,546 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+// ==================== PAYMENT SYSTEM ====================
+
+enum PaymentGateway {
+  RAZORPAY
+  PAYU
+  PAYTM
+  CCAVENUE
+  INSTAMOJO
+  STRIPE
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentType {
+  MEMBERSHIP_FEE
+  DEAL_COMMITMENT
+  EVENT_REGISTRATION
+  SUBSCRIPTION
+  OTHER
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+  NET_BANKING
+  UPI
+  WALLET
+  INTERNATIONAL_CARD
+  BANK_TRANSFER
+}
+
+model Payment {
+  id               String         @id @default(uuid())
+  userId           String         @map("user_id")
+  amount           Decimal        @db.Decimal(15, 2)
+  currency         String         @default("INR")
+  gateway          PaymentGateway
+  status           PaymentStatus  @default(PENDING)
+  type             PaymentType
+  gatewayOrderId   String?        @unique @map("gateway_order_id")
+  gatewayPaymentId String?        @unique @map("gateway_payment_id")
+  gatewaySignature String?        @map("gateway_signature")
+  description      String?
+  metadata         Json?
+  failureReason    String?        @map("failure_reason")
+  refundAmount     Decimal?       @map("refund_amount") @db.Decimal(15, 2)
+  refundReason     String?        @map("refund_reason")
+  refundedAt       DateTime?      @map("refunded_at")
+  ipAddress        String?        @map("ip_address")
+  userAgent        String?        @map("user_agent")
+  encryptedData    String?        @map("encrypted_data") // Encrypted sensitive info
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  completedAt      DateTime?      @map("completed_at")
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String?        @map("payment_method_id")
+  invoice         Invoice?
+
+  @@index([userId])
+  @@index([status])
+  @@index([gateway])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("payments")
+}
+
+model PaymentMethod {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  type              PaymentMethodType
+  isDefault         Boolean           @default(false) @map("is_default")
+  lastFourDigits    String?           @map("last_four_digits") // Last 4 digits of card
+  cardBrand         String?           @map("card_brand") // Visa, Mastercard, etc.
+  expiryMonth       Int?              @map("expiry_month")
+  expiryYear        Int?              @map("expiry_year")
+  bankName          String?           @map("bank_name")
+  upiId             String?           @map("upi_id")
+  encryptedToken    String?           @map("encrypted_token") // Encrypted payment token
+  gatewayCustomerId String?           @map("gateway_customer_id")
+  gateway           PaymentGateway
+  isActive          Boolean           @default(true) @map("is_active")
+  metadata          Json?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+  @@index([gateway])
+  @@map("payment_methods")
+}
+
+model PaymentWebhook {
+  id           String         @id @default(uuid())
+  gateway      PaymentGateway
+  eventType    String         @map("event_type")
+  eventId      String?        @unique @map("event_id")
+  payload      Json
+  signature    String?
+  isVerified   Boolean        @default(false) @map("is_verified")
+  isProcessed  Boolean        @default(false) @map("is_processed")
+  processedAt  DateTime?      @map("processed_at")
+  errorMessage String?        @map("error_message")
+  retryCount   Int            @default(0) @map("retry_count")
+  ipAddress    String?        @map("ip_address")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([gateway])
+  @@index([eventType])
+  @@index([isProcessed])
+  @@index([createdAt])
+  @@map("payment_webhooks")
+}
+
+model PaymentRefund {
+  id              String    @id @default(uuid())
+  paymentId       String    @map("payment_id")
+  amount          Decimal   @db.Decimal(15, 2)
+  reason          String
+  status          String    @default("pending")
+  gatewayRefundId String?   @unique @map("gateway_refund_id")
+  processedBy     String?   @map("processed_by")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  processedAt     DateTime? @map("processed_at")
+
+  @@index([paymentId])
+  @@index([status])
+  @@map("payment_refunds")
+}
+
+// ==================== TAX & COMPLIANCE ====================
+
+model TaxInformation {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  panNumber      String?   @unique @map("pan_number") // Indian PAN
+  gstNumber      String?   @map("gst_number") // GST Number
+  tanNumber      String?   @map("tan_number") // TAN for TDS
+  taxCountry     String    @default("IN") @map("tax_country")
+  taxIdType      String?   @map("tax_id_type") // SSN, TIN, etc. for international
+  taxId          String?   @map("tax_id")
+  isNRI          Boolean   @default(false) @map("is_nri")
+  nriCountry     String?   @map("nri_country")
+  tdsCertificate String?   @map("tds_certificate") // Form 15CA/15CB for NRI
+  form60Filed    Boolean   @default(false) @map("form60_filed") // If PAN not available
+  form60Number   String?   @map("form60_number")
+  encryptedData  String?   @map("encrypted_data")
+  verifiedAt     DateTime? @map("verified_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("tax_information")
+}
+
+// ==================== REFERENCE DATA (SEED DATA SINGLE SOURCE OF TRUTH) ====================
+
+model Industry {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  code         String   @unique
+  description  String?
+  icon         String?
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  founderApplications FounderApplication[]
+  companyProfiles     CompanyProfile[]
+  deals               Deal[]
+
+  @@index([isActive, displayOrder])
+  @@map("industries")
+}
+
+model FundingStage {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  code         String   @unique
+  description  String?
+  typicalMin   Decimal? @map("typical_min") @db.Decimal(15, 2)
+  typicalMax   Decimal? @map("typical_max") @db.Decimal(15, 2)
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  founderApplications FounderApplication[]
+  companyProfiles     CompanyProfile[]
+  deals               Deal[]
+
+  @@index([isActive, displayOrder])
+  @@map("funding_stages")
+}
+
+model EventType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  events Event[]
+
+  @@index([isActive])
+  @@map("event_types")
+}
+
+// ==================== EMAIL & NOTIFICATIONS ====================
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  subject   String
+  htmlBody  String   @map("html_body") @db.Text
+  textBody  String?  @map("text_body") @db.Text
+  variables Json?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id           String      @id @default(cuid())
+  userId       String?     @map("user_id")
+  to           String
+  subject      String
+  templateName String?     @map("template_name")
+  status       EmailStatus
+  provider     String      @default("emailit")
+  providerId   String?     @map("provider_id")
+  error        String?
+  sentAt       DateTime    @default(now()) @map("sent_at")
+  openedAt     DateTime?   @map("opened_at")
+  clickedAt    DateTime?   @map("clicked_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([sentAt])
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  FAILED
+  BOUNCED
+}
+
+model NotificationPreference {
+  id                String                @id @default(cuid())
+  userId            String                @unique @map("user_id")
+  emailPayments     Boolean               @default(true) @map("email_payments")
+  emailMessages     Boolean               @default(true) @map("email_messages")
+  emailEvents       Boolean               @default(true) @map("email_events")
+  emailApplications Boolean               @default(true) @map("email_applications")
+  emailDeals        Boolean               @default(true) @map("email_deals")
+  emailMarketing    Boolean               @default(false) @map("email_marketing")
+  inAppMessages     Boolean               @default(true) @map("inapp_messages")
+  inAppEvents       Boolean               @default(true) @map("inapp_events")
+  inAppPayments     Boolean               @default(true) @map("inapp_payments")
+  inAppApplications Boolean               @default(true) @map("inapp_applications")
+  emailFrequency    NotificationFrequency @default(IMMEDIATE) @map("email_frequency")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  DAILY_DIGEST
+  WEEKLY_DIGEST
+  NONE
+}
+
+// ==================== INVOICES ====================
+
+model Invoice {
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique @map("invoice_number")
+  userId         String        @map("user_id")
+  paymentId      String        @unique @map("payment_id")
+  issueDate      DateTime      @default(now()) @map("issue_date")
+  dueDate        DateTime?     @map("due_date")
+  buyerName      String        @map("buyer_name")
+  buyerEmail     String        @map("buyer_email")
+  buyerPhone     String?       @map("buyer_phone")
+  buyerPAN       String?       @map("buyer_pan")
+  buyerAddress   String?       @map("buyer_address")
+  sellerName     String        @default("India Angel Forum") @map("seller_name")
+  sellerGST      String?       @map("seller_gst")
+  sellerPAN      String?       @map("seller_pan")
+  sellerAddress  String?       @map("seller_address")
+  lineItems      Json          @map("line_items")
+  subtotal       Decimal       @db.Decimal(15, 2)
+  cgst           Decimal       @default(0) @db.Decimal(15, 2)
+  sgst           Decimal       @default(0) @db.Decimal(15, 2)
+  igst           Decimal       @default(0) @db.Decimal(15, 2)
+  tds            Decimal       @default(0) @db.Decimal(15, 2)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(15, 2)
+  pdfPath        String?       @map("pdf_path")
+  pdfGeneratedAt DateTime?     @map("pdf_generated_at")
+  status         InvoiceStatus @default(DRAFT)
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([issueDate])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+// ==================== MESSAGING ====================
+
+model Message {
+  id          String    @id @default(cuid())
+  threadId    String    @map("thread_id")
+  senderId    String    @map("sender_id")
+  content     String    @db.Text
+  attachments Json?
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at")
+  isEdited    Boolean   @default(false) @map("is_edited")
+  editedAt    DateTime? @map("edited_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User          @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([threadId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model MessageThread {
+  id                 String    @id @default(cuid())
+  subject            String?
+  participant1Id     String    @map("participant1_id")
+  participant2Id     String    @map("participant2_id")
+  isBlocked          Boolean   @default(false) @map("is_blocked")
+  blockedBy          String?   @map("blocked_by")
+  blockedAt          DateTime? @map("blocked_at")
+  lastMessageAt      DateTime  @default(now()) @map("last_message_at")
+  lastMessagePreview String?   @map("last_message_preview")
+  unreadCountP1      Int       @default(0) @map("unread_count_p1")
+  unreadCountP2      Int       @default(0) @map("unread_count_p2")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  participant1 User      @relation("ThreadsAsParticipant1", fields: [participant1Id], references: [id])
+  participant2 User      @relation("ThreadsAsParticipant2", fields: [participant2Id], references: [id])
+  messages     Message[]
+
+  @@unique([participant1Id, participant2Id])
+  @@index([participant1Id, lastMessageAt])
+  @@index([participant2Id, lastMessageAt])
+  @@map("message_threads")
+}
+
+// ==================== ACTIVITY LOGS ====================
+
+model ActivityLog {
+  id           String       @id @default(cuid())
+  userId       String       @map("user_id")
+  activityType ActivityType @map("activity_type")
+  entityType   String       @map("entity_type")
+  entityId     String       @map("entity_id")
+  description  String
+  metadata     Json?
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([activityType, createdAt])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+enum ActivityType {
+  PAYMENT_CREATED
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  PAYMENT_REFUNDED
+  EVENT_REGISTERED
+  EVENT_ATTENDED
+  EVENT_CANCELLED
+  APPLICATION_SUBMITTED
+  APPLICATION_APPROVED
+  APPLICATION_REJECTED
+  DEAL_INTEREST_EXPRESSED
+  DEAL_COMMITTED
+  MESSAGE_SENT
+  MESSAGE_RECEIVED
+  DOCUMENT_UPLOADED
+  DOCUMENT_SHARED
+  CERTIFICATE_ISSUED
+  STATEMENT_GENERATED
+  PROFILE_UPDATED
+}
+
+// ==================== EVENT ATTENDANCE ====================
+
+model EventAttendance {
+  id               String            @id @default(cuid())
+  userId           String            @map("user_id")
+  eventId          String            @map("event_id")
+  rsvpStatus       RsvpStatus        @default(CONFIRMED) @map("rsvp_status")
+  attendanceStatus AttendanceStatus? @map("attendance_status")
+  checkInTime      DateTime?         @map("check_in_time")
+  checkOutTime     DateTime?         @map("check_out_time")
+  certificateId    String?           @unique @map("certificate_id")
+  certificateUrl   String?           @map("certificate_url")
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  certificate Certificate?
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([rsvpStatus])
+  @@index([attendanceStatus])
+  @@map("event_attendance")
+}
+
+enum RsvpStatus {
+  CONFIRMED
+  WAITLIST
+  CANCELLED
+  NO_SHOW
+}
+
+enum AttendanceStatus {
+  ATTENDED
+  PARTIAL
+  ABSENT
+}
+
+// ==================== CERTIFICATES ====================
+
+model Certificate {
+  id              String   @id @default(cuid())
+  certificateId   String   @unique @map("certificate_id") // CERT-2026-001234
+  userId          String   @map("user_id")
+  eventId         String   @map("event_id")
+  attendeeName    String   @map("attendee_name")
+  eventName       String   @map("event_name")
+  eventDate       DateTime @map("event_date")
+  duration        Int // minutes
+  pdfUrl          String   @map("pdf_url")
+  verificationUrl String   @map("verification_url")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendance EventAttendance? @relation(fields: [certificateId], references: [certificateId])
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([certificateId])
+  @@map("certificates")
+}
+
+// ==================== FINANCIAL STATEMENTS ====================
+
+model FinancialStatement {
+  id              String    @id @default(cuid())
+  statementNumber String    @unique @map("statement_number") // FS-2026-02-00001
+  userId          String    @map("user_id")
+  dateFrom        DateTime  @map("date_from")
+  dateTo          DateTime  @map("date_to")
+  month           Int // 1-12
+  year            Int // 2024, 2025, etc.
+  totalInvested   Decimal   @default(0) @map("total_invested") @db.Decimal(15, 2)
+  totalRefunded   Decimal   @default(0) @map("total_refunded") @db.Decimal(15, 2)
+  netInvestment   Decimal   @default(0) @map("net_investment") @db.Decimal(15, 2)
+  totalTax        Decimal   @default(0) @map("total_tax") @db.Decimal(15, 2)
+  cgst            Decimal   @default(0) @db.Decimal(15, 2) // 9% CGST
+  sgst            Decimal   @default(0) @db.Decimal(15, 2) // 9% SGST
+  igst            Decimal   @default(0) @db.Decimal(15, 2) // 18% IGST
+  tds             Decimal   @default(0) @db.Decimal(15, 2) // 1% TDS
+  format          String    @default("detailed") // detailed | summary
+  pdfUrl          String    @map("pdf_url")
+  emailedTo       String[]  @default([]) @map("emailed_to")
+  emailedAt       DateTime? @map("emailed_at") // When last emailed
+  generatedAt     DateTime  @default(now()) @map("generated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([dateFrom])
+  @@index([dateTo])
+  @@index([month])
+  @@index([year])
+  @@index([generatedAt])
+  @@map("financial_statements")
 }

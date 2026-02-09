@@ -100,7 +100,7 @@ export default function DealsPage() {
 
     if (appResponse.ok) {
       const application = await appResponse.json();
-      if (!application || application.status !== 'approved') {
+      if (!application || application.status?.toLowerCase() !== 'approved') {
         toast({
           title: 'Access Restricted',
           description: 'Please complete your investor application first',

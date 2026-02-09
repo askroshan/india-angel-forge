@@ -1,0 +1,177 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - link "Skip to main content" [ref=e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e7]:
+        - link "India Angel Forum" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: India Angel Forum
+        - generic [ref=e10]:
+          - link "For Founders" [ref=e11] [cursor=pointer]:
+            - /url: /founders
+          - link "For Investors" [ref=e12] [cursor=pointer]:
+            - /url: /investors
+          - link "Portfolio" [ref=e13] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Events" [ref=e14] [cursor=pointer]:
+            - /url: /events
+            - text: Events
+          - link "About" [ref=e16] [cursor=pointer]:
+            - /url: /about
+        - button "investor.standard" [ref=e18] [cursor=pointer]:
+          - img
+          - generic [ref=e19]: investor.standard
+    - generic [ref=e22]:
+      - heading "Events & Forums" [level=1] [ref=e23]
+      - paragraph [ref=e24]: Connect with founders and investors at our monthly forums and sector summits
+    - generic [ref=e27]:
+      - generic [ref=e29]:
+        - img [ref=e30]
+        - heading "Monthly Forums" [level=3] [ref=e32]
+        - paragraph [ref=e33]: Regular pitch events where 6-8 curated startups present to our member network
+        - generic [ref=e34]:
+          - generic [ref=e35]: "Frequency: Monthly"
+          - generic [ref=e36]: "Format: Hybrid (In-person + Virtual)"
+      - generic [ref=e38]:
+        - img [ref=e39]
+        - heading "Sector Summits" [level=3] [ref=e42]
+        - paragraph [ref=e43]: Deep-dive sessions on specific sectors with expert panels and networking
+        - generic [ref=e44]:
+          - generic [ref=e45]: "Frequency: Quarterly"
+          - generic [ref=e46]: "Format: In-person"
+      - generic [ref=e48]:
+        - img [ref=e49]
+        - heading "Angel Education" [level=3] [ref=e51]
+        - paragraph [ref=e52]: Workshops and bootcamps on angel investing, due diligence, and portfolio management
+        - generic [ref=e53]:
+          - generic [ref=e54]: "Frequency: Ongoing"
+          - generic [ref=e55]: "Format: Hybrid"
+      - generic [ref=e57]:
+        - img [ref=e58]
+        - heading "Portfolio Gatherings" [level=3] [ref=e64]
+        - paragraph [ref=e65]: Exclusive events for our portfolio companies and investor members
+        - generic [ref=e66]:
+          - generic [ref=e67]: "Frequency: Quarterly"
+          - generic [ref=e68]: "Format: In-person"
+    - heading "My Registrations" [level=3] [ref=e73]
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - heading "Browse Events" [level=2] [ref=e81]
+        - tablist [ref=e82]:
+          - tab "Upcoming" [selected] [ref=e83] [cursor=pointer]:
+            - img [ref=e84]
+            - text: Upcoming
+          - tab "Past Events" [ref=e86] [cursor=pointer]:
+            - img [ref=e87]
+            - text: Past Events
+      - tabpanel "Upcoming" [ref=e91]:
+        - generic [ref=e92]:
+          - paragraph [ref=e93]: No upcoming events scheduled at the moment.
+          - paragraph [ref=e94]: Check back soon or subscribe to our newsletter for updates.
+    - generic [ref=e97]:
+      - generic [ref=e98]:
+        - heading "How Our Forums Work" [level=2] [ref=e99]
+        - paragraph [ref=e100]: A structured format designed for efficiency and impact
+      - generic [ref=e101]:
+        - generic [ref=e102]:
+          - generic [ref=e103]: "1"
+          - generic [ref=e104]:
+            - heading "Pre-Event Materials" [level=3] [ref=e105]
+            - paragraph [ref=e106]: Members receive pitch decks and exec summaries 48 hours before the forum
+        - generic [ref=e107]:
+          - generic [ref=e108]: "2"
+          - generic [ref=e109]:
+            - heading "Company Presentations" [level=3] [ref=e110]
+            - paragraph [ref=e111]: Each startup gets 10 minutes to pitch followed by 15 minutes of Q&A
+        - generic [ref=e112]:
+          - generic [ref=e113]: "3"
+          - generic [ref=e114]:
+            - heading "Member Discussion" [level=3] [ref=e115]
+            - paragraph [ref=e116]: Angels gather to discuss opportunities and form diligence pods
+        - generic [ref=e117]:
+          - generic [ref=e118]: "4"
+          - generic [ref=e119]:
+            - heading "Networking" [level=3] [ref=e120]
+            - paragraph [ref=e121]: Informal networking session with founders and fellow investors
+        - generic [ref=e122]:
+          - generic [ref=e123]: "5"
+          - generic [ref=e124]:
+            - heading "Follow-up" [level=3] [ref=e125]
+            - paragraph [ref=e126]: Interested angels schedule deep-dive sessions with founding teams
+    - generic [ref=e129]:
+      - heading "Join Our Next Event" [level=2] [ref=e130]
+      - paragraph [ref=e131]: Become a member to access all our forums and summits
+      - generic [ref=e132]:
+        - link "Become a Member" [ref=e133] [cursor=pointer]:
+          - /url: /investors#plans
+        - button "View All Events" [ref=e134] [cursor=pointer]
+    - contentinfo [ref=e135]:
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - heading "India Angel Forum" [level=3] [ref=e139]
+            - paragraph [ref=e140]: India's largest angel network connecting accredited investors with exceptional founders.
+            - paragraph [ref=e141]: A product of Kosansh Solutions Inc
+            - generic [ref=e142]:
+              - link "Follow us on LinkedIn" [ref=e143] [cursor=pointer]:
+                - /url: https://linkedin.com/company/indiaangelforum
+                - img [ref=e144]
+              - link "Follow us on Twitter" [ref=e148] [cursor=pointer]:
+                - /url: https://twitter.com/indiaangelforum
+                - img [ref=e149]
+          - generic [ref=e151]:
+            - heading "For Founders" [level=4] [ref=e152]
+            - list [ref=e153]:
+              - listitem [ref=e154]:
+                - link "Apply for Funding" [ref=e155] [cursor=pointer]:
+                  - /url: /founders#apply
+              - listitem [ref=e156]:
+                - link "How It Works" [ref=e157] [cursor=pointer]:
+                  - /url: /founders#how-it-works
+              - listitem [ref=e158]:
+                - link "Forum Calendar" [ref=e159] [cursor=pointer]:
+                  - /url: /founders#calendar
+          - generic [ref=e160]:
+            - heading "For Investors" [level=4] [ref=e161]
+            - list [ref=e162]:
+              - listitem [ref=e163]:
+                - link "Join as Member" [ref=e164] [cursor=pointer]:
+                  - /url: /investors#join
+              - listitem [ref=e165]:
+                - link "Membership Plans" [ref=e166] [cursor=pointer]:
+                  - /url: /investors#plans
+              - listitem [ref=e167]:
+                - link "Deal Rooms & SPVs" [ref=e168] [cursor=pointer]:
+                  - /url: /investors#deals
+          - generic [ref=e169]:
+            - heading "Company" [level=4] [ref=e170]
+            - list [ref=e171]:
+              - listitem [ref=e172]:
+                - link "About Us" [ref=e173] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e174]:
+                - link "Portfolio" [ref=e175] [cursor=pointer]:
+                  - /url: /portfolio
+              - listitem [ref=e176]:
+                - link "Events" [ref=e177] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e178]:
+                - link "Contact Us" [ref=e179] [cursor=pointer]:
+                  - /url: /contact
+        - generic [ref=e180]:
+          - paragraph [ref=e181]: © 2026 India Angel Forum. All rights reserved.
+          - generic [ref=e182]:
+            - link "Terms & Policies" [ref=e183] [cursor=pointer]:
+              - /url: /terms
+            - link "Privacy Policy" [ref=e184] [cursor=pointer]:
+              - /url: /privacy
+            - link "Code of Conduct" [ref=e185] [cursor=pointer]:
+              - /url: /code-of-conduct
+```

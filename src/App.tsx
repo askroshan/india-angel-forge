@@ -56,12 +56,22 @@ import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
+import AdminEvents from "./pages/admin/AdminEvents";
+import AttendanceStatistics from "./pages/admin/AttendanceStatistics";
+import ApplicationReview from "./pages/admin/ApplicationReview";
+import SystemStatistics from "./pages/admin/SystemStatistics";
+import DirectMessages from "./pages/investor/DirectMessages";
 import ApplicationScreening from "./pages/moderator/ApplicationScreening";
 import ContentModeration from "./pages/moderator/ContentModeration";
 import EventAttendance from "./pages/moderator/EventAttendance";
 import AdvisoryHours from "./pages/operator/AdvisoryHours";
 import AdvisoryProfile from "./pages/operator/AdvisoryProfile";
 import MentorshipHub from "./pages/operator/MentorshipHub";
+import Certificates from "./pages/Certificates";
+import CertificateVerification from "./pages/CertificateVerification";
+import TransactionHistory from "./pages/TransactionHistory";
+import FinancialStatements from "./pages/FinancialStatements";
+import ActivityTimeline from "./pages/ActivityTimeline";
 
 /**
  * Role definitions for route protection
@@ -136,6 +146,7 @@ const App = () => (
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/verify-certificate" element={<CertificateVerification />} />
             <Route path="/membership" element={
               <ProtectedRoute>
                 <Membership />
@@ -222,6 +233,11 @@ const App = () => (
                 <DueDiligenceChecklist />
               </ProtectedRoute>
             } />
+            <Route path="/investor/messages" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <DirectMessages />
+              </ProtectedRoute>
+            } />
             {/* Founder Routes */}
             <Route path="/founder/application-status" element={
               <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
@@ -285,9 +301,29 @@ const App = () => (
                 <UserRoleManagement />
               </ProtectedRoute>
             } />
+            <Route path="/admin/events" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <AdminEvents />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/events/statistics" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <AttendanceStatistics />
+              </ProtectedRoute>
+            } />
             <Route path="/admin/audit-logs" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AuditLogs />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/applications" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ApplicationReview />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/statistics" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <SystemStatistics />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}
@@ -301,7 +337,7 @@ const App = () => (
                 <ContentModeration />
               </ProtectedRoute>
             } />
-            <Route path="/moderator/events" element={
+            <Route path="/moderator/events/:eventId/attendance" element={
               <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
                 <EventAttendance />
               </ProtectedRoute>
@@ -322,6 +358,29 @@ const App = () => (
                 <MentorshipHub />
               </ProtectedRoute>
             } />
+            {/* Phase 2 Routes - Transaction History & Certificates */}
+            <Route path="/transaction-history" element={
+              <ProtectedRoute>
+                <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/financial-statements" element={
+              <ProtectedRoute>
+                <FinancialStatements />
+              </ProtectedRoute>
+            } />
+            <Route path="/certificates" element={
+              <ProtectedRoute>
+                <Certificates />
+              </ProtectedRoute>
+            } />
+            <Route path="/activity" element={
+              <ProtectedRoute>
+                <ActivityTimeline />
+              </ProtectedRoute>
+            } />
+            {/* Public Certificate Verification - No Auth Required */}
+            <Route path="/verify/:certificateId" element={<CertificateVerification />} />
             {/* Access Denied Page */}
             <Route path="/access-denied" element={<AccessDenied />} />
             {/* Legal & Contact Pages */}

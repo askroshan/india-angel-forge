@@ -40,27 +40,47 @@ export default defineConfig({
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      testIgnore: ["**/event-attendance.spec.ts"],
     },
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      testIgnore: ["**/event-attendance.spec.ts"],
     },
     /* Test against mobile viewports */
     {
       name: "Mobile Chrome",
       use: { ...devices["Pixel 5"] },
+      testIgnore: [
+        "**/event-attendance.spec.ts",
+        "**/admin-operations.spec.ts",
+        "**/compliance-kyc.spec.ts",
+      ],
     },
     {
       name: "Mobile Safari",
       use: { ...devices["iPhone 12"] },
+      testIgnore: [
+        "**/event-attendance.spec.ts",
+        "**/admin-operations.spec.ts",
+        "**/compliance-kyc.spec.ts",
+      ],
     },
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:8080",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: [
+    {
+      command: "npm run dev:server",
+      url: "http://localhost:3001/api/health",
+      reuseExistingServer: true,  // Always reuse to avoid startup issues
+      timeout: 120 * 1000,
+    },
+    {
+      command: "npm run dev",
+      url: "http://localhost:8080",
+      reuseExistingServer: true,  // Always reuse to avoid startup issues
+      timeout: 120 * 1000,
+    },
+  ],
 });

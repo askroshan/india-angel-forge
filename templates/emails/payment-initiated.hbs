@@ -1,0 +1,126 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Order Created</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #4f46e5;
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #4f46e5;
+      }
+      .content {
+        padding: 30px 0;
+      }
+      h1 {
+        color: #1f2937;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+      .details {
+        background-color: #f9fafb;
+        border-left: 4px solid #4f46e5;
+        padding: 15px;
+        margin: 20px 0;
+      }
+      .details p {
+        margin: 8px 0;
+      }
+      .details strong {
+        color: #1f2937;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 30px;
+        background-color: #4f46e5;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        margin: 20px 0;
+      }
+      .button:hover {
+        background-color: #4338ca;
+      }
+      .footer {
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 14px;
+      }
+      .warning {
+        background-color: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 15px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">India Angel Forum</div>
+      </div>
+
+      <div class="content">
+        <h1>Payment Order Created</h1>
+
+        <p>Dear {{userName}},</p>
+
+        <p>Your payment order has been successfully created. Please complete the
+          payment to proceed.</p>
+
+        <div class="details">
+          <p><strong>Amount:</strong> {{amount}}</p>
+          <p><strong>Order ID:</strong> {{orderId}}</p>
+          <p><strong>Status:</strong> Pending Payment</p>
+        </div>
+
+        {{#if paymentLink}}
+          <p style="text-align: center;">
+            <a href="{{paymentLink}}" class="button">Complete Payment</a>
+          </p>
+        {{/if}}
+
+        <div class="warning">
+          <p><strong>⚠️ Important:</strong>
+            This payment order will expire in 24 hours. Please complete the
+            payment before expiry.</p>
+        </div>
+
+        <p>If you have any questions, please contact our support team.</p>
+
+        <p>Best regards,<br />
+          <strong>India Angel Forum Team</strong></p>
+      </div>
+
+      <div class="footer">
+        <p>© 2026 India Angel Forum. All rights reserved.</p>
+        <p>This is an automated email. Please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>

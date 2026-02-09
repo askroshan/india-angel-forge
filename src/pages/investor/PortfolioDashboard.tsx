@@ -299,7 +299,7 @@ const PortfolioDashboard = () => {
                 Start investing in deals to build your portfolio
               </p>
               <Button asChild>
-                <Link to="/events">Browse Deals</Link>
+                <Link to="/investor/deals">Browse Deals</Link>
               </Button>
             </CardContent>
           </Card>
