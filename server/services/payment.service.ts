@@ -7,6 +7,7 @@
  * - PayU, Paytm, CCAvenue, Instamojo (Indian alternatives)
  */
 
+import crypto from 'crypto';
 import { PaymentGateway, PaymentStatus, PaymentType } from '@prisma/client';
 import { encrypt, decrypt, verifySignature, maskSensitiveData } from '../utils/encryption';
 
@@ -66,7 +67,7 @@ export class RazorpayGateway implements IPaymentGateway {
     try {
       // In test mode with mock credentials, return mock data
       if (this.keyId === 'rzp_test_mock') {
-        const orderId = `order_${Date.now()}`;
+        const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
         return {
           orderId,
           amount: Math.round(intent.amount * 100),
@@ -76,7 +77,7 @@ export class RazorpayGateway implements IPaymentGateway {
       }
 
       // In production, use Razorpay SDK
-      const Razorpay = require('razorpay');
+      const Razorpay = (await import('razorpay')).default;
       const instance = new Razorpay({
         key_id: this.keyId,
         key_secret: this.keySecret,
@@ -119,7 +120,6 @@ export class RazorpayGateway implements IPaymentGateway {
         return true;
       }
 
-      const crypto = require('crypto');
       const text = `${data.orderId}|${data.paymentId}`;
       const generated = crypto
         .createHmac('sha256', this.keySecret)
@@ -138,7 +138,16 @@ export class RazorpayGateway implements IPaymentGateway {
 
   async refund(request: RefundRequest): Promise<any> {
     try {
-      const Razorpay = require('razorpay');
+      // In test mode with mock credentials, return mock data
+      if (this.keyId === 'rzp_test_mock') {
+        return {
+          refundId: `rfnd_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          amount: request.amount,
+          status: 'processed',
+        };
+      }
+
+      const Razorpay = (await import('razorpay')).default;
       const instance = new Razorpay({
         key_id: this.keyId,
         key_secret: this.keySecret,
@@ -164,7 +173,17 @@ export class RazorpayGateway implements IPaymentGateway {
 
   async getPaymentStatus(paymentId: string): Promise<any> {
     try {
-      const Razorpay = require('razorpay');
+      // In test mode with mock credentials, return mock data
+      if (this.keyId === 'rzp_test_mock') {
+        return {
+          id: paymentId,
+          status: 'captured',
+          amount: 0,
+          currency: 'INR',
+        };
+      }
+
+      const Razorpay = (await import('razorpay')).default;
       const instance = new Razorpay({
         key_id: this.keyId,
         key_secret: this.keySecret,
@@ -470,14 +489,14 @@ export class PaymentService {
     if (amount < minAmount) {
       return {
         valid: false,
-        error: `Minimum investment amount is ₹${minAmount.toLocaleString('en-IN')}`,
+        error: `Minimum investment amount is ₹${minAmount.toLocaleString('en-US')}`,
       };
     }
 
     if (amount > maxAmount) {
       return {
         valid: false,
-        error: `Maximum investment amount is ₹${maxAmount.toLocaleString('en-IN')}`,
+        error: `Maximum investment amount is ₹${maxAmount.toLocaleString('en-US')}`,
       };
     }
 

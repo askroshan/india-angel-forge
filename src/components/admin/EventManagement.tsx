@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,10 @@ export function EventManagement() {
                     <CardDescription className="flex items-center gap-4">
                       <span>{EVENT_TYPE_LABELS[event.event_type as keyof typeof EVENT_TYPE_LABELS]}</span>
                       <span>•</span>
-                      <span>{format(new Date(event.date), "MMMM d, yyyy")}</span>
+                      <span>{(() => {
+                        const d = new Date(event.eventDate || event.date || '');
+                        return isValid(d) ? format(d, "MMMM d, yyyy") : 'Date TBD';
+                      })()}</span>
                       <span>•</span>
                       <span>{event.location}</span>
                     </CardDescription>

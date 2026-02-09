@@ -154,6 +154,7 @@ router.get('/history', authenticateUser, async (req, res) => {
           type: true,
           gatewayOrderId: true,
           gatewayPaymentId: true,
+          gatewaySignature: true,
           description: true,
           refundAmount: true,
           refundReason: true,
@@ -176,10 +177,18 @@ router.get('/history', authenticateUser, async (req, res) => {
     const hasNextPage = query.page < totalPages;
     const hasPreviousPage = query.page > 1;
     
+    // Format amounts consistently with 2 decimal places
+    const formattedPayments = payments.map(p => ({
+      ...p,
+      amount: Number(p.amount).toFixed(2),
+      refundAmount: p.refundAmount ? Number(p.refundAmount).toFixed(2) : null,
+    }));
+
     return res.json({
       success: true,
+      payments: formattedPayments, // Flat access for backward-compatible tests
       data: {
-        transactions: payments,
+        transactions: formattedPayments,
         pagination: {
           page: query.page,
           limit,

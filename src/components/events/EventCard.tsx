@@ -120,8 +120,8 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
 
           <div className="flex flex-col items-stretch md:items-end justify-center gap-3">
             {event.status === 'upcoming' && (
-              <Button variant="accent" asChild className="w-full md:w-auto">
-                <Link to={`/events/${event.slug}`}>
+              <Button variant="accent" asChild className="w-full md:w-auto" data-testid="event-register-button">
+                <Link to={`/events/${event.slug || event.id}`}>
                   {isRegistrationOpen ? 'Register' : 'View Details'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -129,7 +129,7 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
             )}
             {event.status === 'completed' && (
               <Button variant="outline" asChild className="w-full md:w-auto">
-                <Link to={`/events/${event.slug}`}>
+                <Link to={`/events/${event.slug || event.id}`}>
                   View Recap
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

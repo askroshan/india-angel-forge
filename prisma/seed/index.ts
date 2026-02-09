@@ -40,6 +40,12 @@ const testUsers = [
     roles: ['investor'],
   },
   {
+    email: 'investor.standard2@test.com',
+    password: 'Investor@12345',
+    fullName: 'Priya Mehta',
+    roles: ['investor'],
+  },
+  {
     email: 'operator.angel@test.com',
     password: 'Operator@12345',
     fullName: 'Priya Patel',

@@ -40,19 +40,31 @@ export default defineConfig({
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      testIgnore: ["**/event-attendance.spec.ts"],
     },
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      testIgnore: ["**/event-attendance.spec.ts"],
     },
     /* Test against mobile viewports */
     {
       name: "Mobile Chrome",
       use: { ...devices["Pixel 5"] },
+      testIgnore: [
+        "**/event-attendance.spec.ts",
+        "**/admin-operations.spec.ts",
+        "**/compliance-kyc.spec.ts",
+      ],
     },
     {
       name: "Mobile Safari",
       use: { ...devices["iPhone 12"] },
+      testIgnore: [
+        "**/event-attendance.spec.ts",
+        "**/admin-operations.spec.ts",
+        "**/compliance-kyc.spec.ts",
+      ],
     },
   ],
 

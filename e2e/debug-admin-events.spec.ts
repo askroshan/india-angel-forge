@@ -26,8 +26,8 @@ test('Debug AdminEvents page state', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
   
-  // Take screenshot
-  await page.screenshot({ path: 'debug-admin-events.png', fullPage: true });
+  // Take screenshot (fullPage: false to avoid Firefox >32767px limit)
+  await page.screenshot({ path: 'debug-admin-events.png', fullPage: false });
   
   // Check URL
   const currentUrl = page.url();

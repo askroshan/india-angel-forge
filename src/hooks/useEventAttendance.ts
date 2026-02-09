@@ -23,7 +23,7 @@ export function useMyRSVP(eventId: string) {
   return useQuery<{ success: boolean; data: { attendance: EventAttendance | null } }>({
     queryKey: ['my-rsvp', eventId],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/my-rsvp`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -47,7 +47,7 @@ export function useRSVPToEvent() {
 
   return useMutation({
     mutationFn: async (eventId: string) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/rsvp`, {
         method: 'POST',
         headers: {
@@ -82,7 +82,7 @@ export function useCancelRSVP() {
 
   return useMutation({
     mutationFn: async (eventId: string) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/rsvp`, {
         method: 'DELETE',
         headers: {

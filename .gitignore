@@ -35,3 +35,21 @@ dist-ssr
 uploads/
 *.key
 *.pem
+
+# Test artifacts & generated files
+test-results/
+playwright-report/
+nohup.out
+*.png
+invoices/
+public/certificates/*.pdf
+public/statements/*.pdf
+
+# Debug & temp scripts
+debug_*.cjs
+debug_*.js
+write_files.py
+run_regression.sh
+copy_test.js
+test_script.py
+write_test.py

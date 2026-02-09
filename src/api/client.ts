@@ -33,8 +33,9 @@ export class ApiClient implements IApiClient {
   private getHeaders(includeContentType = false): Record<string, string> {
     const headers: Record<string, string> = {};
     
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    const token = this.accessToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     
     if (includeContentType) {
@@ -59,7 +60,17 @@ export class ApiClient implements IApiClient {
         };
       }
       
-      return json;
+      // Handle both wrapped { data, error } and unwrapped responses
+      if (json && typeof json === 'object' && 'data' in json) {
+        // Response is already in { data, error } format
+        return json;
+      } else {
+        // Response is raw data - wrap it
+        return {
+          data: json as T,
+          error: null,
+        };
+      }
     } catch (error) {
       return {
         data: null,
@@ -328,7 +339,7 @@ export interface SystemStatistics {
 
 export async function getSystemStatistics(): Promise<SystemStatistics> {
   const client = getApiClient();
-  return await client.get<SystemStatistics>('admin', 'statistics');
+  return await client.get<SystemStatistics>('/api/admin/statistics');
 }
 
 // Founder Documents API

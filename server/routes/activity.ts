@@ -78,7 +78,12 @@ router.get('/', authenticateUser, async (req: AuthenticatedRequest, res: Respons
     };
 
     if (filters.activityType) {
-      where.activityType = filters.activityType;
+      const types = filters.activityType.split(',').map((t: string) => t.trim());
+      if (types.length === 1) {
+        where.activityType = { startsWith: types[0] };
+      } else {
+        where.OR = types.map((t: string) => ({ activityType: { startsWith: t } }));
+      }
     }
 
     if (filters.dateFrom || filters.dateTo) {
@@ -101,13 +106,13 @@ router.get('/', authenticateUser, async (req: AuthenticatedRequest, res: Respons
 
     if (filters.cursor) {
       cursorOptions.cursor = {
-        id: parseInt(filters.cursor, 10),
+        id: filters.cursor,
       };
       cursorOptions.skip = 1; // Skip the cursor itself
     }
 
     // Fetch activities
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.activityLog.findMany({
       where,
       ...cursorOptions,
     });
@@ -179,7 +184,12 @@ router.get('/export/csv', authenticateUser, async (req: AuthenticatedRequest, re
     };
 
     if (filters.activityType) {
-      where.activityType = filters.activityType;
+      const types = filters.activityType.split(',').map((t: string) => t.trim());
+      if (types.length === 1) {
+        where.activityType = { startsWith: types[0] };
+      } else {
+        where.OR = types.map((t: string) => ({ activityType: { startsWith: t } }));
+      }
     }
 
     if (filters.dateFrom || filters.dateTo) {
@@ -193,7 +203,7 @@ router.get('/export/csv', authenticateUser, async (req: AuthenticatedRequest, re
     }
 
     // Fetch all activities (no pagination for export)
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.activityLog.findMany({
       where,
       orderBy: {
         createdAt: 'desc',

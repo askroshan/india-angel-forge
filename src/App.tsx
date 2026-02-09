@@ -58,6 +58,9 @@ import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AttendanceStatistics from "./pages/admin/AttendanceStatistics";
+import ApplicationReview from "./pages/admin/ApplicationReview";
+import SystemStatistics from "./pages/admin/SystemStatistics";
+import DirectMessages from "./pages/investor/DirectMessages";
 import ApplicationScreening from "./pages/moderator/ApplicationScreening";
 import ContentModeration from "./pages/moderator/ContentModeration";
 import EventAttendance from "./pages/moderator/EventAttendance";
@@ -230,6 +233,11 @@ const App = () => (
                 <DueDiligenceChecklist />
               </ProtectedRoute>
             } />
+            <Route path="/investor/messages" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <DirectMessages />
+              </ProtectedRoute>
+            } />
             {/* Founder Routes */}
             <Route path="/founder/application-status" element={
               <ProtectedRoute allowedRoles={FOUNDER_ROLES}>
@@ -306,6 +314,16 @@ const App = () => (
             <Route path="/admin/audit-logs" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AuditLogs />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/applications" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <ApplicationReview />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/statistics" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <SystemStatistics />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}

@@ -39,6 +39,8 @@ async function getToken(page: Page, email: string, password: string): Promise<st
 }
 
 test.describe('Event CRUD - Admin Operations', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -197,6 +199,7 @@ test.describe('Event CRUD - Admin Operations', () => {
 });
 
 test.describe('Event CRUD - Investor Operations', () => {
+  test.describe.configure({ mode: 'serial' });
   let testEventId: string;
 
   test.beforeAll(async ({ browser }) => {
@@ -283,14 +286,17 @@ test.describe('Event CRUD - Investor Operations', () => {
 });
 
 test.describe('Event CRUD - Waitlist Operations', () => {
+  test.describe.configure({ mode: 'serial' });
   let testEventId: string;
   let fullCapacityEventId: string;
+  let founderToken: string;
 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     adminToken = await getToken(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
     investorToken = await getToken(page, TEST_USERS.investor.email, TEST_USERS.investor.password);
+    founderToken = await getToken(page, TEST_USERS.founder.email, TEST_USERS.founder.password);
 
     // Create test event with limited capacity
     const createResponse = await page.request.post(`${BASE_URL}/api/admin/events`, {
@@ -310,10 +316,9 @@ test.describe('Event CRUD - Waitlist Operations', () => {
     const context = await page.context();
     const page2 = await context.newPage();
 
-    // Register first investor to fill capacity
-    const investor1Token = await getToken(page, TEST_USERS.investor.email, TEST_USERS.investor.password);
+    // Register first user (investor) to fill capacity
     await page.request.post(`${BASE_URL}/api/events/register`, {
-      headers: { Authorization: `Bearer ${investor1Token}` },
+      headers: { Authorization: `Bearer ${investorToken}` },
       data: {
         eventId: fullCapacityEventId,
         fullName: 'Investor 1',
@@ -321,13 +326,13 @@ test.describe('Event CRUD - Waitlist Operations', () => {
       }
     });
 
-    // Try to register second investor - should get capacity error
+    // Try to register second user (founder) - should get capacity error
     const registerResponse = await page2.request.post(`${BASE_URL}/api/events/register`, {
-      headers: { Authorization: `Bearer ${investorToken}` },
+      headers: { Authorization: `Bearer ${founderToken}` },
       data: {
         eventId: fullCapacityEventId,
-        fullName: 'Investor 2',
-        email: 'investor2@test.com'
+        fullName: 'Founder User',
+        email: 'founder@test.com'
       }
     });
 
@@ -335,12 +340,12 @@ test.describe('Event CRUD - Waitlist Operations', () => {
     const error = await registerResponse.json();
     expect(error.error.code).toBe('CAPACITY_FULL');
 
-    // Now join waitlist
+    // Now join waitlist using founder token
     const waitlistResponse = await page2.request.post(`${BASE_URL}/api/events/${fullCapacityEventId}/waitlist`, {
-      headers: { Authorization: `Bearer ${investorToken}` },
+      headers: { Authorization: `Bearer ${founderToken}` },
       data: {
-        fullName: 'Investor 2',
-        email: 'investor2@test.com'
+        fullName: 'Founder User',
+        email: 'founder@test.com'
       }
     });
 
@@ -352,9 +357,10 @@ test.describe('Event CRUD - Waitlist Operations', () => {
   });
 
   test('READ: Investor can view their waitlist position', async ({ page }) => {
+    // Use founderToken since founder is on the waitlist
     const response = await page.request.get(
       `${BASE_URL}/api/events/${fullCapacityEventId}/waitlist/position`,
-      { headers: { Authorization: `Bearer ${investorToken}` } }
+      { headers: { Authorization: `Bearer ${founderToken}` } }
     );
 
     expect(response.status()).toBe(200);
@@ -364,7 +370,7 @@ test.describe('Event CRUD - Waitlist Operations', () => {
 
   test('READ: Investor can view their waitlist entries', async ({ page }) => {
     const response = await page.request.get(`${BASE_URL}/api/events/my-waitlist`, {
-      headers: { Authorization: `Bearer ${investorToken}` }
+      headers: { Authorization: `Bearer ${founderToken}` }
     });
 
     expect(response.status()).toBe(200);

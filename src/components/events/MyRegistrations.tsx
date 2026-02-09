@@ -71,6 +71,7 @@ export default function MyRegistrations() {
           <div 
             key={registration.id} 
             className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg"
+            data-testid="my-event-item"
           >
             <div className="flex-1 space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -80,8 +81,8 @@ export default function MyRegistrations() {
                     {EVENT_TYPE_LABELS[registration.events.event_type]}
                   </Badge>
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  Registered
+                <Badge variant="secondary" className="text-xs" data-testid="rsvp-status-badge">
+                  Confirmed
                 </Badge>
               </div>
               

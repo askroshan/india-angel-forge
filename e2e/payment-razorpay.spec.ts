@@ -18,7 +18,7 @@ test.describe('US-PAYMENT-001: Create Payment Order (Razorpay)', () => {
     // Create and login test user
     const signupResponse = await request.post(`${API_URL}/api/auth/signup`, {
       data: {
-        email: `investor_${Date.now()}@test.com`,
+        email: `investor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@test.com`,
         password: 'SecurePass123!',
         fullName: 'Test Investor',
         role: 'investor'
@@ -169,7 +169,7 @@ test.describe('US-PAYMENT-001: Create Payment Order (Razorpay)', () => {
 
     expect(response.status()).toBe(401);
     const result = await response.json();
-    expect(result.error).toContain('nauthorized');
+    expect(result.error.code).toBe('UNAUTHORIZED');
   });
 });
 
@@ -182,7 +182,7 @@ test.describe('US-PAYMENT-002: Verify Payment Completion (Razorpay)', () => {
     // Setup: Create user and payment order
     const signupResponse = await request.post(`${API_URL}/api/auth/signup`, {
       data: {
-        email: `investor_verify_${Date.now()}@test.com`,
+        email: `investor_verify_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@test.com`,
         password: 'SecurePass123!',
         fullName: 'Test Investor',
         role: 'investor'
@@ -205,7 +205,7 @@ test.describe('US-PAYMENT-002: Verify Payment Completion (Razorpay)', () => {
     
     const orderData = await orderResponse.json();
     orderId = orderData.orderId;
-    paymentId = 'pay_test_' + Date.now(); // Mock payment ID
+    paymentId = `pay_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; // Mock payment ID
   });
 
   test('TC-007: Valid signature verification succeeds', async ({ request }) => {
@@ -345,8 +345,8 @@ test.describe('US-PAYMENT-002: Verify Payment Completion (Razorpay)', () => {
     // Check audit logs (admin only, so login as admin)
     const adminResponse = await request.post(`${API_URL}/api/auth/login`, {
       data: {
-        email: 'admin@indiaangelforum.com',
-        password: 'Admin@123456'
+        email: 'admin@indiaangelforum.test',
+        password: 'Admin@12345'
       }
     });
     

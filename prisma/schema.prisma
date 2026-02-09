@@ -159,6 +159,7 @@ model FounderApplication {
   reviewedBy     String?   @map("reviewed_by")
   reviewNotes    String?   @map("review_notes")
   submittedAt    DateTime  @default(now()) @map("submitted_at")
+  metadata       Json?
 
   user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   industryDetail Industry?     @relation(fields: [industryId], references: [id])
@@ -186,6 +187,7 @@ model InvestorApplication {
   reviewedBy           String?   @map("reviewed_by")
   reviewNotes          String?   @map("review_notes")
   submittedAt          DateTime  @default(now()) @map("submitted_at")
+  metadata             Json?
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 

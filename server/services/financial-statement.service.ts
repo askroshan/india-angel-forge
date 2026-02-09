@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 import fs from 'fs/promises';
+import * as fsSync from 'fs';
 import path from 'path';
 import { emailService } from './email.service';
 
@@ -157,10 +158,11 @@ async function generateStatementData(
   let totalTds = 0;
 
   const transactionDetails = transactions.map((txn) => {
+    const amountNum = Number(txn.amount);
     const isInterstate = false; // Assume intrastate for now (CGST+SGST)
-    const taxes = calculateTaxBreakdown(txn.amount, isInterstate);
+    const taxes = calculateTaxBreakdown(amountNum, isInterstate);
     
-    totalAmount += txn.amount;
+    totalAmount += amountNum;
     totalTaxAmount += taxes.cgst + taxes.sgst + taxes.igst;
     totalCgst += taxes.cgst;
     totalSgst += taxes.sgst;
@@ -170,7 +172,7 @@ async function generateStatementData(
     return {
       date: txn.createdAt.toISOString(),
       description: txn.description || 'Payment',
-      amount: txn.amount,
+      amount: amountNum,
       taxAmount: taxes.cgst + taxes.sgst + taxes.igst + taxes.tds,
       type: txn.type,
       status: txn.status,
@@ -199,8 +201,9 @@ async function generateStatementData(
  * @param amount - Amount to format
  * @returns Formatted amount string
  */
-function formatAmount(amount: number): string {
-  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatAmount(amount: number | any): string {
+  const num = typeof amount === 'number' ? amount : Number(amount);
+  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -225,7 +228,7 @@ async function generateStatementPDF(
   await fs.mkdir(path.join(process.cwd(), 'public', 'statements'), { recursive: true });
 
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
-  const stream = doc.pipe(require('fs').createWriteStream(filepath));
+  const stream = doc.pipe(fsSync.createWriteStream(filepath));
 
   // Header
   doc.fontSize(20).font('Helvetica-Bold').text('India Angel Forum', { align: 'center' });
@@ -354,7 +357,7 @@ export async function generateFinancialStatement(params: StatementGenerationPara
     throw new Error('User not found');
   }
 
-  // Check if statement already exists for this period
+  // Check if statement already exists for this period and delete it (allow re-generation)
   const existingStatement = await prisma.financialStatement.findFirst({
     where: {
       userId,
@@ -364,7 +367,9 @@ export async function generateFinancialStatement(params: StatementGenerationPara
   });
 
   if (existingStatement) {
-    throw new Error('Statement already exists for this period');
+    await prisma.financialStatement.delete({
+      where: { id: existingStatement.id },
+    });
   }
 
   // Generate statement data
@@ -374,7 +379,7 @@ export async function generateFinancialStatement(params: StatementGenerationPara
   const pdfUrl = await generateStatementPDF(
     statementData,
     format,
-    user.name || 'User',
+    user.fullName || 'User',
     user.email
   );
 
@@ -433,7 +438,7 @@ export async function generateFinancialStatement(params: StatementGenerationPara
  * @param statementId - Statement ID
  * @returns Updated statement with email status
  */
-export async function emailFinancialStatement(statementId: number) {
+export async function emailFinancialStatement(statementId: string) {
   const statement = await prisma.financialStatement.findUnique({
     where: { id: statementId },
     include: { user: true },
@@ -452,12 +457,12 @@ export async function emailFinancialStatement(statementId: number) {
     subject: `Financial Statement - ${period}`,
     html: `
       <h2>Financial Statement - ${period}</h2>
-      <p>Dear ${user.name || 'User'},</p>
+      <p>Dear ${user.fullName || 'User'},</p>
       <p>Your financial statement for ${period} is ready.</p>
       <p><strong>Statement Number:</strong> ${statement.statementNumber}</p>
-      <p><strong>Total Amount:</strong> ${formatAmount(statement.totalAmount)}</p>
-      <p><strong>Total Tax:</strong> ${formatAmount(statement.totalTax)}</p>
-      <p><strong>Net Amount:</strong> ${formatAmount(statement.netAmount)}</p>
+      <p><strong>Total Amount:</strong> ${formatAmount(Number(statement.totalInvested))}</p>
+      <p><strong>Total Tax:</strong> ${formatAmount(Number(statement.totalTax))}</p>
+      <p><strong>Net Amount:</strong> ${formatAmount(Number(statement.netInvestment))}</p>
       <p><a href="${process.env.APP_URL || 'http://localhost:8080'}${statement.pdfUrl}">Download PDF</a></p>
       <p>Best regards,<br/>India Angel Forum</p>
     `,
@@ -476,7 +481,7 @@ export async function emailFinancialStatement(statementId: number) {
   await prisma.activityLog.create({
     data: {
       userId: user.id,
-      activityType: 'STATEMENT_EMAILED',
+      activityType: 'STATEMENT_GENERATED',
       entityType: 'financial_statement',
       entityId: statement.id,
       description: `Financial statement ${statement.statementNumber} emailed to ${user.email}`,

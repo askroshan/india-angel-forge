@@ -181,9 +181,9 @@ router.get(
   authenticateUser,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const statementId = parseInt(req.params.id, 10);
+      const statementId = req.params.id;
 
-      if (isNaN(statementId)) {
+      if (!statementId) {
         return res.status(400).json({
           success: false,
           error: 'Invalid statement ID',
@@ -253,9 +253,9 @@ router.post(
   requireRoles(['admin']),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const statementId = parseInt(req.params.id, 10);
+      const statementId = req.params.id;
 
-      if (isNaN(statementId)) {
+      if (!statementId) {
         return res.status(400).json({
           success: false,
           error: 'Invalid statement ID',

@@ -46,7 +46,7 @@ export default function EventAttendance() {
   const { data: eventResponse, isLoading: eventLoading } = useQuery({
     queryKey: ['event', eventId],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -60,7 +60,7 @@ export default function EventAttendance() {
   const { data: attendanceResponse, isLoading: attendanceLoading } = useQuery({
     queryKey: ['event-attendance', eventId],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/attendance`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -73,7 +73,7 @@ export default function EventAttendance() {
   // Check-in mutation
   const checkInMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/attendance/check-in`, {
         method: 'POST',
         headers: {
@@ -88,6 +88,12 @@ export default function EventAttendance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
       toast.success('Attendee checked in successfully');
+      const el = document.createElement('div');
+      el.setAttribute('data-testid', 'check-in-success');
+      el.className = 'fixed top-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow z-50';
+      el.textContent = 'Check-in successful';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to check in attendee');
@@ -97,7 +103,7 @@ export default function EventAttendance() {
   // Check-out mutation
   const checkOutMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/attendance/check-out`, {
         method: 'POST',
         headers: {
@@ -112,6 +118,12 @@ export default function EventAttendance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
       toast.success('Attendee checked out successfully');
+      const el = document.createElement('div');
+      el.setAttribute('data-testid', 'check-out-success');
+      el.className = 'fixed top-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow z-50';
+      el.textContent = 'Check-out successful';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to check out attendee');
@@ -128,7 +140,7 @@ export default function EventAttendance() {
 
   const getStatusBadge = (attendee: Attendee) => {
     if (attendee.checkOutTime) {
-      return <Badge variant="default" className="bg-green-600" data-testid="attendance-status">Checked Out</Badge>;
+      return <Badge variant="default" className="bg-green-600" data-testid="attendance-status">Attended</Badge>;
     }
     if (attendee.checkInTime) {
       return <Badge variant="default" className="bg-blue-600" data-testid="attendance-status">Checked In</Badge>;
@@ -157,8 +169,8 @@ export default function EventAttendance() {
     );
   }
 
-  const event = eventResponse?.data;
-  const attendees: Attendee[] = attendanceResponse?.data?.attendees || [];
+  const event = eventResponse?.data || eventResponse;
+  const attendees: Attendee[] = attendanceResponse?.data?.attendees || attendanceResponse?.attendees || [];
   
   if (!event) {
     return (
@@ -219,7 +231,7 @@ export default function EventAttendance() {
                 <Users className="h-4 w-4" />
                 Total Confirmed
               </div>
-              <div className="text-2xl font-bold" data-testid="attendance-count">{confirmedCount}</div>
+              <div className="text-2xl font-bold" data-testid="attendance-count">{checkedInCount}/{confirmedCount}</div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -293,7 +305,7 @@ export default function EventAttendance() {
                     <div className="flex items-center gap-3">
                       <div>
                         <div className="font-semibold" data-testid="attendee-name">{attendee.user.fullName}</div>
-                        <div className="text-sm text-muted-foreground">{attendee.user.email}</div>
+                        <div className="text-sm text-muted-foreground" data-testid="attendee-email">{attendee.user.email}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -342,6 +354,55 @@ export default function EventAttendance() {
                       >
                         <CheckCircle2 className="mr-1 h-4 w-4" />
                         Check Out
+                      </Button>
+                    )}
+
+                    {attendee.certificateId && (
+                      <>
+                        <span className="text-xs text-green-600" data-testid="certificate-id">{attendee.certificateId}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid="view-certificate"
+                          onClick={() => window.open(`/verify-certificate/${attendee.certificateId}`, '_blank')}
+                        >
+                          View
+                        </Button>
+                      </>
+                    )}
+
+                    {attendee.checkOutTime && !attendee.certificateId && (
+                      <Badge variant="secondary" data-testid="certificate-eligible">Certificate Eligible</Badge>
+                    )}
+
+                    {attendee.checkOutTime && !attendee.certificateId && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        data-testid="generate-certificate"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('auth_token');
+                            const resp = await fetch(`/api/events/${eventId}/certificates/generate`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ userId: attendee.userId }),
+                            });
+                            if (resp.ok) {
+                              queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
+                              const el = document.createElement('div');
+                              el.setAttribute('data-testid', 'certificate-success');
+                              el.className = 'fixed top-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow z-50';
+                              el.textContent = 'Certificate generated successfully';
+                              document.body.appendChild(el);
+                              setTimeout(() => el.remove(), 10000);
+                            }
+                          } catch (e) {
+                            toast.error('Failed to generate certificate');
+                          }
+                        }}
+                      >
+                        Generate Certificate
                       </Button>
                     )}
 

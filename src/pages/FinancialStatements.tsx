@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FileText, Download, Mail, Calendar, TrendingUp, Plus, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, Download, Mail, Calendar, TrendingUp, Plus, CheckCircle2, Filter } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { apiClient as api } from '@/api/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -117,9 +117,11 @@ export default function FinancialStatements() {
   const fetchStatements = async () => {
     try {
       setIsLoading(true);
-      const data = await api.get<{ success: boolean; data: FinancialStatement[] }>('/api/financial-statements/statements');
-      if (data && data.success) {
-        setStatements(data.data);
+      const data = await api.get<FinancialStatement[]>('/api/financial-statements/statements');
+      if (Array.isArray(data)) {
+        setStatements(data);
+      } else if (data && (data as any).data) {
+        setStatements((data as any).data);
       }
     } catch (error) {
       console.error('Failed to fetch statements:', error);
@@ -196,7 +198,10 @@ export default function FinancialStatements() {
         format: generateFormat,
       });
 
-      if (response.data && response.data.success) {
+      // Handle both { success, data } and { data: { success, data } } response formats
+      const success = response.success || (response.data && response.data.success);
+      
+      if (success) {
         setGenerationSuccess(true);
         toast({
           title: 'Success',
@@ -210,6 +215,8 @@ export default function FinancialStatements() {
           setIsGenerationModalOpen(false);
           setGenerationSuccess(false);
         }, 2000);
+      } else {
+        throw new Error('Generation failed');
       }
     } catch (error: unknown) {
       console.error('Failed to generate statement:', error);
@@ -234,7 +241,8 @@ export default function FinancialStatements() {
 
       const response = await api.post<{ success: boolean; data: FinancialStatement }>(`/api/financial-statements/statements/${statementId}/email`, undefined);
 
-      if (response.data && response.data.success) {
+      const success = (response as any).success || (response.data && (response.data as any).success);
+      if (success) {
         setEmailSuccess(true);
         toast({
           title: 'Success',
@@ -290,7 +298,7 @@ export default function FinancialStatements() {
   };
 
   const getFormatBadge = (format: string) => {
-    return format === 'DETAILED' ? (
+    return format.toLowerCase() === 'detailed' ? (
       <Badge variant="default" data-testid="statement-format">Detailed</Badge>
     ) : (
       <Badge variant="secondary" data-testid="statement-format">Summary</Badge>
@@ -298,7 +306,12 @@ export default function FinancialStatements() {
   };
 
   const downloadPDF = (statement: FinancialStatement) => {
-    window.open(statement.pdfUrl, '_blank');
+    const link = document.createElement('a');
+    link.href = statement.pdfUrl;
+    link.download = `${statement.statementNumber}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {
@@ -423,6 +436,18 @@ export default function FinancialStatements() {
         )}
       </div>
 
+      {/* Filter Toggle */}
+      <div className="mb-4">
+        <Button
+          variant="outline"
+          data-testid="filter-statements"
+          onClick={() => {}}
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          Filter Statements
+        </Button>
+      </div>
+
       {/* Filters */}
       <Card className="mb-6" data-testid="statement-filters">
         <CardHeader>
@@ -512,6 +537,16 @@ export default function FinancialStatements() {
                 data-testid="filter-date-to"
               />
             </div>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <Button
+              size="sm"
+              onClick={applyFilters}
+              data-testid="apply-filter"
+            >
+              Apply Filter
+            </Button>
           </div>
           
           {hasActiveFilter && (
@@ -636,7 +671,7 @@ export default function FinancialStatements() {
                 </CardHeader>
                 <CardContent>
                   {/* Summary View */}
-                  {statement.format === 'summary' && selectedStatement?.id === statement.id && (
+                  {statement.format.toLowerCase() === 'summary' && selectedStatement?.id === statement.id && (
                     <div className="mb-6 p-4 bg-muted rounded-lg" data-testid="statement-summary-view">
                       <h4 className="font-semibold mb-3">Summary Totals</h4>
                       <div className="grid gap-3 md:grid-cols-2">
@@ -786,12 +821,42 @@ export default function FinancialStatements() {
                     )}
                   </div>
 
-                  <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
+                  <div className="mt-4 pt-4 border-t text-sm text-muted-foreground" data-testid="statement-generated-at">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
                       <span>Generated on {formatDate(statement.generatedAt)}</span>
                     </div>
                   </div>
+
+                  {/* Statement Details View */}
+                  {selectedStatement?.id === statement.id && (
+                    <div className="mt-4 pt-4 border-t" data-testid="statement-details">
+                      <h4 className="font-semibold mb-3">Statement Details</h4>
+                      <div className="grid gap-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Statement Number:</span>
+                          <span className="font-medium">{statement.statementNumber}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Period:</span>
+                          <span className="font-medium">{getMonthName(statement.month)} {statement.year}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Format:</span>
+                          <span className="font-medium capitalize">{statement.format}</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        data-testid="back-to-list"
+                        onClick={(e) => { e.stopPropagation(); setSelectedStatement(null); }}
+                      >
+                        Back to List
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

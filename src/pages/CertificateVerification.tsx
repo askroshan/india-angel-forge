@@ -1,214 +1,142 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Award, CheckCircle, XCircle, Calendar, Clock, User } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, CheckCircle2, XCircle, Award, Calendar, User, Clock } from 'lucide-react';
 
-interface CertificateVerification {
+interface VerificationResult {
+  verified: boolean;
   certificateId: string;
-  issuedAt: string;
-  duration: number;
   attendeeName: string;
   eventName: string;
   eventDate: string;
-  userId: number;
-  eventId: number;
+  duration: number;
+  issuedAt: string;
 }
 
-/**
- * Certificate Verification Page Component
- * 
- * Public page for verifying certificates by their ID.
- * No authentication required.
- * 
- * E2E Tests: EA-E2E-008
- */
 export default function CertificateVerification() {
-  const { certificateId } = useParams<{ certificateId: string }>();
-  const [certificate, setCertificate] = useState<CertificateVerification | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isValid, setIsValid] = useState(false);
+  const { certificateId: urlCertId } = useParams<{ certificateId: string }>();
+  const [certificateIdInput, setCertificateIdInput] = useState(urlCertId || '');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [result, setResult] = useState<VerificationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (certificateId) {
-      verifyCertificate();
+    if (urlCertId) {
+      verifyCertificate(urlCertId);
     }
-  }, [certificateId]);
+  }, [urlCertId]);
 
-  const verifyCertificate = async () => {
+  const verifyCertificate = async (certId: string) => {
     try {
-      setIsLoading(true);
-      const response = await fetch(`/api/certificates/verify/${certificateId}`);
-
-      if (!response.ok) {
-        setIsValid(false);
-        return;
-      }
-
+      setIsVerifying(true);
+      setResult(null);
+      setError(null);
+      const response = await fetch(`/api/certificates/verify/${certId}`);
       const data = await response.json();
-      if (data.success) {
-        setCertificate(data.data);
-        setIsValid(true);
+      if (data.success && data.verified) {
+        setResult({
+          verified: true,
+          certificateId: data.data.certificateId,
+          attendeeName: data.data.attendeeName,
+          eventName: data.data.eventName,
+          eventDate: data.data.eventDate,
+          duration: data.data.duration,
+          issuedAt: data.data.issuedAt,
+        });
       } else {
-        setIsValid(false);
+        setError(data.error || 'Certificate not found');
       }
-    } catch (error) {
-      console.error('Error verifying certificate:', error);
-      setIsValid(false);
+    } catch (err) {
+      setError('Certificate not found or verification failed');
     } finally {
-      setIsLoading(false);
+      setIsVerifying(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+  const handleVerify = () => {
+    if (certificateIdInput.trim()) {
+      verifyCertificate(certificateIdInput.trim());
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric',
     });
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours === 0) return `${mins} minutes`;
-    if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
-    return `${hours} hour${hours > 1 ? 's' : ''} ${mins} min`;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin" data-testid="verification-loader" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto px-4 py-16" data-testid="certificate-verification-page">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Certificate Verification</h1>
-          <p className="text-muted-foreground">
-            Verify the authenticity of India Angel Forum certificates
-          </p>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <h1 className="text-3xl font-bold mb-6 text-center">Verify Certificate</h1>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex gap-2">
+            <Input
+              data-testid="certificate-id-input"
+              placeholder="Enter Certificate ID (e.g., CERT-2025-000001)"
+              value={certificateIdInput}
+              onChange={e => setCertificateIdInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleVerify()}
+            />
+            <Button data-testid="verify-button" onClick={handleVerify} disabled={isVerifying || !certificateIdInput.trim()}>
+              {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {(result || error) && (
+        <div data-testid="verification-result">
+          {result && (
+            <Card data-testid="verification-success" className="border-green-200 bg-green-50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  <CardTitle className="text-green-700">Certificate Verified</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-muted-foreground">Attendee:</span>
+                  <span data-testid="verified-attendee-name" className="font-medium">{result.attendeeName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  <span className="text-muted-foreground">Event:</span>
+                  <span data-testid="verified-event-name" className="font-medium">{result.eventName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span className="text-muted-foreground">Event Date:</span>
+                  <span data-testid="verified-event-date" className="font-medium">{formatDate(result.eventDate)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-muted-foreground">Issued:</span>
+                  <span data-testid="verified-issued-date" className="font-medium">{formatDate(result.issuedAt)}</span>
+                </div>
+                <Badge variant="secondary">{result.certificateId}</Badge>
+              </CardContent>
+            </Card>
+          )}
+
+          {error && (
+            <Card data-testid="verification-error" className="border-red-200 bg-red-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 text-red-700">
+                  <XCircle className="h-6 w-6" />
+                  <span>Certificate not found or invalid</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-center mb-4">
-              {isValid ? (
-                <CheckCircle className="h-16 w-16 text-green-500" data-testid="verification-valid-icon" />
-              ) : (
-                <XCircle className="h-16 w-16 text-red-500" data-testid="verification-invalid-icon" />
-              )}
-            </div>
-            <CardTitle className="text-center text-2xl">
-              {isValid ? 'Valid Certificate' : 'Invalid Certificate'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isValid && certificate ? (
-              <div className="space-y-6" data-testid="verification-details">
-                <div className="text-center">
-                  <Badge variant="secondary" className="text-lg px-4 py-2" data-testid="verification-certificate-id">
-                    {certificate.certificateId}
-                  </Badge>
-                </div>
-
-                <div className="border-t pt-6 space-y-4">
-                  <div className="flex items-start">
-                    <Award className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Event</p>
-                      <p className="text-lg font-semibold" data-testid="verification-event-name">
-                        {certificate.eventName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start">
-                    <User className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Attendee</p>
-                      <p className="text-lg font-semibold" data-testid="verification-attendee-name">
-                        {certificate.attendeeName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start">
-                    <Calendar className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Event Date</p>
-                      <p className="text-lg font-semibold" data-testid="verification-event-date">
-                        {formatDate(certificate.eventDate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start">
-                    <Clock className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Duration</p>
-                      <p className="text-lg font-semibold" data-testid="verification-duration">
-                        {formatDuration(certificate.duration)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start">
-                    <CheckCircle className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">Issued On</p>
-                      <p className="text-lg font-semibold" data-testid="verification-issued-date">
-                        {formatDate(certificate.issuedAt)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-sm text-green-800 text-center">
-                      ✓ This certificate is authentic and was issued by India Angel Forum
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8" data-testid="verification-invalid-message">
-                <p className="text-lg mb-4">
-                  The certificate ID <strong>{certificateId}</strong> could not be verified.
-                </p>
-                <p className="text-muted-foreground mb-6">
-                  This certificate may not exist or the ID might be incorrect.
-                </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-800">
-                    ⚠ Warning: This certificate could not be authenticated
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 text-center">
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = '/'}
-                data-testid="verification-home-btn"
-              >
-                Return to Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }

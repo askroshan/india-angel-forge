@@ -10,6 +10,8 @@ import { Router } from 'express';
 import { authenticateUser, requireRoles } from '../middleware/auth';
 import { certificateService } from '../services/certificate.service';
 import { prisma } from '../../db';
+import path from 'path';
+import { existsSync, readFileSync } from 'fs';
 
 const router = Router();
 
@@ -124,6 +126,54 @@ router.get('/:id', authenticateUser, async (req, res) => {
       success: false,
       error: 'Failed to fetch certificate',
     });
+  }
+});
+
+/**
+ * GET /api/certificates/:certificateId/download
+ * 
+ * Download certificate PDF
+ */
+router.get('/:certificateId/download', async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+    
+    // Look up certificate in database
+    const certificate = await prisma.certificate.findFirst({
+      where: {
+        OR: [
+          { certificateId },
+          { id: certificateId },
+        ],
+      },
+    });
+    
+    if (!certificate) {
+      return res.status(404).json({ success: false, error: 'Certificate not found' });
+    }
+    
+    // Try to find the PDF file
+    const pdfPath = path.join(process.cwd(), 'public', 'certificates', `${certificate.certificateId}.pdf`);
+    
+    if (existsSync(pdfPath)) {
+      const pdfBuffer = readFileSync(pdfPath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="certificate-${certificate.certificateId}.pdf"`);
+      return res.send(pdfBuffer);
+    }
+    
+    // If file not on disk, regenerate it
+    const result = await certificateService.generateCertificatePdf?.(certificate);
+    if (result) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="certificate-${certificate.certificateId}.pdf"`);
+      return res.send(result);
+    }
+    
+    return res.status(404).json({ success: false, error: 'Certificate PDF not found' });
+  } catch (error) {
+    console.error('Error downloading certificate:', error);
+    return res.status(500).json({ success: false, error: 'Failed to download certificate' });
   }
 });
 

@@ -465,10 +465,53 @@ test.describe('US-NOTIFY-003: Email Notification on Payment Failure', () => {
 });
 
 test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
+  test.describe.configure({ mode: 'serial' });
   let adminToken: string;
   let completedPaymentId: string;
+  let refundUserId: string;
+  let refundAuthToken: string;
+  const refundTestUser = {
+    email: `test-refund-${Date.now()}@test.com`,
+    password: 'RefundTestPass123!',
+    fullName: 'Refund Test User',
+  };
 
   test.beforeAll(async ({ request }) => {
+    // Create a FRESH investor user for refund tests (US-NOTIFY-001 deletes its user)
+    const investorSignup = await request.post(`${API_BASE}/auth/signup`, {
+      data: refundTestUser,
+    });
+    expect(investorSignup.ok()).toBeTruthy();
+
+    const investorLogin = await request.post(`${API_BASE}/auth/login`, {
+      data: {
+        email: refundTestUser.email,
+        password: refundTestUser.password,
+      },
+    });
+    expect(investorLogin.ok()).toBeTruthy();
+    const investorData = await investorLogin.json();
+    refundAuthToken = investorData.token;
+    refundUserId = investorData.user.id;
+
+    // Add investor role to refund user
+    await prisma.userRole.create({
+      data: {
+        userId: refundUserId,
+        role: 'investor',
+      },
+    });
+
+    // Re-login investor to get token with investor role included in JWT
+    const investorReLogin = await request.post(`${API_BASE}/auth/login`, {
+      data: {
+        email: refundTestUser.email,
+        password: refundTestUser.password,
+      },
+    });
+    const investorReLoginData = await investorReLogin.json();
+    refundAuthToken = investorReLoginData.token;
+
     // Create admin user
     const adminEmail = `admin-email-${Date.now()}@test.com`;
     await request.post(`${API_BASE}/auth/signup`, {
@@ -487,7 +530,6 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
     });
 
     const loginData = await loginResponse.json();
-    adminToken = loginData.token;
 
     await prisma.userRole.create({
       data: {
@@ -496,10 +538,20 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
       },
     });
 
-    // Create a completed payment for refund
+    // Re-login to get token with admin role included in JWT
+    const reLoginResponse = await request.post(`${API_BASE}/auth/login`, {
+      data: {
+        email: adminEmail,
+        password: 'AdminPass123!',
+      },
+    });
+    const reLoginData = await reLoginResponse.json();
+    adminToken = reLoginData.token;
+
+    // Create a completed payment for refund using FRESH investor token
     const orderResponse = await request.post(`${API_BASE}/payments/create-order`, {
       headers: {
-        Authorization: `Bearer ${authToken}`,
+        Authorization: `Bearer ${refundAuthToken}`,
       },
       data: {
         amount: 70000,
@@ -544,7 +596,7 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
     // Check refund email was sent
     const refundEmail = await prisma.emailLog.findFirst({
       where: {
-        userId,
+        userId: refundUserId,
         subject: 'Refund Processed - India Angel Forum',
         templateName: 'refund-processed',
       },
@@ -559,7 +611,7 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
   test('TC-NOTIFY-014: Refund email should include refund amount and expected timeline', async () => {
     const refundEmail = await prisma.emailLog.findFirst({
       where: {
-        userId,
+        userId: refundUserId,
         templateName: 'refund-processed',
       },
       orderBy: {
@@ -572,9 +624,12 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
   });
 
   test('TC-NOTIFY-015: Should create activity log for refund', async () => {
+    // Allow time for activity log to be committed
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     const activityLog = await prisma.activityLog.findFirst({
       where: {
-        userId,
+        userId: refundUserId,
         activityType: 'PAYMENT_REFUNDED',
         entityId: completedPaymentId,
       },
@@ -584,6 +639,6 @@ test.describe('US-NOTIFY-004: Email Notification on Refund Processing', () => {
     });
 
     expect(activityLog).not.toBeNull();
-    expect(activityLog?.description).toContain('refund');
+    expect(activityLog?.description?.toLowerCase()).toContain('refund');
   });
 });

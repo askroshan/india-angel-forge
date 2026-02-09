@@ -21,7 +21,7 @@ async function generateCertificateId(): Promise<string> {
   const prefix = `CERT-${year}-`;
   
   // Find the latest certificate for this year
-  const latest = await db.certificate.findFirst({
+  const latest = await prisma.certificate.findFirst({
     where: {
       certificateId: {
         startsWith: prefix,
@@ -219,7 +219,7 @@ export async function generateCertificate(userId: string, eventId: string): Prom
   pdfBuffer: Buffer;
 }> {
   // Get attendance record
-  const attendance = await db.eventAttendance.findUnique({
+  const attendance = await prisma.eventAttendance.findUnique({
     where: { userId_eventId: { userId, eventId } },
     include: {
       user: true,
@@ -273,8 +273,17 @@ export async function generateCertificate(userId: string, eventId: string): Prom
   
   const pdfUrl = `/certificates/${filename}`;
   
-  // Create certificate record
-  const certificate = await db.certificate.create({
+  // Update attendance record FIRST (Certificate has FK to EventAttendance.certificateId)
+  await prisma.eventAttendance.update({
+    where: { userId_eventId: { userId, eventId } },
+    data: {
+      certificateId,
+      certificateUrl: pdfUrl,
+    },
+  });
+  
+  // Create certificate record (references EventAttendance.certificateId via FK)
+  const certificate = await prisma.certificate.create({
     data: {
       certificateId,
       userId,
@@ -288,17 +297,8 @@ export async function generateCertificate(userId: string, eventId: string): Prom
     },
   });
   
-  // Update attendance record
-  await db.eventAttendance.update({
-    where: { userId_eventId: { userId, eventId } },
-    data: {
-      certificateId,
-      certificateUrl: pdfUrl,
-    },
-  });
-  
   // Log activity
-  await db.activityLog.create({
+  await prisma.activityLog.create({
     data: {
       userId,
       activityType: 'CERTIFICATE_ISSUED',
@@ -315,7 +315,7 @@ export async function generateCertificate(userId: string, eventId: string): Prom
  * Verify certificate by ID
  */
 export async function verifyCertificate(certificateId: string) {
-  const certificate = await db.certificate.findUnique({
+  const certificate = await prisma.certificate.findUnique({
     where: { certificateId },
     include: {
       user: {

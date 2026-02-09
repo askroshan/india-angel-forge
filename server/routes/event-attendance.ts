@@ -78,6 +78,17 @@ router.post('/:eventId/rsvp', authenticateUser, async (req, res) => {
     });
     
     if (existing) {
+      if (existing.rsvpStatus === 'CANCELLED') {
+        // Re-RSVP after cancellation
+        const attendance = await prisma.eventAttendance.update({
+          where: { userId_eventId: { userId, eventId } },
+          data: { rsvpStatus: 'CONFIRMED' },
+        });
+        return res.json({
+          success: true,
+          data: { attendance },
+        });
+      }
       return res.status(400).json({
         success: false,
         error: 'Already RSVPed to this event',
@@ -352,6 +363,38 @@ router.post('/:eventId/attendance/check-out', authenticateUser, requireRoles(['a
     return res.status(500).json({
       success: false,
       error: 'Failed to check out attendee',
+    });
+  }
+});
+
+/**
+ * POST /api/events/:eventId/certificates/generate
+ * 
+ * Generate certificate for an attended event (admin only)
+ */
+router.post('/:eventId/certificates/generate', authenticateUser, requireRoles(['admin']), async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+    
+    const result = await certificateService.generateCertificate(userId, eventId);
+    
+    return res.json({
+      success: true,
+      data: {
+        certificate: result.certificate,
+        message: 'Certificate generated successfully',
+      },
+    });
+  } catch (error: any) {
+    console.error('Error generating certificate:', error);
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to generate certificate',
     });
   }
 });
