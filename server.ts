@@ -2083,12 +2083,20 @@ app.get('/api/admin/events', authenticateToken, requireRole(['admin', 'operator'
     const events = await prisma.event.findMany({
       include: {
         _count: {
-          select: { registrations: true, waitlist: true }
+          select: { registrations: true, waitlist: true, attendance: true }
         }
       },
       orderBy: { eventDate: 'desc' },
     });
-    res.json(events);
+    
+    // Map to include combined registration count
+    const eventsWithCounts = events.map(e => ({
+      ...e,
+      registration_count: (e._count?.registrations || 0) + (e._count?.attendance || 0),
+      waitlist_count: e._count?.waitlist || 0,
+    }));
+    
+    res.json(eventsWithCounts);
   } catch (error) {
     console.error('Get admin events error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -2175,8 +2183,9 @@ app.delete('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'op
 // Get all event registrations (admin) - queries EventAttendance (consolidated)
 app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
   try {
-    const { eventId } = req.query;
-    const where = eventId ? { eventId: eventId as string } : {};
+    // Accept both event_id and eventId for compatibility
+    const filterEventId = (req.query.event_id || req.query.eventId) as string | undefined;
+    const where = filterEventId ? { eventId: filterEventId } : {};
     
     // Query from EventAttendance (consolidated registration system)
     const attendanceRecords = await prisma.eventAttendance.findMany({
@@ -2205,10 +2214,13 @@ app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin
         id: a.id,
         userId: a.userId,
         eventId: a.eventId,
+        // Flatten user data to top-level for frontend compatibility
+        full_name: a.user.fullName,
+        email: a.user.email,
+        company: null as string | null,
         status: a.rsvpStatus === 'CONFIRMED' ? 'registered' : 'waitlist',
-        registeredAt: a.createdAt,
-        event: a.event,
-        user: a.user,
+        registered_at: a.createdAt,
+        event_title: a.event.title,
       })),
       ...legacyRegistrations
         .filter(r => !seen.has(`${r.userId}-${r.eventId}`))
@@ -2216,10 +2228,12 @@ app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin
           id: r.id,
           userId: r.userId,
           eventId: r.eventId,
-          status: 'registered',
-          registeredAt: r.registeredAt,
-          event: r.event,
-          user: r.user,
+          full_name: r.user?.fullName || r.fullName,
+          email: r.user?.email || r.email,
+          company: r.company,
+          status: r.status === 'confirmed' ? 'registered' : r.status,
+          registered_at: r.registeredAt,
+          event_title: r.event.title,
         })),
     ];
     
