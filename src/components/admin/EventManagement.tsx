@@ -1,3 +1,21 @@
+/**
+ * EventManagement Component
+ * 
+ * Admin dashboard tab for managing events and viewing registrations.
+ * 
+ * data-testid trace:
+ *   admin-event-card          — Each event card wrapper
+ *   toggle-registrations      — Button to expand/collapse registrations
+ *   event-registration-count  — Registration count display
+ *   registrations-section     — Expanded registrations container
+ *   registrations-heading     — "Registrations" heading text
+ *   registration-row          — Each registration row
+ *   registration-name         — Registrant full name
+ *   registration-email        — Registrant email address
+ *   registration-status       — Registration status badge
+ * 
+ * E2E Tests: REG-E2E-003 to REG-E2E-010
+ */
 import { useState } from "react";
 import { format, isValid } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +107,7 @@ export function EventManagement() {
           <h2 className="text-2xl font-bold">Event Management</h2>
           <p className="text-muted-foreground">Create, edit, and manage events</p>
         </div>
-        <Button onClick={handleCreate}>
+        <Button onClick={handleCreate} data-testid="create-event-button">
           <Plus className="h-4 w-4 mr-2" />
           Create Event
         </Button>
@@ -108,8 +126,10 @@ export function EventManagement() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {events.map((event) => (
-            <Card key={event.id}>
+          {events.map((event) => {
+            const regCount = (event as any).registration_count ?? (event as any)._count?.registrations ?? 0;
+            return (
+            <Card key={event.id} data-testid="admin-event-card">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -119,7 +139,7 @@ export function EventManagement() {
                         <Badge variant="secondary" className="text-xs">Featured</Badge>
                       )}
                     </div>
-                    <CardDescription className="flex items-center gap-4">
+                    <CardDescription className="flex items-center gap-4 flex-wrap">
                       <span>{EVENT_TYPE_LABELS[event.event_type as keyof typeof EVENT_TYPE_LABELS]}</span>
                       <span>•</span>
                       <span>{(() => {
@@ -128,6 +148,10 @@ export function EventManagement() {
                       })()}</span>
                       <span>•</span>
                       <span>{event.location}</span>
+                      <span>•</span>
+                      <span data-testid="event-registration-count">
+                        {regCount} registered
+                      </span>
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -135,13 +159,14 @@ export function EventManagement() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      data-testid="toggle-registrations"
                       onClick={() => setViewingRegistrations(
                         viewingRegistrations === event.id ? null : event.id
                       )}
                     >
                       <Users className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(event)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(event)} data-testid="edit-event-button">
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
@@ -149,6 +174,7 @@ export function EventManagement() {
                       size="icon"
                       className="text-destructive hover:text-destructive"
                       onClick={() => handleDelete(event)}
+                      data-testid="delete-event-button"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -166,8 +192,8 @@ export function EventManagement() {
                 </div>
 
                 {viewingRegistrations === event.id && (
-                  <div className="mt-4 pt-4 border-t">
-                    <h4 className="font-semibold mb-3">Registrations</h4>
+                  <div className="mt-4 pt-4 border-t" data-testid="registrations-section">
+                    <h4 className="font-semibold mb-3" data-testid="registrations-heading">Registrations</h4>
                     {!registrations || registrations.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No registrations yet</p>
                     ) : (
@@ -175,16 +201,20 @@ export function EventManagement() {
                         {registrations.map((reg) => (
                           <div
                             key={reg.id}
+                            data-testid="registration-row"
                             className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
                           >
                             <div>
-                              <span className="font-medium">{reg.full_name}</span>
-                              <span className="text-muted-foreground ml-2">{reg.email}</span>
+                              <span className="font-medium" data-testid="registration-name">{reg.full_name}</span>
+                              <span className="text-muted-foreground ml-2" data-testid="registration-email">{reg.email}</span>
                               {reg.company && (
                                 <span className="text-muted-foreground ml-2">• {reg.company}</span>
                               )}
                             </div>
-                            <Badge variant={reg.status === "registered" ? "default" : "secondary"}>
+                            <Badge
+                              variant={reg.status === "registered" ? "default" : "secondary"}
+                              data-testid="registration-status"
+                            >
                               {reg.status}
                             </Badge>
                           </div>
@@ -195,7 +225,8 @@ export function EventManagement() {
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -42,7 +42,9 @@ export default function EventCard({ event, showFullDetails = false }: EventCardP
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <h3 className="text-xl md:text-2xl font-semibold">{event.title}</h3>
+                  <Link to={`/events/${event.slug || event.id}`} className="hover:text-accent transition-colors" data-testid="event-title-link">
+                    <h3 className="text-xl md:text-2xl font-semibold">{event.title}</h3>
+                  </Link>
                   {event.is_featured && (
                     <Badge variant="default" className="bg-accent text-accent-foreground gap-1">
                       <Star className="h-3 w-3" />

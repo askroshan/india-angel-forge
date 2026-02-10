@@ -15,6 +15,25 @@ export interface Event {
   eventTypeId: string | null;
   createdAt: string;
   updatedAt: string;
+  // Enhanced CMS fields
+  city?: string | null;
+  venue?: string | null;
+  address?: string | null;
+  mapLatitude?: number | null;
+  mapLongitude?: number | null;
+  bannerImageUrl?: string | null;
+  eventStartups?: Array<{
+    id: string;
+    companyName: string;
+    companyLogoUrl: string | null;
+    founderName: string;
+    founderPhotoUrl: string | null;
+    founderLinkedin: string | null;
+    pitchDescription: string | null;
+    industry: string | null;
+    fundingStage: string | null;
+    displayOrder: number;
+  }>;
   // Legacy/optional fields for backward compatibility
   slug?: string;
   event_type?: 'monthly_forum' | 'sector_summit' | 'angel_education' | 'portfolio_gathering' | 'annual_summit';
@@ -55,13 +74,15 @@ export const EVENT_TYPE_LABELS: Record<Event['event_type'], string> = {
   annual_summit: 'Annual Summit',
 };
 
-export function useEvents(filter?: 'upcoming' | 'past' | 'all') {
+export function useEvents(filter?: 'upcoming' | 'past' | 'all', options?: { city?: string; search?: string; eventType?: string }) {
   return useQuery({
-    queryKey: ['events', filter],
+    queryKey: ['events', filter, options?.city, options?.search, options?.eventType],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filter) params.append('filter', filter);
-      
+      if (options?.city) params.append('city', options.city);
+      if (options?.search) params.append('search', options.search);
+      if (options?.eventType) params.append('eventType', options.eventType);
       const data = await apiClient.get<Event[]>(`/api/events?${params.toString()}`);
       return data || [];
     },

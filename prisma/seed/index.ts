@@ -114,45 +114,218 @@ async function main() {
     console.log(`✅ Created user: ${userData.email} (${userData.roles.join(', ')})`);
   }
 
-  // Create some test events
+  // ==================== EVENTS: Delete all existing, seed exactly 30 ====================
+  console.log('\n📅 Seeding 30 events (cleaning up old events with cascade)...\n');
+  
+  // Delete all existing events — cascade deletes registrations, attendance, waitlist, startups
+  // Delete certificates first (they reference attendance)
+  await prisma.certificate.deleteMany({});
+  await prisma.eventStartup.deleteMany({});
+  await prisma.eventAttendance.deleteMany({});
+  await prisma.eventRegistration.deleteMany({});
+  await prisma.eventWaitlist.deleteMany({});
+  await prisma.event.deleteMany({});
+  console.log('🗑️  Cleared all old events and cascading data');
+
   const events = [
+    // Upcoming events (Mumbai — needed by E2E: 'Angel Forum', 'Mumbai' city filter, 'Taj Lands End' venue)
+    { title: 'Monthly Angel Forum - February 2026', description: 'Monthly pitch session featuring 5 curated startups across AI, FinTech, and HealthTech sectors.', eventDate: new Date('2026-02-15T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, registrationDeadline: new Date('2026-02-13T23:59:59Z'), status: 'upcoming', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'Deep Tech Sector Summit', description: 'Exclusive summit focusing on AI/ML, robotics, and quantum computing startups.', eventDate: new Date('2026-03-01T10:00:00Z'), location: 'ITC Grand Central, Mumbai', capacity: 100, registrationDeadline: new Date('2026-02-25T23:59:59Z'), status: 'upcoming', city: 'Mumbai', venue: 'ITC Grand Central', address: 'Dr. Babasaheb Ambedkar Road, Parel, Mumbai 400012', mapLatitude: 19.0056, mapLongitude: 72.8423 },
+    { title: 'Founder-Investor Networking Night', description: 'Informal networking event for founders and investors to connect.', eventDate: new Date('2026-02-20T19:00:00Z'), location: 'The Leela, Mumbai', capacity: 75, registrationDeadline: new Date('2026-02-18T23:59:59Z'), status: 'upcoming', city: 'Mumbai', venue: 'The Leela Mumbai', address: 'Sahar, Andheri East, Mumbai 400059', mapLatitude: 19.1095, mapLongitude: 72.8689 },
+    { title: 'Angel Forum - March 2026', description: 'Monthly angel forum with special focus on healthcare and biotech startups seeking seed funding.', eventDate: new Date('2026-03-15T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, registrationDeadline: new Date('2026-03-13T23:59:59Z'), status: 'upcoming', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'FinTech Innovation Summit', description: 'Day-long summit exploring the latest in digital payments, neobanking, and embedded finance.', eventDate: new Date('2026-03-20T09:00:00Z'), location: 'Hyatt Regency, Mumbai', capacity: 120, registrationDeadline: new Date('2026-03-18T23:59:59Z'), status: 'upcoming', city: 'Mumbai', venue: 'Hyatt Regency', address: 'Sahar Airport Road, Andheri East, Mumbai 400099', mapLatitude: 19.1136, mapLongitude: 72.8697 },
+    // Upcoming events (Bengaluru)
+    { title: 'Bengaluru Startup Pitch Day', description: 'Pitch day featuring 10 early-stage startups from the Bengaluru ecosystem.', eventDate: new Date('2026-03-10T14:00:00Z'), location: 'The Oberoi, Bengaluru', capacity: 80, registrationDeadline: new Date('2026-03-08T23:59:59Z'), status: 'upcoming', city: 'Bengaluru', venue: 'The Oberoi', address: '37-39, Mahatma Gandhi Road, Bengaluru 560001', mapLatitude: 12.9716, mapLongitude: 77.5946 },
+    { title: 'SaaS Growth Masterclass', description: 'Expert-led masterclass on scaling B2B SaaS companies from ₹1Cr to ₹100Cr ARR.', eventDate: new Date('2026-04-05T10:00:00Z'), location: 'ITC Gardenia, Bengaluru', capacity: 60, registrationDeadline: new Date('2026-04-03T23:59:59Z'), status: 'upcoming', city: 'Bengaluru', venue: 'ITC Gardenia', address: '1, Residency Road, Bengaluru 560025', mapLatitude: 12.9698, mapLongitude: 77.5968 },
+    // Upcoming events (Delhi)
+    { title: 'Delhi Angel Investor Meet', description: 'Quarterly angel investor meet to discuss portfolio strategies and new deal flow.', eventDate: new Date('2026-03-25T17:00:00Z'), location: 'The Imperial, New Delhi', capacity: 40, registrationDeadline: new Date('2026-03-23T23:59:59Z'), status: 'upcoming', city: 'Delhi', venue: 'The Imperial', address: 'Janpath, Connaught Place, New Delhi 110001', mapLatitude: 28.6129, mapLongitude: 77.2295 },
+    { title: 'AgriTech Forum North India', description: 'Exploring investment opportunities in agriculture technology and rural innovation.', eventDate: new Date('2026-04-12T10:00:00Z'), location: 'ITC Maurya, New Delhi', capacity: 90, registrationDeadline: new Date('2026-04-10T23:59:59Z'), status: 'upcoming', city: 'Delhi', venue: 'ITC Maurya', address: 'Diplomatic Enclave, Sardar Patel Marg, New Delhi 110021', mapLatitude: 28.5987, mapLongitude: 77.1749 },
+    // Upcoming events (Hyderabad, Chennai, Pune)
+    { title: 'Hyderabad HealthTech Connect', description: 'Connecting healthtech startups with investors and hospital networks.', eventDate: new Date('2026-04-08T14:00:00Z'), location: 'Taj Falaknuma Palace, Hyderabad', capacity: 50, registrationDeadline: new Date('2026-04-06T23:59:59Z'), status: 'upcoming', city: 'Hyderabad', venue: 'Taj Falaknuma Palace', address: 'Engine Bowli, Falaknuma, Hyderabad 500053', mapLatitude: 17.3326, mapLongitude: 78.4671 },
+    { title: 'Chennai Startup Ecosystem Summit', description: 'Annual gathering of Chennai startup community with investor panels and startup showcases.', eventDate: new Date('2026-04-15T09:00:00Z'), location: 'ITC Grand Chola, Chennai', capacity: 150, registrationDeadline: new Date('2026-04-13T23:59:59Z'), status: 'upcoming', city: 'Chennai', venue: 'ITC Grand Chola', address: '63, Anna Salai, Guindy, Chennai 600032', mapLatitude: 13.0105, mapLongitude: 80.2218 },
+    { title: 'Pune Angel Forum Q2', description: 'Quarterly angel forum featuring Pune-based deep tech and manufacturing startups.', eventDate: new Date('2026-04-20T18:00:00Z'), location: 'JW Marriott, Pune', capacity: 60, registrationDeadline: new Date('2026-04-18T23:59:59Z'), status: 'upcoming', city: 'Pune', venue: 'JW Marriott', address: 'Senapati Bapat Road, Pune 411053', mapLatitude: 18.5362, mapLongitude: 73.8317 },
+
+    // Completed / Past events (for history)
+    { title: 'Monthly Angel Forum - January 2026', description: 'January edition featuring e-commerce and logistics startups.', eventDate: new Date('2026-01-18T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'Annual Angel Summit 2025', description: 'Year-end summit reviewing 2025 deals and portfolio performance across all sectors.', eventDate: new Date('2025-12-15T10:00:00Z'), location: 'The Oberoi, Mumbai', capacity: 200, status: 'completed', city: 'Mumbai', venue: 'The Oberoi', address: 'Nariman Point, Mumbai 400021', mapLatitude: 18.9256, mapLongitude: 72.8242 },
+    { title: 'CleanTech Investment Day', description: 'Full-day event focused on renewable energy, EV, and sustainability startups.', eventDate: new Date('2025-12-08T09:00:00Z'), location: 'Hilton, Chennai', capacity: 80, status: 'completed', city: 'Chennai', venue: 'Hilton Chennai', address: '124/1, JN Salai, Guindy, Chennai 600032', mapLatitude: 13.0067, mapLongitude: 80.2206 },
+    { title: 'EdTech Founders Forum', description: 'Discussion forum for EdTech founders on scaling in the Indian market.', eventDate: new Date('2025-11-20T15:00:00Z'), location: 'Taj Coromandel, Chennai', capacity: 60, status: 'completed', city: 'Chennai', venue: 'Taj Coromandel', address: '37, Mahatma Gandhi Road, Nungambakkam, Chennai 600034', mapLatitude: 13.0569, mapLongitude: 80.2425 },
+    { title: 'Bengaluru VC Roundtable', description: 'Roundtable discussion with top VCs on market trends and investment thesis for 2026.', eventDate: new Date('2025-11-10T14:00:00Z'), location: 'The Ritz-Carlton, Bengaluru', capacity: 30, status: 'completed', city: 'Bengaluru', venue: 'The Ritz-Carlton', address: '99, Residency Road, Bengaluru 560025', mapLatitude: 12.9692, mapLongitude: 77.6040 },
+    { title: 'Cybersecurity Investment Workshop', description: 'Workshop on evaluating cybersecurity startups and understanding the threat landscape.', eventDate: new Date('2025-10-25T10:00:00Z'), location: 'JW Marriott, Pune', capacity: 40, status: 'completed', city: 'Pune', venue: 'JW Marriott', address: 'Senapati Bapat Road, Pune 411053', mapLatitude: 18.5362, mapLongitude: 73.8317 },
+    { title: 'Monthly Angel Forum - October 2025', description: 'October forum with 5 pre-screened startups in consumer internet and retail tech.', eventDate: new Date('2025-10-18T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'PropTech Pitch Night', description: 'Evening pitch session for real estate technology and construction tech startups.', eventDate: new Date('2025-10-05T19:00:00Z'), location: 'The Leela Palace, Delhi', capacity: 50, status: 'completed', city: 'Delhi', venue: 'The Leela Palace', address: 'Diplomatic Enclave, Chanakyapuri, New Delhi 110023', mapLatitude: 28.5930, mapLongitude: 77.1730 },
+    { title: 'Women in Angel Investing', description: 'Special forum celebrating women angel investors and women-led startups.', eventDate: new Date('2025-09-20T15:00:00Z'), location: 'Taj Falaknuma Palace, Hyderabad', capacity: 60, status: 'completed', city: 'Hyderabad', venue: 'Taj Falaknuma Palace', address: 'Engine Bowli, Falaknuma, Hyderabad 500053', mapLatitude: 17.3326, mapLongitude: 78.4671 },
+    { title: 'Monthly Angel Forum - September 2025', description: 'September edition with logistics and supply chain startups.', eventDate: new Date('2025-09-15T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'AI/ML Startup Showcase', description: 'Showcase of top 8 AI/ML startups with live product demos and investor Q&A.', eventDate: new Date('2025-09-05T10:00:00Z'), location: 'ITC Gardenia, Bengaluru', capacity: 100, status: 'completed', city: 'Bengaluru', venue: 'ITC Gardenia', address: '1, Residency Road, Bengaluru 560025', mapLatitude: 12.9698, mapLongitude: 77.5968 },
+    { title: 'Gaming & Esports Investment Night', description: 'Exploring the booming Indian gaming and esports investment opportunity.', eventDate: new Date('2025-08-22T19:00:00Z'), location: 'Sofitel, Mumbai', capacity: 45, status: 'completed', city: 'Mumbai', venue: 'Sofitel BKC', address: 'C-57, Bandra Kurla Complex, Mumbai 400098', mapLatitude: 19.0644, mapLongitude: 72.8634 },
+    { title: 'Monthly Angel Forum - August 2025', description: 'August forum featuring biotech and pharmaceutical startups.', eventDate: new Date('2025-08-18T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'EV & Mobility Summit', description: 'Summit on electric vehicles, autonomous driving, and future of mobility in India.', eventDate: new Date('2025-08-05T09:00:00Z'), location: 'HICC, Hyderabad', capacity: 120, status: 'completed', city: 'Hyderabad', venue: 'HICC', address: 'Madhapur, Hyderabad 500081', mapLatitude: 17.4486, mapLongitude: 78.3785 },
+    { title: 'Rural Innovation Forum', description: 'Exploring tech-driven solutions for rural India — agritech, rural fintech, and more.', eventDate: new Date('2025-07-25T10:00:00Z'), location: 'Vivanta, Pune', capacity: 70, status: 'completed', city: 'Pune', venue: 'Vivanta Pune', address: 'Blue Ridge, Hinjewadi, Pune 411057', mapLatitude: 18.5890, mapLongitude: 73.7380 },
+    { title: 'Monthly Angel Forum - July 2025', description: 'July forum with D2C brands and consumer startups.', eventDate: new Date('2025-07-18T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+    { title: 'Climate Tech & Sustainability Forum', description: 'Investor forum on climate tech, carbon credits, and sustainability-focused startups.', eventDate: new Date('2025-07-08T14:00:00Z'), location: 'ITC Grand Chola, Chennai', capacity: 80, status: 'completed', city: 'Chennai', venue: 'ITC Grand Chola', address: '63, Anna Salai, Guindy, Chennai 600032', mapLatitude: 13.0105, mapLongitude: 80.2218 },
+    { title: 'Monthly Angel Forum - June 2025', description: 'June edition showcasing Web3 and blockchain startups solving real-world problems.', eventDate: new Date('2025-06-18T18:00:00Z'), location: 'Taj Lands End, Mumbai', capacity: 50, status: 'completed', city: 'Mumbai', venue: 'Taj Lands End', address: 'Bandstand, Bandra West, Mumbai 400050', mapLatitude: 19.0440, mapLongitude: 72.8198 },
+  ];
+
+  // Create all 30 events
+  const createdEvents = [];
+  for (const eventData of events) {
+    const event = await prisma.event.create({ data: eventData });
+    createdEvents.push(event);
+    console.log(`✅ Created event: ${eventData.title}`);
+  }
+  console.log(`\n📊 Created ${createdEvents.length} events total`);
+
+  // ==================== SEED EVENT REGISTRATIONS ====================
+  console.log('\n📝 Seeding event registrations...\n');
+  
+  // Get all users for creating registrations
+  const allUsers = await prisma.user.findMany();
+  
+  // Create EventRegistration records for each event (3-8 per event)
+  let totalRegistrations = 0;
+  for (const event of createdEvents) {
+    // Pick 3-8 random users per event
+    const regCount = Math.min(allUsers.length, Math.floor(Math.random() * 6) + 3);
+    const shuffled = [...allUsers].sort(() => Math.random() - 0.5);
+    const selectedUsers = shuffled.slice(0, regCount);
+    
+    for (const user of selectedUsers) {
+      try {
+        await prisma.eventRegistration.create({
+          data: {
+            eventId: event.id,
+            userId: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            status: 'registered',
+          },
+        });
+        totalRegistrations++;
+      } catch {
+        // Skip duplicates
+        continue;
+      }
+    }
+  }
+  console.log(`✅ Created ${totalRegistrations} event registrations across ${createdEvents.length} events`);
+
+  // Seed Team Members
+  const teamMembers = [
     {
-      title: 'Monthly Angel Forum - February 2026',
-      description: 'Monthly pitch session featuring 5 curated startups across AI, FinTech, and HealthTech sectors.',
-      eventDate: new Date('2026-02-15T18:00:00Z'),
-      location: 'Taj Lands End, Mumbai',
-      capacity: 50,
-      registrationDeadline: new Date('2026-02-13T23:59:59Z'),
-      status: 'upcoming',
+      name: 'Vikram Mehta',
+      role: 'Managing Partner',
+      bio: 'Vikram brings 20+ years of experience in venture capital and angel investing across India. Previously led investments at Sequoia Capital India.',
+      linkedinUrl: 'https://linkedin.com/in/vikram-mehta',
+      displayOrder: 1,
+      isActive: true,
     },
     {
-      title: 'Deep Tech Sector Summit',
-      description: 'Exclusive summit focusing on AI/ML, robotics, and quantum computing startups.',
-      eventDate: new Date('2026-03-01T10:00:00Z'),
-      location: 'ITC Grand Central, Mumbai',
-      capacity: 100,
-      registrationDeadline: new Date('2026-02-25T23:59:59Z'),
-      status: 'upcoming',
+      name: 'Anita Desai',
+      role: 'Head of Investments',
+      bio: 'Anita specializes in deep-tech and AI/ML startups. Former CTO at a leading Indian unicorn with expertise in evaluating technology-driven businesses.',
+      linkedinUrl: 'https://linkedin.com/in/anita-desai',
+      displayOrder: 2,
+      isActive: true,
     },
     {
-      title: 'Founder-Investor Networking Night',
-      description: 'Informal networking event for founders and investors to connect.',
-      eventDate: new Date('2026-02-20T19:00:00Z'),
-      location: 'The Leela, Mumbai',
-      capacity: 75,
-      registrationDeadline: new Date('2026-02-18T23:59:59Z'),
-      status: 'upcoming',
+      name: 'Rajesh Iyer',
+      role: 'Director of Operations',
+      bio: 'Rajesh oversees forum operations and event management. Previously ran operations for TiE Mumbai chapter for 8 years.',
+      linkedinUrl: 'https://linkedin.com/in/rajesh-iyer',
+      displayOrder: 3,
+      isActive: true,
     },
   ];
 
-  for (const eventData of events) {
-    await prisma.event.upsert({
-      where: { id: eventData.title.toLowerCase().replace(/\s+/g, '-').slice(0, 36) },
-      update: eventData,
-      create: eventData,
-    });
-    console.log(`✅ Created event: ${eventData.title}`);
+  await prisma.teamMember.deleteMany({});
+  for (const member of teamMembers) {
+    await prisma.teamMember.create({ data: member });
   }
+  console.log(`✅ Created ${teamMembers.length} team members`);
+
+  // Seed Partners
+  const partners = [
+    {
+      name: 'Mumbai Angels Network',
+      description: 'One of India\'s premier angel investing platforms with 500+ members and 200+ investments.',
+      websiteUrl: 'https://mumbaiangels.com',
+      displayOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'NASSCOM',
+      description: 'India\'s technology industry body representing the $245 billion IT-BPM sector.',
+      websiteUrl: 'https://nasscom.in',
+      displayOrder: 2,
+      isActive: true,
+    },
+    {
+      name: 'Startup India',
+      description: 'Government of India initiative to catalyze startup culture and build a strong ecosystem.',
+      websiteUrl: 'https://startupindia.gov.in',
+      displayOrder: 3,
+      isActive: true,
+    },
+    {
+      name: 'IIT Bombay E-Cell',
+      description: 'IIT Bombay\'s Entrepreneurship Cell fostering the startup ecosystem in India since 2002.',
+      websiteUrl: 'https://ecell.in',
+      displayOrder: 4,
+      isActive: true,
+    },
+  ];
+
+  await prisma.partner.deleteMany({});
+  for (const partner of partners) {
+    await prisma.partner.create({ data: partner });
+  }
+  console.log(`✅ Created ${partners.length} partners`);
+
+  // Seed Event Startups (for the first event)
+  const firstEventId = createdEvents[0].id;
+  const eventStartups = [
+    {
+      eventId: firstEventId,
+      companyName: 'MediScan AI',
+      founderName: 'Dr. Kavitha Rao',
+      founderLinkedin: 'https://linkedin.com/in/kavitha-rao',
+      pitchDescription: 'AI-powered diagnostic imaging platform that detects early-stage cancers with 98% accuracy. Already deployed in 15 hospitals across India.',
+      industry: 'Healthcare AI',
+      fundingStage: 'Seed',
+      displayOrder: 1,
+    },
+    {
+      eventId: firstEventId,
+      companyName: 'FinFlow',
+      founderName: 'Arjun Nair',
+      founderLinkedin: 'https://linkedin.com/in/arjun-nair',
+      pitchDescription: 'Embedded finance platform enabling any SaaS company to offer lending products. Processing ₹50Cr+ monthly through partner integrations.',
+      industry: 'FinTech',
+      fundingStage: 'Pre-Seed',
+      displayOrder: 2,
+    },
+    {
+      eventId: firstEventId,
+      companyName: 'GreenRoute Logistics',
+      founderName: 'Meera Sharma',
+      founderLinkedin: 'https://linkedin.com/in/meera-sharma',
+      pitchDescription: 'Electric vehicle-based last-mile delivery network. Carbon-neutral logistics covering 8 major Indian cities with 500+ EV fleet.',
+      industry: 'CleanTech / Logistics',
+      fundingStage: 'Seed',
+      displayOrder: 3,
+    },
+  ];
+
+  // Clear existing startups for this event and recreate
+  await prisma.eventStartup.deleteMany({
+    where: { eventId: firstEventId },
+  });
+  for (const startup of eventStartups) {
+    await prisma.eventStartup.create({
+      data: startup,
+    });
+  }
+  console.log(`✅ Created ${eventStartups.length} event startups`);
 
   console.log('\n🎉 Database seeding completed!\n');
   console.log('Test Credentials:');
@@ -401,6 +574,187 @@ async function main() {
   
   // Seed Financial Statements
   await seedFinancialStatements();
+  
+  // ==================== MEMBERSHIP PLANS & CONFIG ====================
+  console.log('\n💳 Seeding membership plans, discount codes, and config...\n');
+
+  // Clear existing membership data (safe for dev/test)
+  await prisma.membershipPlanChangeLog.deleteMany({});
+  await prisma.userMembership.deleteMany({});
+  await prisma.discountCode.deleteMany({});
+  await prisma.membershipPlan.deleteMany({});
+  await prisma.identityVerification.deleteMany({});
+  await prisma.systemConfig.deleteMany({});
+
+  // Create Membership Plans
+  const standardPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Standard Member',
+      slug: 'standard-annual',
+      price: 60000,
+      billingCycle: 'ANNUAL',
+      features: [
+        'Access to monthly angel forums',
+        'Deal flow access (5 deals/month)',
+        'Networking events',
+        'Quarterly investment reports',
+        'Email support',
+      ],
+      isActive: true,
+      displayOrder: 1,
+    },
+  });
+  console.log(`✅ Created plan: ${standardPlan.name} (₹${standardPlan.price})`);
+
+  const premiumPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Premium Member',
+      slug: 'premium-annual',
+      price: 120000,
+      billingCycle: 'ANNUAL',
+      features: [
+        'All Standard features',
+        'Unlimited deal flow access',
+        'Priority event seating',
+        'Monthly 1-on-1 advisory sessions',
+        'Co-investment opportunities',
+        'Exclusive deep-dive sector reports',
+        'Priority support line',
+      ],
+      isActive: true,
+      displayOrder: 2,
+    },
+  });
+  console.log(`✅ Created plan: ${premiumPlan.name} (₹${premiumPlan.price})`);
+
+  const introductoryPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Introductory',
+      slug: 'introductory-free',
+      price: 0,
+      billingCycle: 'ANNUAL',
+      features: [
+        'Access to monthly angel forums',
+        'Limited deal flow (2 deals/month)',
+        'Networking events (general)',
+        'Community access',
+      ],
+      isActive: true,
+      displayOrder: 0,
+    },
+  });
+  console.log(`✅ Created plan: ${introductoryPlan.name} (₹${introductoryPlan.price})`);
+
+  // Create Discount Codes
+  const adminId = adminUser?.id || 'seed-admin';
+  const discountCodes = [
+    {
+      code: 'EARLY2026',
+      discountType: 'PERCENTAGE' as const,
+      discountValue: 20,
+      maxUses: 100,
+      currentUses: 0,
+      validFrom: new Date('2025-12-01'),
+      validUntil: new Date('2026-06-30'),
+      applicablePlanIds: [standardPlan.id, premiumPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: 'Early bird 20% discount for 2026',
+    },
+    {
+      code: 'FOUNDING50',
+      discountType: 'FIXED_AMOUNT' as const,
+      discountValue: 50000,
+      maxUses: 25,
+      currentUses: 0,
+      validFrom: new Date('2025-01-01'),
+      validUntil: null,
+      applicablePlanIds: [premiumPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: 'Founding member ₹50,000 off Premium',
+    },
+    {
+      code: 'FREE100',
+      discountType: 'PERCENTAGE' as const,
+      discountValue: 100,
+      maxUses: 10,
+      currentUses: 0,
+      validFrom: new Date('2025-01-01'),
+      validUntil: new Date('2026-12-31'),
+      applicablePlanIds: [standardPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: '100% off Standard (10 invitees)',
+    },
+  ];
+
+  for (const dc of discountCodes) {
+    await prisma.discountCode.create({ data: dc });
+    console.log(`✅ Created discount code: ${dc.code}`);
+  }
+
+  // System Config
+  const systemConfigs = [
+    { key: 'membership.introductory_enabled', value: 'false', description: 'Enable introductory pricing for all plans' },
+    { key: 'membership.introductory_price', value: '0', description: 'Introductory price override (when enabled)' },
+    { key: 'persona.monthly_quota', value: '500', description: 'Max Persona verifications per month' },
+    { key: 'persona.monthly_used', value: '0', description: 'Verifications used this month (auto-reset)' },
+    { key: 'membership.razorpay_enabled', value: 'true', description: 'Enable Razorpay payment gateway for memberships' },
+    { key: 'membership.stripe_enabled', value: 'false', description: 'Enable Stripe payment gateway for memberships' },
+  ];
+
+  for (const config of systemConfigs) {
+    await prisma.systemConfig.create({ data: config });
+    console.log(`✅ Created config: ${config.key} = ${config.value || '(empty)'}`);
+  }
+
+  // Create a sample verified investor with membership
+  const sampleInvestor = await prisma.user.findUnique({
+    where: { email: 'investor.standard@test.com' },
+  });
+
+  if (sampleInvestor) {
+    // Create identity verification
+    await prisma.identityVerification.create({
+      data: {
+        userId: sampleInvestor.id,
+        provider: 'persona',
+        providerInquiryId: `inq_seed_${Date.now()}`,
+        status: 'COMPLETED',
+        verifiedAt: new Date('2025-12-15'),
+      },
+    });
+    console.log(`✅ Created identity verification for ${sampleInvestor.email}`);
+
+    // Create membership
+    const membershipStart = new Date('2026-01-10');
+    const membershipEnd = new Date('2027-01-10');
+    await prisma.userMembership.create({
+      data: {
+        userId: sampleInvestor.id,
+        planId: standardPlan.id,
+        status: 'ACTIVE',
+        startDate: membershipStart,
+        endDate: membershipEnd,
+        autoRenew: false,
+      },
+    });
+    console.log(`✅ Created active membership for ${sampleInvestor.email}`);
+
+    // Log activation
+    await prisma.membershipPlanChangeLog.create({
+      data: {
+        userId: sampleInvestor.id,
+        newPlanId: standardPlan.id,
+        changeType: 'ACTIVATION',
+        newPrice: standardPlan.price,
+        changedBy: sampleInvestor.id,
+      },
+    });
+  }
+
+  console.log('\n✨ Membership seed data completed!\n');
   
   console.log('\n🎉 Phase 2 test data seeding completed!\n');
 }

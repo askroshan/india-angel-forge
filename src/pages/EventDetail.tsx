@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -28,12 +29,16 @@ import {
   Star,
   User,
   CheckCircle,
-  ClockIcon
+  ClockIcon,
+  Building2,
+  Linkedin,
+  Rocket
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { data: event, isLoading, error } = useEvent(slug || "");
   const { data: registrationCount } = useRegistrationCount(event?.id || "");
   const { data: myRegistrations } = useMyRegistrations();
@@ -48,6 +53,7 @@ export default function EventDetail() {
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const isRegistered = myRegistrations?.some(
     r => r.event_id === event?.id && r.status === 'registered'
@@ -56,6 +62,10 @@ export default function EventDetail() {
   const hasRSVP = myRSVP?.data?.attendance?.rsvpStatus === 'CONFIRMED' && !cancelSuccess;
 
   const handleRSVP = () => {
+    if (!user) {
+      navigate('/auth', { state: { from: `/events/${slug}` } });
+      return;
+    }
     if (event?.id) {
       rsvpMutation.mutate(event.id);
     }
@@ -251,6 +261,91 @@ export default function EventDetail() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Startups Pitching */}
+            {event.eventStartups && event.eventStartups.length > 0 && (
+              <Card data-testid="startups-section">
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Rocket className="h-5 w-5 text-accent" />
+                    Startups Pitching
+                  </h2>
+                  <div className="space-y-4">
+                    {event.eventStartups.map((startup) => (
+                      <div key={startup.id} className="flex gap-4 items-start p-4 bg-muted/50 rounded-lg" data-testid="startup-card">
+                        <Avatar className="h-12 w-12 flex-shrink-0">
+                          {startup.founderPhotoUrl ? (
+                            <AvatarImage src={startup.founderPhotoUrl} alt={startup.founderName} />
+                          ) : null}
+                          <AvatarFallback className="bg-accent/10 text-accent font-bold">
+                            {startup.founderName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold" data-testid="startup-company">{startup.companyName}</h4>
+                            {startup.companyLogoUrl && (
+                              <img src={startup.companyLogoUrl} alt="" className="h-5 w-auto" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span data-testid="startup-founder">{startup.founderName}</span>
+                            {startup.founderLinkedin && (
+                              <a href={startup.founderLinkedin} target="_blank" rel="noopener noreferrer" className="hover:text-accent">
+                                <Linkedin className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                          {startup.pitchDescription && (
+                            <p className="text-sm text-muted-foreground mt-1" data-testid="startup-description">
+                              {startup.pitchDescription}
+                            </p>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            {startup.industry && (
+                              <Badge variant="outline" className="text-xs">{startup.industry}</Badge>
+                            )}
+                            {startup.fundingStage && (
+                              <Badge variant="secondary" className="text-xs">{startup.fundingStage}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Map */}
+            {event.mapLatitude && event.mapLongitude && (
+              <Card data-testid="event-map">
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-accent" />
+                    Event Location
+                  </h2>
+                  <div className="h-[300px] rounded-lg overflow-hidden border" id="event-map-container">
+                    <iframe
+                      title="Event Location Map"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${event.mapLongitude - 0.01},${event.mapLatitude - 0.01},${event.mapLongitude + 0.01},${event.mapLatitude + 0.01}&layer=mapnik&marker=${event.mapLatitude},${event.mapLongitude}`}
+                      data-testid="map-iframe"
+                    />
+                  </div>
+                  {(event.venue || event.address) && (
+                    <div className="mt-3 text-sm text-muted-foreground">
+                      {event.venue && <p className="font-medium text-foreground">{event.venue}</p>}
+                      {event.address && <p>{event.address}</p>}
+                      {event.city && <p>{event.city}</p>}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right Column - Registration */}
@@ -430,6 +525,16 @@ export default function EventDetail() {
                     <Link to="/apply/investor" className="text-accent underline">
                       Become a member
                     </Link>
+                  </p>
+                )}
+
+                {/* Login prompt for unauthenticated users */}
+                {!user && event.status === 'upcoming' && (
+                  <p className="text-sm text-muted-foreground text-center" data-testid="login-prompt">
+                    <Link to="/auth" className="text-accent underline" state={{ from: `/events/${slug}` }}>
+                      Sign in
+                    </Link>{" "}
+                    to register for this event
                   </p>
                 )}
               </CardContent>
