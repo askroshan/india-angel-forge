@@ -8,9 +8,11 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold">
-              India Angel Forum
-            </h3>
+            <img
+              src="/logo-transparent.png"
+              alt="India Angel Forum"
+              className="h-10 w-auto object-contain brightness-0 invert"
+            />
             <p className="text-sm text-primary-foreground/80">
               India's largest angel network connecting accredited investors with exceptional founders.
             </p>

@@ -124,6 +124,11 @@ async function main() {
       capacity: 50,
       registrationDeadline: new Date('2026-02-13T23:59:59Z'),
       status: 'upcoming',
+      city: 'Mumbai',
+      venue: 'Taj Lands End',
+      address: 'Bandstand, Bandra West, Mumbai 400050',
+      mapLatitude: 19.0440,
+      mapLongitude: 72.8198,
     },
     {
       title: 'Deep Tech Sector Summit',
@@ -133,6 +138,11 @@ async function main() {
       capacity: 100,
       registrationDeadline: new Date('2026-02-25T23:59:59Z'),
       status: 'upcoming',
+      city: 'Mumbai',
+      venue: 'ITC Grand Central',
+      address: 'Dr. Babasaheb Ambedkar Road, Parel, Mumbai 400012',
+      mapLatitude: 19.0056,
+      mapLongitude: 72.8423,
     },
     {
       title: 'Founder-Investor Networking Night',
@@ -142,6 +152,11 @@ async function main() {
       capacity: 75,
       registrationDeadline: new Date('2026-02-18T23:59:59Z'),
       status: 'upcoming',
+      city: 'Mumbai',
+      venue: 'The Leela Mumbai',
+      address: 'Sahar, Andheri East, Mumbai 400059',
+      mapLatitude: 19.1095,
+      mapLongitude: 72.8689,
     },
   ];
 
@@ -153,6 +168,131 @@ async function main() {
     });
     console.log(`✅ Created event: ${eventData.title}`);
   }
+
+  // Seed Team Members
+  const teamMembers = [
+    {
+      name: 'Vikram Mehta',
+      role: 'Managing Partner',
+      bio: 'Vikram brings 20+ years of experience in venture capital and angel investing across India. Previously led investments at Sequoia Capital India.',
+      linkedinUrl: 'https://linkedin.com/in/vikram-mehta',
+      displayOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'Anita Desai',
+      role: 'Head of Investments',
+      bio: 'Anita specializes in deep-tech and AI/ML startups. Former CTO at a leading Indian unicorn with expertise in evaluating technology-driven businesses.',
+      linkedinUrl: 'https://linkedin.com/in/anita-desai',
+      displayOrder: 2,
+      isActive: true,
+    },
+    {
+      name: 'Rajesh Iyer',
+      role: 'Director of Operations',
+      bio: 'Rajesh oversees forum operations and event management. Previously ran operations for TiE Mumbai chapter for 8 years.',
+      linkedinUrl: 'https://linkedin.com/in/rajesh-iyer',
+      displayOrder: 3,
+      isActive: true,
+    },
+  ];
+
+  await prisma.teamMember.deleteMany({});
+  for (const member of teamMembers) {
+    await prisma.teamMember.create({ data: member });
+  }
+  console.log(`✅ Created ${teamMembers.length} team members`);
+
+  // Seed Partners
+  const partners = [
+    {
+      name: 'Mumbai Angels Network',
+      description: 'One of India\'s premier angel investing platforms with 500+ members and 200+ investments.',
+      websiteUrl: 'https://mumbaiangels.com',
+      displayOrder: 1,
+      isActive: true,
+    },
+    {
+      name: 'NASSCOM',
+      description: 'India\'s technology industry body representing the $245 billion IT-BPM sector.',
+      websiteUrl: 'https://nasscom.in',
+      displayOrder: 2,
+      isActive: true,
+    },
+    {
+      name: 'Startup India',
+      description: 'Government of India initiative to catalyze startup culture and build a strong ecosystem.',
+      websiteUrl: 'https://startupindia.gov.in',
+      displayOrder: 3,
+      isActive: true,
+    },
+    {
+      name: 'IIT Bombay E-Cell',
+      description: 'IIT Bombay\'s Entrepreneurship Cell fostering the startup ecosystem in India since 2002.',
+      websiteUrl: 'https://ecell.in',
+      displayOrder: 4,
+      isActive: true,
+    },
+  ];
+
+  await prisma.partner.deleteMany({});
+  for (const partner of partners) {
+    await prisma.partner.create({ data: partner });
+  }
+  console.log(`✅ Created ${partners.length} partners`);
+
+  // Seed Event Startups (for the first event)
+  const firstEvent = await prisma.event.findFirst({
+    where: { title: events[0].title },
+    select: { id: true },
+  });
+  if (!firstEvent) {
+    throw new Error(`Could not find event: ${events[0].title}`);
+  }
+  const firstEventId = firstEvent.id;
+  const eventStartups = [
+    {
+      eventId: firstEventId,
+      companyName: 'MediScan AI',
+      founderName: 'Dr. Kavitha Rao',
+      founderLinkedin: 'https://linkedin.com/in/kavitha-rao',
+      pitchDescription: 'AI-powered diagnostic imaging platform that detects early-stage cancers with 98% accuracy. Already deployed in 15 hospitals across India.',
+      industry: 'Healthcare AI',
+      fundingStage: 'Seed',
+      displayOrder: 1,
+    },
+    {
+      eventId: firstEventId,
+      companyName: 'FinFlow',
+      founderName: 'Arjun Nair',
+      founderLinkedin: 'https://linkedin.com/in/arjun-nair',
+      pitchDescription: 'Embedded finance platform enabling any SaaS company to offer lending products. Processing ₹50Cr+ monthly through partner integrations.',
+      industry: 'FinTech',
+      fundingStage: 'Pre-Seed',
+      displayOrder: 2,
+    },
+    {
+      eventId: firstEventId,
+      companyName: 'GreenRoute Logistics',
+      founderName: 'Meera Sharma',
+      founderLinkedin: 'https://linkedin.com/in/meera-sharma',
+      pitchDescription: 'Electric vehicle-based last-mile delivery network. Carbon-neutral logistics covering 8 major Indian cities with 500+ EV fleet.',
+      industry: 'CleanTech / Logistics',
+      fundingStage: 'Seed',
+      displayOrder: 3,
+    },
+  ];
+
+  // Clear existing startups for this event and recreate
+  await prisma.eventStartup.deleteMany({
+    where: { eventId: firstEventId },
+  });
+  for (const startup of eventStartups) {
+    await prisma.eventStartup.create({
+      data: startup,
+    });
+  }
+  console.log(`✅ Created ${eventStartups.length} event startups`);
 
   console.log('\n🎉 Database seeding completed!\n');
   console.log('Test Credentials:');

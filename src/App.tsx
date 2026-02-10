@@ -72,6 +72,7 @@ import CertificateVerification from "./pages/CertificateVerification";
 import TransactionHistory from "./pages/TransactionHistory";
 import FinancialStatements from "./pages/FinancialStatements";
 import ActivityTimeline from "./pages/ActivityTimeline";
+import CMSManagement from "./pages/admin/CMSManagement";
 
 /**
  * Role definitions for route protection
@@ -324,6 +325,11 @@ const App = () => (
             <Route path="/admin/statistics" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <SystemStatistics />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/cms" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <CMSManagement />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}

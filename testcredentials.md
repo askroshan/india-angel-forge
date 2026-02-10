@@ -1,384 +1,343 @@
-# India Angel Forum - Test Credentials
+# India Angel Forum — Test Credentials
 
-Complete test user credentials for testing the India Angel Forum platform locally.
+Complete test user credentials for the India Angel Forum platform.
 
-**Last Updated:** February 3, 2026  
-**Source:** `src/__tests__/fixtures/testData.ts` + `PROJECT_STATUS.md`
-
----
-
-## Overview
-
-8 test users covering all platform roles. All users have complete profiles and are ready for integration testing.
+**Last Updated:** February 9, 2026
+**Source of Truth:** `prisma/seed/index.ts` (database seed script)
+**E2E Test Suite:** 1233/1233 passing across 5 browser projects
 
 ---
 
-## Test Credentials
+## Seeded Users (9 accounts)
 
-### 🔐 Admin User
+All users below are created by `npx tsx prisma/seed/index.ts`. Passwords are bcrypt-hashed in PostgreSQL.
+
+---
+
+### 🔐 1. Admin
 
 | Field | Value |
 |-------|-------|
 | **Email** | `admin@indiaangelforum.test` |
 | **Password** | `Admin@12345` |
-| **Role** | Admin |
 | **Full Name** | Admin User |
-| **User ID** | admin-001 |
-| **Access Level** | Full platform access, user management, event management, compliance oversight |
+| **Roles** | `admin` |
 
-**Features to Test:**
-- User management dashboard
-- Role assignment
-- Event creation and management
-- Application review
-- System statistics
-- Audit logs
+**Access:** Full platform — user management, role assignment, event CRUD, application review, deal creation, system statistics, audit logs, payments, messaging.
+
+**Used in E2E tests:** `admin-operations`, `authorization`, `crud-operations`, `deal-management`, `spv-management`, `investor-messaging`, `portfolio-dashboard`, `transaction-history`, `activity-timeline`, `financial-statements`, `compliance-kyc`, `event-attendance`, `event-crud-full`.
 
 ---
 
-### 👮 Moderator User
+### 👮 2. Moderator
 
 | Field | Value |
 |-------|-------|
 | **Email** | `moderator@indiaangelforum.test` |
 | **Password** | `Moderator@12345` |
-| **Role** | Moderator |
 | **Full Name** | Moderator User |
-| **User ID** | moderator-001 |
-| **Access Level** | Application screening, content moderation, event attendance management |
+| **Roles** | `moderator` |
 
-**Features to Test:**
-- Founder application screening
-- Content flags and moderation
-- Event attendance tracking
-- Application decision workflows
+**Access:** Application screening (founder/investor), content moderation, event attendance management.
+
+**Used in E2E tests:** `authorization`, `crud-operations`, `application-crud-full`, `event-crud-full`.
 
 ---
 
-### ⚖️ Compliance Officer
+### ⚖️ 3. Compliance Officer
 
 | Field | Value |
 |-------|-------|
 | **Email** | `compliance@indiaangelforum.test` |
 | **Password** | `Compliance@12345` |
-| **Role** | Compliance Officer |
 | **Full Name** | Compliance Officer |
-| **User ID** | compliance-001 |
-| **Access Level** | KYC verification, AML screening, accreditation review, compliance reporting |
+| **Roles** | `compliance_officer` |
 
-**Features to Test:**
-- KYC document review and verification
-- AML screening and risk assessment
-- Accreditation verification
-- Compliance audit logs
-- Investor verification workflows
+**Access:** KYC document review & verification, AML screening & risk assessment, accreditation review, compliance audit logs.
+
+**Used in E2E tests:** `authorization`, `crud-operations`, `compliance-kyc`.
 
 ---
 
-### 💼 Standard Investor
+### 💼 4. Standard Investor (Primary)
 
 | Field | Value |
 |-------|-------|
 | **Email** | `investor.standard@test.com` |
 | **Password** | `Investor@12345` |
-| **Role** | Standard Investor |
 | **Full Name** | Rahul Sharma |
-| **User ID** | investor-standard-001 |
-| **Membership Type** | Standard Member |
-| **Account Status** | Active |
-| **Access Level** | Deal browsing, interest expression, portfolio tracking |
+| **Roles** | `investor` |
 
-**Features to Test:**
-- Browse available deals
-- View deal details and documents
-- Express interest in deals
-- Track deal pipeline
-- View portfolio
-- Send direct messages
-- Create discussion threads
+**Access:** Browse deals, express interest, commit to deals, create SPVs, portfolio tracking, messaging, KYC upload, event registration.
+
+**Used in E2E tests:** `authorization`, `crud-operations`, `admin-operations`, `deal-management`, `spv-management`, `investor-messaging`, `portfolio-dashboard`, `compliance-kyc` (KYC seed target).
 
 ---
 
-### 🚀 Operator Angel
+### 💼 5. Standard Investor (Secondary)
+
+| Field | Value |
+|-------|-------|
+| **Email** | `investor.standard2@test.com` |
+| **Password** | `Investor@12345` |
+| **Full Name** | Priya Mehta |
+| **Roles** | `investor` |
+
+**Access:** Same as Standard Investor. Used as a second investor for multi-user test scenarios.
+
+**Used in E2E tests:** `application-crud-full`.
+
+---
+
+### 🚀 6. Operator Angel
 
 | Field | Value |
 |-------|-------|
 | **Email** | `operator.angel@test.com` |
 | **Password** | `Operator@12345` |
-| **Role** | Operator Angel |
 | **Full Name** | Priya Patel |
-| **User ID** | investor-operator-001 |
-| **Membership Type** | Operator Angel |
-| **Domain Expertise** | SaaS |
-| **Years Experience** | 12 |
-| **Account Status** | Active |
-| **Access Level** | All investor features + advisory services |
+| **Roles** | `investor`, `operator_angel` |
 
-**Features to Test:**
-- Create advisory profile
-- Track advisory hours
-- Mentorship relationships
-- All investor features
+**Access:** All investor features + advisory services, mentorship.
+
+**Used in E2E tests:** `authorization`, `crud-operations`.
 
 ---
 
-### 👨‍💼 Family Office
+### 👨‍💼 7. Family Office
 
 | Field | Value |
 |-------|-------|
 | **Email** | `family.office@test.com` |
 | **Password** | `FamilyOffice@12345` |
-| **Role** | Family Office |
 | **Full Name** | Rajesh Mehta |
-| **User ID** | investor-family-001 |
-| **Membership Type** | Family Office |
-| **Team Seats** | 3 |
-| **Team Members** | rajesh@mehta.com, anjali@mehta.com, vikram@mehta.com |
-| **Account Status** | Active |
-| **Access Level** | All investor features + multi-user management |
+| **Roles** | `investor`, `family_office` |
 
-**Features to Test:**
-- Family office portfolio management
-- Team member collaboration
-- Multi-seat investment tracking
-- Shared decision-making workflows
-- All investor features
+**Access:** All investor features + multi-seat team management.
+
+**Used in E2E tests:** `authorization`.
 
 ---
 
-### 👨‍🏫 Founder
+### 👨‍🏫 8. Founder
 
 | Field | Value |
 |-------|-------|
 | **Email** | `founder@startup.test` |
 | **Password** | `Founder@12345` |
-| **Role** | Founder |
 | **Full Name** | Amit Kumar |
-| **User ID** | founder-001 |
-| **Company** | TechStartup AI |
-| **Application Status** | Forum Selected |
-| **Industry** | AI & Deep Tech |
-| **Fundraising Stage** | Seed |
-| **Raising Amount** | ₹3 Crores |
-| **Access Level** | Application tracking, pitch materials, investor outreach |
+| **Roles** | `founder` |
 
-**Features to Test:**
-- Track application status
-- Upload pitch deck and documents
-- View investor profiles
-- Schedule pitch sessions
-- Receive investor feedback
-- Send direct messages
-- Post investor updates
+**Access:** Application tracking, pitch deck upload, pitch sessions, investor outreach, company profile, investor updates.
+
+**Used in E2E tests:** `authorization`, `crud-operations`, `application-crud-full`, `event-crud-full`.
 
 ---
 
-### 👤 Guest User (Regular Member)
+### 👤 9. Guest / Regular User
 
 | Field | Value |
 |-------|-------|
 | **Email** | `user@test.com` |
 | **Password** | `User@12345` |
-| **Role** | User |
 | **Full Name** | Guest User |
-| **User ID** | user-001 |
-| **Access Level** | Educational content, public events |
+| **Roles** | `user` |
 
-**Features to Test:**
-- Public content access
-- Event registration
-- Community forum browsing
-- Basic profile creation
+**Access:** Public content, event browsing & registration, community forum.
+
+**Used in E2E tests:** `authorization`.
 
 ---
 
-## Quick Test Matrix
+## Dynamically Created Test Users
 
-| Feature | Admin | Moderator | Compliance | Investor | Operator | Family Office | Founder | Guest |
-|---------|-------|-----------|-----------|----------|----------|--------------|---------|-------|
+These users are **not** in the seed file. They are created on-the-fly by E2E test seed endpoints (`/api/test/seed-*`) during test runs. They have dummy password hashes and cannot be used for manual login.
+
+| Email | Full Name | Created By |
+|-------|-----------|------------|
+| `test.applicant@test.com` | Test Applicant | `/api/test/seed-admin-applications` |
+| `test.founder@test.com` | Test Founder | `/api/test/seed-admin-applications` |
+| `accreditation.test1@test.com` | Accreditation Applicant 1 | `/api/test/seed-accreditation-applications` |
+| `accreditation.test2@test.com` | Accreditation Applicant 2 | `/api/test/seed-accreditation-applications` |
+
+Additionally, many E2E test files (e.g. `payment-razorpay`, `email-notifications`) create ephemeral users via `/api/auth/signup` with randomized emails like `investor_<timestamp>@test.com`. These are throwaway and not reusable.
+
+---
+
+## Quick Reference Table
+
+| # | Role | Email | Password |
+|---|------|-------|----------|
+| 1 | Admin | `admin@indiaangelforum.test` | `Admin@12345` |
+| 2 | Moderator | `moderator@indiaangelforum.test` | `Moderator@12345` |
+| 3 | Compliance Officer | `compliance@indiaangelforum.test` | `Compliance@12345` |
+| 4 | Investor (Primary) | `investor.standard@test.com` | `Investor@12345` |
+| 5 | Investor (Secondary) | `investor.standard2@test.com` | `Investor@12345` |
+| 6 | Operator Angel | `operator.angel@test.com` | `Operator@12345` |
+| 7 | Family Office | `family.office@test.com` | `FamilyOffice@12345` |
+| 8 | Founder | `founder@startup.test` | `Founder@12345` |
+| 9 | Guest / User | `user@test.com` | `User@12345` |
+
+---
+
+## Access Control Matrix
+
+| Feature | Admin | Moderator | Compliance | Investor | Op. Angel | Family Office | Founder | Guest |
+|---------|:-----:|:---------:|:----------:|:--------:|:---------:|:-------------:|:-------:|:-----:|
 | User Management | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Role Assignment | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Event Management | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| System Statistics | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Audit Logs | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Application Review | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| KYC Verification | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Event Management | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Event Attendance | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| KYC Verification | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| AML Screening | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Accreditation Review | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Browse Deals | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Express Interest | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Submit Investment | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Commit to Deals | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Create SPV | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Portfolio Tracking | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Transaction History | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Financial Statements | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Certificates | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Activity Timeline | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Direct Messages | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Upload Documents | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Pitch Management | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Advisory Services | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Mentorship | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Company Profile | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Event Registration | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Public Content | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
 ## API Testing with cURL
 
-### Admin Login
+### Login (any user)
+
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
+curl -s -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@indiaangelforum.test",
-    "password": "Admin@12345"
-  }'
+  -d '{"email": "admin@indiaangelforum.test", "password": "Admin@12345"}' | jq .
 ```
 
-### Investor Login
+### Use the token
+
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "investor.standard@test.com",
-    "password": "Investor@12345"
-  }'
+  -d '{"email": "admin@indiaangelforum.test", "password": "Admin@12345"}' | jq -r '.token')
+
+# Example: Get events
+curl -s http://localhost:3001/api/events \
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# Example: Get payment history
+curl -s http://localhost:3001/api/payments/history \
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# Example: Get admin statistics
+curl -s http://localhost:3001/api/admin/statistics \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-### Compliance Officer Login
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "compliance@indiaangelforum.test",
-    "password": "Compliance@12345"
-  }'
-```
+---
+
+## Frontend URLs
+
+| Page | URL | Required Role |
+|------|-----|---------------|
+| Home | `http://localhost:8080/` | Public |
+| Login | `http://localhost:8080/login` | Public |
+| Events | `http://localhost:8080/events` | Public |
+| Admin Dashboard | `http://localhost:8080/admin` | `admin` |
+| Deals | `http://localhost:8080/deals` | `investor` |
+| Investor Deals | `http://localhost:8080/investor/deals` | `investor` |
+| Deal Pipeline | `http://localhost:8080/investor/pipeline` | `investor` |
+| Portfolio | `http://localhost:8080/investor/portfolio` | `investor` |
+| Portfolio Performance | `http://localhost:8080/investor/portfolio/performance` | `investor` |
+| KYC Upload | `http://localhost:8080/investor/kyc` | `investor` |
+| Messages | `http://localhost:8080/investor/messages` | `investor` |
+| Transaction History | `http://localhost:8080/transaction-history` | Authenticated |
+| Financial Statements | `http://localhost:8080/financial-statements` | Authenticated |
+| Certificates | `http://localhost:8080/certificates` | Authenticated |
+| Activity Timeline | `http://localhost:8080/activity` | Authenticated |
+| Compliance — KYC Review | `http://localhost:8080/compliance/kyc-review` | `compliance_officer` |
+| Compliance — AML | `http://localhost:8080/compliance/aml-screening` | `compliance_officer` |
+| Compliance — Accreditation | `http://localhost:8080/compliance/accreditation` | `compliance_officer` |
+| Moderator — Applications | `http://localhost:8080/moderator/applications` | `moderator` |
+| Moderator — Content | `http://localhost:8080/moderator/content` | `moderator` |
+| Founder — Application Status | `http://localhost:8080/founder/application-status` | `founder` |
+| Founder — Pitch Sessions | `http://localhost:8080/founder/pitch-sessions` | `founder` |
+| Founder — Pitch Materials | `http://localhost:8080/founder/pitch-materials` | `founder` |
+| Founder — Company Profile | `http://localhost:8080/founder/company-profile` | `founder` |
+| Founder — Investor Updates | `http://localhost:8080/founder/investor-updates` | `founder` |
+| Apply as Investor | `http://localhost:8080/apply/investor` | Public |
+| Apply as Founder | `http://localhost:8080/apply/founder` | Public |
+| Membership | `http://localhost:8080/membership` | Authenticated |
+| Certificate Verification | `http://localhost:8080/verify-certificate` | Public |
 
 ---
 
-## Frontend Testing URLs
+## Seeded Test Data
 
-| Feature | URL |
-|---------|-----|
-| **Home** | `http://localhost:8080/` |
-| **Admin Dashboard** | `http://localhost:8080/admin` |
-| **Deal Browsing** | `http://localhost:8080/deals` |
-| **Portfolio** | `http://localhost:8080/portfolio` |
-| **KYC Upload** | `http://localhost:8080/kyc-upload` |
-| **Pitch Sessions** | `http://localhost:8080/pitch-sessions` |
-| **Investor Directory** | `http://localhost:8080/investor-directory` |
-| **Messages** | `http://localhost:8080/messages` |
-| **Events** | `http://localhost:8080/events` |
-| **Compliance Dashboard** | `http://localhost:8080/compliance` |
+The seed script also creates:
 
----
-
-## Test Scenarios
-
-### Scenario 1: Complete Investor Journey
-1. Login as `investor.standard@test.com`
-2. Browse available deals
-3. Express interest in a deal
-4. Upload KYC documents
-5. Submit investment commitment
-6. View portfolio
-
-### Scenario 2: Compliance Verification
-1. Login as `compliance@indiaangelforum.test`
-2. Review KYC documents
-3. Perform AML screening
-4. Verify accreditation status
-5. Generate compliance report
-
-### Scenario 3: Admin Platform Management
-1. Login as `admin@indiaangelforum.test`
-2. View and manage users
-3. Assign roles
-4. Create events
-5. Review applications
-6. View audit logs
-
-### Scenario 4: Founder Pitch Management
-1. Login as `founder@startup.test`
-2. Track application status
-3. Upload pitch deck
-4. Schedule pitch sessions
-5. View interested investors
-6. Send updates to investors
-
-### Scenario 5: Operator Advisory Services
-1. Login as `operator.angel@test.com`
-2. Create advisory profile
-3. Log advisory hours
-4. View mentorship relationships
-5. Browse and invest in deals
-6. Manage portfolio
+| Data | Count | Details |
+|------|-------|---------|
+| **Events** | 3 | Monthly Angel Forum, Deep Tech Summit, Networking Night |
+| **Industries** | 50 | AI/ML, Blockchain, FinTech, HealthTech, etc. |
+| **Funding Stages** | 8 | Pre-Seed through Series D+, Bridge, Growth |
+| **Event Types** | 10 | Monthly Forum, Pitch Day, Networking, Workshop, etc. |
+| **Payments** (admin) | 23 | Nov 2025 – Feb 2026, various types/statuses/amounts |
+| **Activity Logs** (admin) | 30 | Payment, deal, event, profile, document activities |
+| **Event Attendance** | Varies | Seeded via `event-attendance-seed.ts` |
+| **Financial Statements** | Varies | Seeded via `financial-statements-seed.ts` |
 
 ---
 
-## Password Requirements
-
-All test passwords follow platform security requirements:
-- Minimum 8 characters
-- At least one uppercase letter
-- At least one lowercase letter
-- At least one number
-- At least one special character (@, #, $, etc.)
-
-Format: `Role@12345`
-
----
-
-## Database Seeding
-
-To populate the database with test users and data:
+## How to Seed
 
 ```bash
-npm run test:seed
+# From project root
+npx tsx prisma/seed/index.ts
 ```
 
-This command will:
-- Create all 8 test users
-- Generate founder applications
-- Generate investor applications
-- Create events
-- Generate KYC documents
-- Create deal opportunities
+This will:
+1. Upsert all 9 test users with bcrypt-hashed passwords
+2. Assign correct roles to each user
+3. Create 3 test events
+4. Seed 50 industries, 8 funding stages, 10 event types
+5. Create 23 sample payments and 30 activity logs for the admin user
+6. Seed event attendance and financial statement records
+
+---
+
+## Password Format
+
+All passwords follow: `RoleName@12345`
+
+Requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special character.
+
+---
+
+## Ports
+
+| Service | Port |
+|---------|------|
+| **Backend API** | `http://localhost:3001` |
+| **Frontend (Vite)** | `http://localhost:8080` |
+| **PostgreSQL** | `localhost:5432` |
+
+⚠️ The cURL examples use port **3001** (direct API). The frontend proxies `/api/*` requests to port 3001 automatically.
 
 ---
 
 ## Important Notes
 
-⚠️ **Testing Only** - These credentials are for local testing/development only  
-⚠️ **Never Commit Real Passwords** - These are test credentials, not production credentials  
-✅ **All Users Verified** - All test users pass KYC/compliance checks  
-✅ **Complete Profiles** - Each user has full profile data configured  
-✅ **Test Data Included** - Associated companies, deals, and documents included
-
----
-
-## Troubleshooting
-
-### Login Not Working
-- Verify user is created in database
-- Check password is exact (case-sensitive)
-- Clear browser localStorage and try again
-- Check server logs for API errors
-
-### Missing User Features
-- Verify user role is correct
-- Check role-based access control permissions
-- Confirm user status is 'active'
-- Check if compliance requirements are met (KYC, etc.)
-
-### Password Reset
-- Each test user can use "Forgot Password" feature
-- Reset link sent to their test email address
-- Or manually reset in database via Prisma Studio
-
----
-
-## Additional Resources
-
-- **Test Fixtures:** `src/__tests__/fixtures/testData.ts`
-- **Test Files:** `src/__tests__/**/*.test.tsx`
-- **E2E Tests:** `e2e/**/*.spec.ts`
-- **API Docs:** `USER_STORIES.md`
-- **Project Status:** `PROJECT_STATUS.md`
-
----
-
-**Created:** February 3, 2026  
-**Last Verified:** All 699 tests passing ✅
+- ⚠️ **Local/test use only** — never use these credentials in production
+- ✅ All 9 users verified working in 1233 E2E tests (Feb 9, 2026)
+- ✅ Passwords are bcrypt-hashed in PostgreSQL (not plaintext)
+- ✅ JWT tokens expire after 7 days (configurable via `JWT_EXPIRES_IN`)
+- ✅ Login response includes `token` + `user` object with `id`, `email`, `fullName`, `roles[]`

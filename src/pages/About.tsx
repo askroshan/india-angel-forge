@@ -1,12 +1,17 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Target, Heart, Shield, TrendingUp, Users2, Award, Linkedin } from "lucide-react";
+import { useTeamMembers, usePartners } from "@/hooks/useCMS";
+import { Target, Heart, Shield, TrendingUp, Users2, Award, Linkedin, ExternalLink, Building2 } from "lucide-react";
 
 const About = () => {
+  const { data: teamMembers, isLoading: loadingTeam } = useTeamMembers();
+  const { data: partners, isLoading: loadingPartners } = usePartners();
+
   const values = [
     {
       icon: Target,
@@ -22,33 +27,6 @@ const About = () => {
       icon: Shield,
       title: "Transparent Economics",
       description: "No hidden fees. Clear terms. Aligned incentives between founders and investors."
-    }
-  ];
-
-  const team = [
-    {
-      name: "Rajesh Kumar",
-      role: "CEO & Co-Founder",
-      bio: "Serial entrepreneur and angel investor with 15+ years in Indian startup ecosystem. Previously founded two successful exits.",
-      initials: "RK",
-      color: "bg-blue-600",
-      linkedin: "https://linkedin.com/in/rajeshkumar"
-    },
-    {
-      name: "Priya Sharma",
-      role: "Head of Platform",
-      bio: "Former venture partner at a leading VC. Expertise in deal sourcing, portfolio management, and founder support.",
-      initials: "PS",
-      color: "bg-purple-600",
-      linkedin: "https://linkedin.com/in/priyasharma"
-    },
-    {
-      name: "Amit Patel",
-      role: "Head of Diligence",
-      bio: "Ex-investment banker with Goldman Sachs. Specializes in early-stage financial analysis and market research.",
-      initials: "AP",
-      color: "bg-green-600",
-      linkedin: "https://linkedin.com/in/amitpatel"
     }
   ];
 
@@ -116,8 +94,17 @@ const About = () => {
     "Legal and regulatory experts in startup law and compliance"
   ];
 
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const avatarColors = [
+    "bg-blue-600", "bg-purple-600", "bg-green-600", "bg-orange-500", 
+    "bg-pink-500", "bg-teal-500", "bg-red-500", "bg-indigo-500"
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-testid="about-page">
       <Navigation />
 
       {/* Hero Section */}
@@ -208,8 +195,8 @@ const About = () => {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="py-20 bg-muted/30">
+      {/* Team - CMS Driven */}
+      <section className="py-20 bg-muted/30" data-testid="team-section">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2>Leadership Team</h2>
@@ -219,33 +206,53 @@ const About = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {team.map((member, index) => (
-              <Card key={index} className="border-2 hover:border-accent transition-all">
-                <CardContent className="pt-6 text-center space-y-4">
-                  <Avatar className={`h-20 w-20 mx-auto ${member.color}`}>
-                    <AvatarFallback className="text-white font-bold text-xl">
-                      {member.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center justify-center gap-2">
-                      <h3 className="text-xl font-semibold">{member.name}</h3>
-                      <a 
-                        href={member.linkedin} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-accent"
-                        aria-label={`${member.name}'s LinkedIn profile`}
-                      >
-                        <Linkedin className="h-4 w-4" />
-                      </a>
+            {loadingTeam ? (
+              <>
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+              </>
+            ) : teamMembers && teamMembers.length > 0 ? (
+              teamMembers.map((member, index) => (
+                <Card key={member.id} className="border-2 hover:border-accent transition-all" data-testid="team-member-card">
+                  <CardContent className="pt-6 text-center space-y-4">
+                    <Avatar className={`h-20 w-20 mx-auto ${!member.photoUrl ? avatarColors[index % avatarColors.length] : ''}`}>
+                      {member.photoUrl ? (
+                        <AvatarImage src={member.photoUrl} alt={member.name} className="object-cover" />
+                      ) : null}
+                      <AvatarFallback className="text-white font-bold text-xl" data-testid="team-member-avatar">
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center justify-center gap-2">
+                        <h3 className="text-xl font-semibold" data-testid="team-member-name">{member.name}</h3>
+                        {member.linkedinUrl && (
+                          <a 
+                            href={member.linkedinUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-accent"
+                            aria-label={`${member.name}'s LinkedIn profile`}
+                            data-testid="team-member-linkedin"
+                          >
+                            <Linkedin className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-sm text-accent font-medium mb-3" data-testid="team-member-role">{member.role}</p>
+                      {member.bio && (
+                        <p className="text-sm text-muted-foreground" data-testid="team-member-bio">{member.bio}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-accent font-medium mb-3">{member.role}</p>
-                    <p className="text-sm text-muted-foreground">{member.bio}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-8">
+                <p className="text-muted-foreground">Team information coming soon.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -367,24 +374,74 @@ const About = () => {
         </div>
       </section>
 
-      {/* Partners */}
-      <section className="py-20">
+      {/* Partners - CMS Driven */}
+      <section className="py-20" data-testid="partners-section">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="mb-4">Our Partners</h2>
-            <p className="text-lg text-muted-foreground mb-12">
+            <p className="text-lg text-muted-foreground">
               Collaborating with leading institutions and networks
             </p>
-            <div className="flex flex-wrap justify-center gap-6 text-muted-foreground">
-              <span>Angel Capital Association</span>
-              <span>•</span>
-              <span>IIT Startup Networks</span>
-              <span>•</span>
-              <span>Leading Incubators</span>
-              <span>•</span>
-              <span>Global Angel Networks</span>
-            </div>
           </div>
+
+          {loadingPartners ? (
+            <div className="flex justify-center gap-8">
+              <Skeleton className="h-20 w-40" />
+              <Skeleton className="h-20 w-40" />
+              <Skeleton className="h-20 w-40" />
+            </div>
+          ) : partners && partners.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+              {partners.map((partner) => (
+                <a
+                  key={partner.id}
+                  href={partner.websiteUrl || '#'}
+                  target={partner.websiteUrl ? '_blank' : undefined}
+                  rel={partner.websiteUrl ? 'noopener noreferrer' : undefined}
+                  className="flex flex-col items-center gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors group"
+                  data-testid="partner-card"
+                >
+                  {partner.logoUrl ? (
+                    <img 
+                      src={partner.logoUrl} 
+                      alt={partner.name} 
+                      className="h-16 w-auto object-contain"
+                      data-testid="partner-logo"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <span className="text-sm font-medium group-hover:text-accent transition-colors" data-testid="partner-name">
+                      {partner.name}
+                    </span>
+                    {partner.websiteUrl && (
+                      <ExternalLink className="inline-block ml-1 h-3 w-3 text-muted-foreground" />
+                    )}
+                  </div>
+                  {partner.description && (
+                    <p className="text-xs text-muted-foreground text-center" data-testid="partner-description">
+                      {partner.description}
+                    </p>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="flex flex-wrap justify-center gap-6 text-muted-foreground">
+                <span>Angel Capital Association</span>
+                <span>•</span>
+                <span>IIT Startup Networks</span>
+                <span>•</span>
+                <span>Leading Incubators</span>
+                <span>•</span>
+                <span>Global Angel Networks</span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

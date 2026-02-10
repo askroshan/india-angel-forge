@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navigation from "@/components/Navigation";
@@ -11,14 +13,30 @@ import ForumProcess from "@/components/events/ForumProcess";
 import MyRegistrations from "@/components/events/MyRegistrations";
 import { useEvents } from "@/hooks/useEvents";
 import { useAuth } from "@/contexts/AuthContext";
-import { CalendarDays, History } from "lucide-react";
+import { CalendarDays, History, Search, X } from "lucide-react";
+
+const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad', 'Pune', 'Kolkata'];
 
 export default function Events() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cityFilter, setCityFilter] = useState<string>('');
   
-  const { data: upcomingEvents, isLoading: loadingUpcoming } = useEvents('upcoming');
-  const { data: pastEvents, isLoading: loadingPast } = useEvents('past');
+  const filterOptions = {
+    search: searchQuery || undefined,
+    city: cityFilter || undefined,
+  };
+
+  const { data: upcomingEvents, isLoading: loadingUpcoming } = useEvents('upcoming', filterOptions);
+  const { data: pastEvents, isLoading: loadingPast } = useEvents('past', filterOptions);
+
+  const hasFilters = searchQuery || cityFilter;
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setCityFilter('');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,6 +90,37 @@ export default function Events() {
                   Past Events
                 </TabsTrigger>
               </TabsList>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6" data-testid="event-filters">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search events by title or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  data-testid="event-search"
+                />
+              </div>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]" data-testid="event-city-filter">
+                  <SelectValue placeholder="All Cities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {CITIES.map(city => (
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1" data-testid="clear-filters">
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
             </div>
 
             <TabsContent value="upcoming" className="space-y-6">

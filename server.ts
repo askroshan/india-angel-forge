@@ -22,6 +22,7 @@ import eventAttendanceRouter from './server/routes/event-attendance';
 import certificatesRouter from './server/routes/certificates';
 import financialStatementsRouter from './server/routes/financial-statements';
 import activityRouter from './server/routes/activity';
+import cmsRouter from './server/routes/cms';
 
 import path from 'path';
 
@@ -42,6 +43,7 @@ const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['
 // Middleware
 app.use('/statements', express.static(path.join(process.cwd(), 'public', 'statements')));
 app.use('/certificates', express.static(path.join(process.cwd(), 'public', 'certificates')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 app.use(cors());
 app.use(express.json());
 
@@ -274,6 +276,9 @@ app.get('/api/admin/users', authenticateToken, requireRole(['admin']), async (re
 app.get('/api/events', async (req, res) => {
   try {
     const filter = req.query.filter as string | undefined;
+    const city = req.query.city as string | undefined;
+    const search = req.query.search as string | undefined;
+    const eventType = req.query.eventType as string | undefined;
     const now = new Date();
     
     let whereClause: any = {};
@@ -283,12 +288,31 @@ app.get('/api/events', async (req, res) => {
     } else if (filter === 'past') {
       whereClause = { eventDate: { lt: now } };
     }
+
+    // City filter
+    if (city) {
+      whereClause.city = { equals: city, mode: 'insensitive' };
+    }
+
+    // Search by title or description
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Event type filter
+    if (eventType) {
+      whereClause.eventTypeId = eventType;
+    }
     
     const events = await prisma.event.findMany({
       where: whereClause,
       orderBy: { eventDate: 'asc' },
     });
-    console.log(`[API] /api/events?filter=${filter} returning ${events.length} events`);
+    console.log(`[API] /api/events?filter=${filter}&city=${city}&search=${search} returning ${events.length} events`);
     res.json(events);
   } catch (error) {
     console.error('Get events error:', error);
@@ -373,7 +397,10 @@ app.get('/api/events/:id', async (req, res) => {
   try {
     const event = await prisma.event.findUnique({
       where: { id: String(req.params.id) },
-      include: { registrations: true },
+      include: {
+        registrations: true,
+        eventStartups: { orderBy: { displayOrder: 'asc' } },
+      },
     });
 
     if (!event) {
@@ -2071,7 +2098,7 @@ app.get('/api/admin/events', authenticateToken, requireRole(['admin', 'operator'
 // Create event (admin)
 app.post('/api/admin/events', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
   try {
-    const { title, description, eventDate, location, capacity, registrationDeadline, status } = req.body;
+    const { title, description, eventDate, location, capacity, registrationDeadline, status, city, venue, address, mapLatitude, mapLongitude, bannerImageUrl } = req.body;
     
     if (!title || !eventDate) {
       return res.status(400).json({ error: { message: 'Title and event date are required', code: 'VALIDATION_ERROR' } });
@@ -2086,6 +2113,12 @@ app.post('/api/admin/events', authenticateToken, requireRole(['admin', 'operator
         capacity: capacity ? parseInt(capacity, 10) : null,
         registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
         status: status || 'upcoming',
+        city: city || null,
+        venue: venue || null,
+        address: address || null,
+        mapLatitude: mapLatitude ? parseFloat(mapLatitude) : null,
+        mapLongitude: mapLongitude ? parseFloat(mapLongitude) : null,
+        bannerImageUrl: bannerImageUrl || null,
       },
     });
     res.status(201).json(event);
@@ -2098,7 +2131,7 @@ app.post('/api/admin/events', authenticateToken, requireRole(['admin', 'operator
 // Update event (admin)
 app.patch('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
   try {
-    const { title, description, eventDate, location, capacity, registrationDeadline, status } = req.body;
+    const { title, description, eventDate, location, capacity, registrationDeadline, status, city, venue, address, mapLatitude, mapLongitude, bannerImageUrl } = req.body;
     
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title;
@@ -2108,6 +2141,12 @@ app.patch('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'ope
     if (capacity !== undefined) updateData.capacity = capacity ? parseInt(capacity, 10) : null;
     if (registrationDeadline !== undefined) updateData.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
     if (status !== undefined) updateData.status = status;
+    if (city !== undefined) updateData.city = city || null;
+    if (venue !== undefined) updateData.venue = venue || null;
+    if (address !== undefined) updateData.address = address || null;
+    if (mapLatitude !== undefined) updateData.mapLatitude = mapLatitude ? parseFloat(mapLatitude) : null;
+    if (mapLongitude !== undefined) updateData.mapLongitude = mapLongitude ? parseFloat(mapLongitude) : null;
+    if (bannerImageUrl !== undefined) updateData.bannerImageUrl = bannerImageUrl || null;
     
     const event = await prisma.event.update({
       where: { id: String(req.params.id) },
@@ -2133,13 +2172,24 @@ app.delete('/api/admin/events/:id', authenticateToken, requireRole(['admin', 'op
   }
 });
 
-// Get all event registrations (admin)
+// Get all event registrations (admin) - queries EventAttendance (consolidated)
 app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin', 'operator']), async (req, res) => {
   try {
     const { eventId } = req.query;
     const where = eventId ? { eventId: eventId as string } : {};
     
-    const registrations = await prisma.eventRegistration.findMany({
+    // Query from EventAttendance (consolidated registration system)
+    const attendanceRecords = await prisma.eventAttendance.findMany({
+      where: { ...where, rsvpStatus: { in: ['CONFIRMED', 'WAITLIST'] } },
+      include: {
+        event: { select: { title: true, eventDate: true } },
+        user: { select: { email: true, fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // Also get legacy EventRegistration records for backward compatibility
+    const legacyRegistrations = await prisma.eventRegistration.findMany({
       where,
       include: {
         event: { select: { title: true, eventDate: true } },
@@ -2147,29 +2197,55 @@ app.get('/api/admin/event-registrations', authenticateToken, requireRole(['admin
       },
       orderBy: { registeredAt: 'desc' },
     });
-    res.json(registrations);
+    
+    // Merge, dedup by eventId+userId, prefer attendance records
+    const seen = new Set(attendanceRecords.map(a => `${a.userId}-${a.eventId}`));
+    const merged = [
+      ...attendanceRecords.map(a => ({
+        id: a.id,
+        userId: a.userId,
+        eventId: a.eventId,
+        status: a.rsvpStatus === 'CONFIRMED' ? 'registered' : 'waitlist',
+        registeredAt: a.createdAt,
+        event: a.event,
+        user: a.user,
+      })),
+      ...legacyRegistrations
+        .filter(r => !seen.has(`${r.userId}-${r.eventId}`))
+        .map(r => ({
+          id: r.id,
+          userId: r.userId,
+          eventId: r.eventId,
+          status: 'registered',
+          registeredAt: r.registeredAt,
+          event: r.event,
+          user: r.user,
+        })),
+    ];
+    
+    res.json(merged);
   } catch (error) {
     console.error('Get admin event registrations error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });
 
-// ==================== EVENT REGISTRATION ROUTES (USER) ====================
+// ==================== EVENT REGISTRATION ROUTES (CONSOLIDATED - RSVP-BASED) ====================
 
-// Register for an event
+// Legacy registration endpoint - now proxies to RSVP system via EventAttendance
 app.post('/api/events/register', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { eventId, fullName, email, phone, company, dietaryRequirements, notes } = req.body;
+    const { eventId } = req.body;
     
-    if (!eventId || !fullName || !email) {
-      return res.status(400).json({ error: { message: 'Event ID, full name, and email are required', code: 'VALIDATION_ERROR' } });
+    if (!eventId) {
+      return res.status(400).json({ error: { message: 'Event ID is required', code: 'VALIDATION_ERROR' } });
     }
     
     // Check if event exists and has capacity
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: { _count: { select: { registrations: true } } },
+      include: { _count: { select: { attendance: true } } },
     });
     
     if (!event) {
@@ -2182,58 +2258,54 @@ app.post('/api/events/register', authenticateToken, async (req, res) => {
     }
     
     // Check capacity
-    if (event.capacity && event._count.registrations >= event.capacity) {
+    if (event.capacity && event._count.attendance >= event.capacity) {
       return res.status(400).json({ error: { message: 'Event is at full capacity', code: 'CAPACITY_FULL' } });
     }
     
-    // Check if already registered
-    const existingRegistration = await prisma.eventRegistration.findUnique({
-      where: { eventId_userId: { eventId, userId } },
+    // Check if already registered (in EventAttendance)
+    const existingAttendance = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { eventId, userId } },
     });
     
-    if (existingRegistration) {
+    if (existingAttendance) {
       return res.status(400).json({ error: { message: 'You are already registered for this event', code: 'ALREADY_REGISTERED' } });
     }
     
-    const registration = await prisma.eventRegistration.create({
+    // Create attendance record (RSVP)
+    const attendance = await prisma.eventAttendance.create({
       data: {
         eventId,
         userId,
-        fullName,
-        email,
-        phone,
-        company,
-        dietaryRequirements,
-        notes,
+        rsvpStatus: 'CONFIRMED',
       },
       include: { event: true },
     });
     
-    res.status(201).json(registration);
+    res.status(201).json(attendance);
   } catch (error) {
     console.error('Event registration error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });
 
-// Cancel event registration
+// Cancel registration - now uses EventAttendance
 app.delete('/api/events/registrations/:id', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
     
-    const registration = await prisma.eventRegistration.findUnique({
+    const attendance = await prisma.eventAttendance.findFirst({
       where: { id: String(req.params.id) },
     });
     
-    if (!registration) {
+    if (!attendance) {
       return res.status(404).json({ error: { message: 'Registration not found', code: 'NOT_FOUND' } });
     }
     
-    if (registration.userId !== userId) {
+    if (attendance.userId !== userId) {
       return res.status(403).json({ error: { message: 'Not authorized to cancel this registration', code: 'FORBIDDEN' } });
     }
     
-    await prisma.eventRegistration.delete({
+    await prisma.eventAttendance.delete({
       where: { id: String(req.params.id) },
     });
     
@@ -2244,11 +2316,11 @@ app.delete('/api/events/registrations/:id', authenticateToken, async (req, res) 
   }
 });
 
-// Get registration count for an event (public)
+// Get registration count for an event (public) - counts attendance records
 app.get('/api/events/:id/registration-count', async (req, res) => {
   try {
-    const count = await prisma.eventRegistration.count({
-      where: { eventId: req.params.id },
+    const count = await prisma.eventAttendance.count({
+      where: { eventId: req.params.id, rsvpStatus: 'CONFIRMED' },
     });
     res.json({ count });
   } catch (error) {
@@ -3082,6 +3154,10 @@ app.use('/api/financial-statements', financialStatementsRouter);
 // ==================== ACTIVITY TIMELINE ROUTES ====================
 
 app.use('/api/activity', activityRouter);
+
+// ==================== CMS ROUTES ====================
+
+app.use('/api', cmsRouter);
 
 // ==================== TEST SEEDING (E2E only) ====================
 

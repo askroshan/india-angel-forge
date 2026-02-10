@@ -55,10 +55,11 @@ const Navigation = () => {
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="text-2xl font-bold">
-              <span className="text-primary">India</span>
-              <span className="text-accent"> Angel Forum</span>
-            </div>
+            <img
+              src="/logo-transparent.png"
+              alt="India Angel Forum"
+              className="h-12 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
