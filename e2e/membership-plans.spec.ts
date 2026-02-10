@@ -88,8 +88,8 @@ async function getAPIToken(email: string, password: string): Promise<string> {
   return body.token;
 }
 
-// Helper: Clean up test plans
-async function cleanupTestPlans(token: string) {
+// Helper: Clean up test plans (prefix filter avoids cross-block interference)
+async function cleanupTestPlans(token: string, slugPrefix = 'e2e-test-') {
   const res = await fetchAPI(`${API_BASE}/api/admin/membership/plans`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -97,7 +97,7 @@ async function cleanupTestPlans(token: string) {
     const body = await res.json();
     const plans = body.plans || [];
     for (const plan of plans) {
-      if (plan.slug?.startsWith('e2e-test-')) {
+      if (plan.slug?.startsWith(slugPrefix)) {
         await fetchAPI(`${API_BASE}/api/admin/membership/plans/${plan.id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
@@ -138,12 +138,12 @@ test.describe('US-MEMB-002: Admin Plan CRUD', () => {
 
   test.beforeAll(async () => {
     adminToken = await getAPIToken(TEST_USERS.admin.email, TEST_USERS.admin.password);
-    await cleanupTestPlans(adminToken);
+    await cleanupTestPlans(adminToken, 'e2e-crud-');
   });
 
   test.afterAll(async () => {
     const token = await getAPIToken(TEST_USERS.admin.email, TEST_USERS.admin.password);
-    await cleanupTestPlans(token);
+    await cleanupTestPlans(token, 'e2e-crud-');
   });
 
   test('MEMB-E2E-002: Admin creates a membership plan', async () => {
@@ -155,7 +155,7 @@ test.describe('US-MEMB-002: Admin Plan CRUD', () => {
       },
       body: JSON.stringify({
         name: 'E2E Test Plan',
-        slug: 'e2e-test-plan',
+        slug: 'e2e-crud-plan',
         price: 50000,
         billingCycle: 'ANNUAL',
         features: ['Feature A', 'Feature B'],
@@ -168,7 +168,7 @@ test.describe('US-MEMB-002: Admin Plan CRUD', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.plan.name).toBe('E2E Test Plan');
-    expect(body.plan.slug).toBe('e2e-test-plan');
+    expect(body.plan.slug).toBe('e2e-crud-plan');
     planId = body.plan.id;
   });
 
@@ -182,7 +182,7 @@ test.describe('US-MEMB-002: Admin Plan CRUD', () => {
       },
       body: JSON.stringify({
         name: 'E2E Price Test Plan',
-        slug: 'e2e-test-price-update',
+        slug: 'e2e-crud-price-update',
         price: 60000,
         billingCycle: 'ANNUAL',
         features: ['Feature X'],
@@ -218,7 +218,7 @@ test.describe('US-MEMB-002: Admin Plan CRUD', () => {
       },
       body: JSON.stringify({
         name: 'E2E Deactivate Plan',
-        slug: 'e2e-test-deactivate',
+        slug: 'e2e-crud-deactivate',
         price: 10000,
         billingCycle: 'MONTHLY',
         features: [],
@@ -259,7 +259,7 @@ test.describe('US-MEMB-003: Subscription Flow', () => {
   test.beforeAll(async () => {
     // Get admin token via API (more reliable than browser login under load)
     adminToken = await getAPIToken(TEST_USERS.admin.email, TEST_USERS.admin.password);
-    await cleanupTestPlans(adminToken);
+    await cleanupTestPlans(adminToken, 'e2e-test-sub-');
 
     // Create a test plan for subscription
     const res = await fetchAPI(`${API_BASE}/api/admin/membership/plans`, {
@@ -303,7 +303,7 @@ test.describe('US-MEMB-003: Subscription Flow', () => {
   test.afterAll(async () => {
     // Use API token for cleanup (more reliable)
     const token = await getAPIToken(TEST_USERS.admin.email, TEST_USERS.admin.password);
-    await cleanupTestPlans(token);
+    await cleanupTestPlans(token, 'e2e-test-sub-');
   });
 
   test('MEMB-E2E-006: Subscribe creates payment order or activates free plan', async () => {
@@ -317,8 +317,8 @@ test.describe('US-MEMB-003: Subscription Flow', () => {
       body: JSON.stringify({ planId: testPlanId }),
     });
 
-    expect(res.ok).toBe(true);
     const body = await res.json();
+    expect(res.ok, `Subscribe failed ${res.status}: ${JSON.stringify(body)}`).toBe(true);
     expect(body.success).toBe(true);
     // Free plan should activate directly
     expect(body.membership).toBeDefined();
@@ -503,11 +503,12 @@ test.describe('US-MEMB-007: Frontend Membership Page', () => {
     await login(page, TEST_USERS.investor2.email, TEST_USERS.investor2.password);
 
     await page.goto('/membership');
-    await page.waitForLoadState('networkidle');
 
-    // Check plan cards render
+    // Wait for the plans section to appear (loading spinner replaced with content)
+    await expect(page.locator('[data-testid="membership-plans-section"]')).toBeVisible({ timeout: 15000 });
+
+    // Check plan cards render — should have at least 1 plan (from seed data)
     const planCards = page.locator('[data-testid="membership-plan-card"]');
-    // Should have at least 1 plan (from seed data)
     await expect(planCards.first()).toBeVisible({ timeout: 10000 });
   });
 
