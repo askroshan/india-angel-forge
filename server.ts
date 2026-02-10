@@ -23,6 +23,9 @@ import certificatesRouter from './server/routes/certificates';
 import financialStatementsRouter from './server/routes/financial-statements';
 import activityRouter from './server/routes/activity';
 import cmsRouter from './server/routes/cms';
+import membershipRouter from './server/routes/membership';
+import adminMembershipRouter from './server/routes/admin-membership';
+import identityVerificationRouter from './server/routes/identity-verification';
 
 import path from 'path';
 
@@ -3172,6 +3175,18 @@ app.use('/api/activity', activityRouter);
 // ==================== CMS ROUTES ====================
 
 app.use('/api', cmsRouter);
+
+// ==================== MEMBERSHIP ROUTES ====================
+
+app.use('/api/membership', membershipRouter);
+
+// ==================== ADMIN MEMBERSHIP ROUTES ====================
+
+app.use('/api/admin/membership', adminMembershipRouter);
+
+// ==================== IDENTITY VERIFICATION ROUTES ====================
+
+app.use('/api/verification', identityVerificationRouter);
 
 // ==================== TEST SEEDING (E2E only) ====================
 

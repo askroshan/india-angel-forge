@@ -73,6 +73,7 @@ import TransactionHistory from "./pages/TransactionHistory";
 import FinancialStatements from "./pages/FinancialStatements";
 import ActivityTimeline from "./pages/ActivityTimeline";
 import CMSManagement from "./pages/admin/CMSManagement";
+import MembershipManagement from "./pages/admin/MembershipManagement";
 
 /**
  * Role definitions for route protection
@@ -330,6 +331,11 @@ const App = () => (
             <Route path="/admin/cms" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <CMSManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/membership" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <MembershipManagement />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}

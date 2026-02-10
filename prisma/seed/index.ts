@@ -575,6 +575,187 @@ async function main() {
   // Seed Financial Statements
   await seedFinancialStatements();
   
+  // ==================== MEMBERSHIP PLANS & CONFIG ====================
+  console.log('\n💳 Seeding membership plans, discount codes, and config...\n');
+
+  // Clear existing membership data (safe for dev/test)
+  await prisma.membershipPlanChangeLog.deleteMany({});
+  await prisma.userMembership.deleteMany({});
+  await prisma.discountCode.deleteMany({});
+  await prisma.membershipPlan.deleteMany({});
+  await prisma.identityVerification.deleteMany({});
+  await prisma.systemConfig.deleteMany({});
+
+  // Create Membership Plans
+  const standardPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Standard Member',
+      slug: 'standard-annual',
+      price: 60000,
+      billingCycle: 'ANNUAL',
+      features: [
+        'Access to monthly angel forums',
+        'Deal flow access (5 deals/month)',
+        'Networking events',
+        'Quarterly investment reports',
+        'Email support',
+      ],
+      isActive: true,
+      displayOrder: 1,
+    },
+  });
+  console.log(`✅ Created plan: ${standardPlan.name} (₹${standardPlan.price})`);
+
+  const premiumPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Premium Member',
+      slug: 'premium-annual',
+      price: 120000,
+      billingCycle: 'ANNUAL',
+      features: [
+        'All Standard features',
+        'Unlimited deal flow access',
+        'Priority event seating',
+        'Monthly 1-on-1 advisory sessions',
+        'Co-investment opportunities',
+        'Exclusive deep-dive sector reports',
+        'Priority support line',
+      ],
+      isActive: true,
+      displayOrder: 2,
+    },
+  });
+  console.log(`✅ Created plan: ${premiumPlan.name} (₹${premiumPlan.price})`);
+
+  const introductoryPlan = await prisma.membershipPlan.create({
+    data: {
+      name: 'Introductory',
+      slug: 'introductory-free',
+      price: 0,
+      billingCycle: 'ANNUAL',
+      features: [
+        'Access to monthly angel forums',
+        'Limited deal flow (2 deals/month)',
+        'Networking events (general)',
+        'Community access',
+      ],
+      isActive: true,
+      displayOrder: 0,
+    },
+  });
+  console.log(`✅ Created plan: ${introductoryPlan.name} (₹${introductoryPlan.price})`);
+
+  // Create Discount Codes
+  const adminId = adminUser?.id || 'seed-admin';
+  const discountCodes = [
+    {
+      code: 'EARLY2026',
+      discountType: 'PERCENTAGE' as const,
+      discountValue: 20,
+      maxUses: 100,
+      currentUses: 0,
+      validFrom: new Date('2025-12-01'),
+      validUntil: new Date('2026-06-30'),
+      applicablePlanIds: [standardPlan.id, premiumPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: 'Early bird 20% discount for 2026',
+    },
+    {
+      code: 'FOUNDING50',
+      discountType: 'FIXED_AMOUNT' as const,
+      discountValue: 50000,
+      maxUses: 25,
+      currentUses: 0,
+      validFrom: new Date('2025-01-01'),
+      validUntil: null,
+      applicablePlanIds: [premiumPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: 'Founding member ₹50,000 off Premium',
+    },
+    {
+      code: 'FREE100',
+      discountType: 'PERCENTAGE' as const,
+      discountValue: 100,
+      maxUses: 10,
+      currentUses: 0,
+      validFrom: new Date('2025-01-01'),
+      validUntil: new Date('2026-12-31'),
+      applicablePlanIds: [standardPlan.id],
+      isActive: true,
+      createdBy: adminId,
+      description: '100% off Standard (10 invitees)',
+    },
+  ];
+
+  for (const dc of discountCodes) {
+    await prisma.discountCode.create({ data: dc });
+    console.log(`✅ Created discount code: ${dc.code}`);
+  }
+
+  // System Config
+  const systemConfigs = [
+    { key: 'membership.introductory_enabled', value: 'false', description: 'Enable introductory pricing for all plans' },
+    { key: 'membership.introductory_price', value: '0', description: 'Introductory price override (when enabled)' },
+    { key: 'persona.monthly_quota', value: '500', description: 'Max Persona verifications per month' },
+    { key: 'persona.monthly_used', value: '0', description: 'Verifications used this month (auto-reset)' },
+    { key: 'membership.razorpay_enabled', value: 'true', description: 'Enable Razorpay payment gateway for memberships' },
+    { key: 'membership.stripe_enabled', value: 'false', description: 'Enable Stripe payment gateway for memberships' },
+  ];
+
+  for (const config of systemConfigs) {
+    await prisma.systemConfig.create({ data: config });
+    console.log(`✅ Created config: ${config.key} = ${config.value || '(empty)'}`);
+  }
+
+  // Create a sample verified investor with membership
+  const sampleInvestor = await prisma.user.findUnique({
+    where: { email: 'investor.standard@test.com' },
+  });
+
+  if (sampleInvestor) {
+    // Create identity verification
+    await prisma.identityVerification.create({
+      data: {
+        userId: sampleInvestor.id,
+        provider: 'persona',
+        providerInquiryId: `inq_seed_${Date.now()}`,
+        status: 'COMPLETED',
+        verifiedAt: new Date('2025-12-15'),
+      },
+    });
+    console.log(`✅ Created identity verification for ${sampleInvestor.email}`);
+
+    // Create membership
+    const membershipStart = new Date('2026-01-10');
+    const membershipEnd = new Date('2027-01-10');
+    await prisma.userMembership.create({
+      data: {
+        userId: sampleInvestor.id,
+        planId: standardPlan.id,
+        status: 'ACTIVE',
+        startDate: membershipStart,
+        endDate: membershipEnd,
+        autoRenew: false,
+      },
+    });
+    console.log(`✅ Created active membership for ${sampleInvestor.email}`);
+
+    // Log activation
+    await prisma.membershipPlanChangeLog.create({
+      data: {
+        userId: sampleInvestor.id,
+        newPlanId: standardPlan.id,
+        changeType: 'ACTIVATION',
+        newPrice: standardPlan.price,
+        changedBy: sampleInvestor.id,
+      },
+    });
+  }
+
+  console.log('\n✨ Membership seed data completed!\n');
+  
   console.log('\n🎉 Phase 2 test data seeding completed!\n');
 }
 
