@@ -971,7 +971,7 @@ model Message {
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User          @relation("SentMessages", fields: [senderId], references: [id])
+  sender User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
   @@index([senderId])
@@ -993,8 +993,8 @@ model MessageThread {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  participant1 User      @relation("ThreadsAsParticipant1", fields: [participant1Id], references: [id])
-  participant2 User      @relation("ThreadsAsParticipant2", fields: [participant2Id], references: [id])
+  participant1 User      @relation("ThreadsAsParticipant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2 User      @relation("ThreadsAsParticipant2", fields: [participant2Id], references: [id], onDelete: Cascade)
   messages     Message[]
 
   @@unique([participant1Id, participant2Id])

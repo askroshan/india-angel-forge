@@ -28,6 +28,7 @@ import adminMembershipRouter from './server/routes/admin-membership';
 import identityVerificationRouter from './server/routes/identity-verification';
 
 import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -3442,6 +3443,95 @@ app.patch('/api/admin/users/:id/role', authenticateToken, requireRole(['admin'])
   }
 });
 
+// DELETE /api/admin/users/:id - Delete a user (admin only)
+app.delete('/api/admin/users/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = getUserId(req);
+
+    // Prevent admin from deleting themselves
+    if (id === adminId) {
+      return res.status(400).json({ 
+        error: { message: 'You cannot delete your own account', code: 'SELF_DELETE_NOT_ALLOWED' } 
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: { message: 'User not found', code: 'NOT_FOUND' } });
+    }
+
+    // Delete the user (cascade will handle related records)
+    await prisma.user.delete({ where: { id } });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: { 
+        userId: adminId, 
+        action: 'delete_user', 
+        entity: 'user', 
+        entityId: id, 
+        details: `Deleted user: ${user.email}` 
+      },
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/admin/companies/:id - Delete a company (admin only)
+app.delete('/api/admin/companies/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = getUserId(req);
+
+    // Try to find and delete from CompanyProfile first
+    let deleted = false;
+    let companyName = '';
+
+    const companyProfile = await prisma.companyProfile.findUnique({ where: { id } });
+    if (companyProfile) {
+      companyName = companyProfile.companyName;
+      await prisma.companyProfile.delete({ where: { id } });
+      deleted = true;
+    }
+
+    // If not found in CompanyProfile, try Company model
+    if (!deleted) {
+      const company = await prisma.company.findUnique({ where: { id } });
+      if (company) {
+        companyName = company.name;
+        await prisma.company.delete({ where: { id } });
+        deleted = true;
+      }
+    }
+
+    if (!deleted) {
+      return res.status(404).json({ error: { message: 'Company not found', code: 'NOT_FOUND' } });
+    }
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: { 
+        userId: adminId, 
+        action: 'delete_company', 
+        entity: 'company', 
+        entityId: id, 
+        details: `Deleted company: ${companyName}` 
+      },
+    });
+
+    res.json({ message: 'Company deleted successfully' });
+  } catch (error) {
+    console.error('Delete company error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 // GET /api/admin/statistics - System statistics dashboard
 app.get('/api/admin/statistics', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
@@ -4080,6 +4170,22 @@ app.post('/api/test/seed-messages', authenticateToken, async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ==================== PRODUCTION STATIC FILE SERVING ====================
+// In production, serve the Vite-built frontend from /dist
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(process.cwd(), 'dist');
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    // SPA fallback - serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api/')) {
+        res.sendFile(path.join(distPath, 'index.html'));
+      }
+    });
+    console.log('📁 Serving static frontend from /dist');
+  }
+}
 
 // Start server
 app.listen(PORT, async () => {

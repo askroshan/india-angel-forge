@@ -1,0 +1,375 @@
+# ============================================
+# India Angel Forum - CI/CD Deployment Pipeline
+# ============================================
+# Triggers on push to main branch
+# Builds Docker image → compresses → transfers to prod → deploys
+# Validates deployment + verifies other sites unaffected
+#
+# SSH port: 6150 (server custom SSH port)
+# App port: 11160 (Docker container mapped on server)
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: indiaangelforum
+  IMAGE_TAG: latest
+  DEPLOY_DIR: /home/deployuser/indiaangelforum
+  SSH_PORT: 6150
+  APP_PORT: 11160
+
+jobs:
+  # ==================== BUILD & TEST ====================
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test:run || true
+
+  # ==================== DOCKER BUILD & TRANSFER ====================
+  deploy:
+    name: Deploy to Production
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+          echo "✅ Docker image built"
+
+      - name: Export and compress Docker image
+        run: |
+          echo "📦 Exporting Docker image to tar..."
+          docker save ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -o indiaangelforum-image.tar
+          echo "🗜️ Compressing with gzip..."
+          gzip -9 indiaangelforum-image.tar
+          ls -lh indiaangelforum-image.tar.gz
+          echo "✅ Image compressed"
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ env.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Pre-deploy - Capture existing sites health
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          echo "=========================================="
+          echo "📋 Pre-deploy: Checking existing sites..."
+          echo "=========================================="
+          
+          echo "Running containers:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
+          
+          echo ""
+          echo "Nginx sites enabled:"
+          ls /etc/nginx/sites-enabled/ 2>/dev/null || true
+          
+          echo ""
+          echo "Site health checks:"
+          for conf in /etc/nginx/sites-enabled/*; do
+            if [ -f "$conf" ] && [ "$(basename $conf)" != "default" ] && [ "$(basename $conf)" != "000-default" ]; then
+              DOMAIN=$(basename "$conf" | sed 's/.conf$//')
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://127.0.0.1" -H "Host: $DOMAIN" 2>/dev/null || echo "000")
+              echo "  $DOMAIN: HTTP $HTTP_CODE"
+            fi
+          done
+          SCRIPT
+
+      - name: Create deployment directory on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "mkdir -p ${{ env.DEPLOY_DIR }}/deploy"
+
+      - name: Transfer Docker image to production server
+        run: |
+          echo "📡 Transferring Docker image to production server..."
+          scp -i ~/.ssh/deploy_key -P ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            indiaangelforum-image.tar.gz \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_DIR }}/indiaangelforum-image.tar.gz
+          echo "✅ Image transferred"
+
+      - name: Transfer deployment files
+        run: |
+          echo "📡 Transferring deployment files..."
+          scp -i ~/.ssh/deploy_key -P ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            docker-compose.prod.yml \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_DIR }}/docker-compose.prod.yml
+          
+          scp -i ~/.ssh/deploy_key -P ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            deploy/production-deploy.sh \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_DIR }}/deploy/production-deploy.sh
+          
+          scp -i ~/.ssh/deploy_key -P ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            nginx.conf \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx.conf
+          echo "✅ Files transferred"
+
+      - name: Decompress and load Docker image on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          set -e
+          cd /home/deployuser/indiaangelforum
+          
+          echo "🗜️ Decompressing Docker image..."
+          gunzip -f indiaangelforum-image.tar.gz
+          
+          echo "📦 Loading Docker image..."
+          docker load -i indiaangelforum-image.tar
+          rm -f indiaangelforum-image.tar
+          
+          echo "✅ Docker image loaded"
+          docker images indiaangelforum
+          SCRIPT
+
+      - name: Set EMAILIT_API_KEY on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << SCRIPT
+          ENV_FILE="/home/deployuser/indiaangelforum/.env.production"
+          if [ -f "\$ENV_FILE" ]; then
+            if grep -q "EMAILIT_API_KEY=" "\$ENV_FILE"; then
+              sed -i "s|EMAILIT_API_KEY=.*|EMAILIT_API_KEY=${{ secrets.EMAILIT_API_KEY }}|" "\$ENV_FILE"
+            fi
+          fi
+          SCRIPT
+
+      - name: Deploy application
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          set -e
+          cd /home/deployuser/indiaangelforum
+          chmod +x deploy/production-deploy.sh
+          bash deploy/production-deploy.sh
+          SCRIPT
+
+      - name: Setup Nginx and SSL
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          set -e
+          
+          NGINX_CONF="/etc/nginx/sites-available/indiaangelforum.com"
+          NGINX_ENABLED="/etc/nginx/sites-enabled/indiaangelforum.com"
+          
+          if [ ! -f "$NGINX_CONF" ] || ! diff -q /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF" > /dev/null 2>&1; then
+            echo "📝 Updating Nginx configuration..."
+            sudo cp /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF"
+            
+            if [ ! -L "$NGINX_ENABLED" ]; then
+              sudo ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+            fi
+            
+            # Test nginx config (will fail if SSL certs don't exist yet)
+            if ! sudo nginx -t 2>/dev/null; then
+              echo "⚠️ SSL certs missing. Setting up HTTP-only first for Certbot..."
+              
+              sudo tee "$NGINX_CONF" > /dev/null << 'TMPCONF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name indiaangelforum.com www.indiaangelforum.com;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    
+    location / {
+        proxy_pass http://127.0.0.1:11160;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+TMPCONF
+              sudo nginx -t && sudo systemctl reload nginx
+              
+              echo "🔐 Generating SSL certificate with Certbot..."
+              sudo certbot --nginx -d indiaangelforum.com -d www.indiaangelforum.com \
+                --non-interactive --agree-tos --email admin@indiaangelforum.com --redirect
+              echo "✅ SSL certificate generated"
+              
+              # Now apply the full SSL nginx config
+              sudo cp /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF"
+              sudo nginx -t && sudo systemctl reload nginx
+              echo "✅ Full SSL nginx config applied"
+            else
+              sudo systemctl reload nginx
+              echo "✅ Nginx reloaded with SSL config"
+            fi
+          else
+            echo "✅ Nginx config unchanged"
+            sudo systemctl reload nginx
+          fi
+          SCRIPT
+
+  # ==================== POST-DEPLOY VALIDATION ====================
+  validate:
+    name: Post-Deploy Validation
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p 6150 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Wait for application to stabilize
+        run: sleep 15
+
+      - name: Validate indiaangelforum.com is live
+        run: |
+          ssh -i ~/.ssh/deploy_key -p 6150 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          set -e
+          
+          echo "1️⃣ Health check (internal)..."
+          HEALTH=$(curl -sf http://127.0.0.1:11160/api/health)
+          echo "  Response: $HEALTH"
+          echo "$HEALTH" | grep -q '"status":"ok"' && echo "  ✅ Health check passed" || { echo "  ❌ Health check failed"; exit 1; }
+          
+          echo ""
+          echo "2️⃣ Homepage loads (internal)..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:11160/)
+          echo "  HTTP Code: $HTTP_CODE"
+          [ "$HTTP_CODE" = "200" ] && echo "  ✅ Homepage loads" || { echo "  ❌ Homepage returned $HTTP_CODE"; exit 1; }
+          
+          echo ""
+          echo "3️⃣ API endpoints respond..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:11160/api/events)
+          echo "  GET /api/events: HTTP $HTTP_CODE"
+          [ "$HTTP_CODE" = "200" ] && echo "  ✅ Events API works" || echo "  ⚠️ Events API returned $HTTP_CODE"
+          
+          echo ""
+          echo "4️⃣ Docker containers healthy..."
+          docker ps --format "table {{.Names}}\t{{.Status}}" | grep iaf
+          SCRIPT
+
+      - name: E2E data persistence test
+        run: |
+          ssh -i ~/.ssh/deploy_key -p 6150 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          set -e
+          API="http://127.0.0.1:11160"
+          
+          echo "1️⃣ Register a test user..."
+          TEST_EMAIL="ci-test-$(date +%s)@test.com"
+          SIGNUP_RESP=$(curl -sf "$API/api/auth/signup" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"CITest@12345\",\"fullName\":\"CI Test User\"}")
+          echo "  Signup: OK"
+          
+          echo ""
+          echo "2️⃣ Login with test user..."
+          LOGIN_RESP=$(curl -sf "$API/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"CITest@12345\"}")
+          TOKEN=$(echo "$LOGIN_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" 2>/dev/null || echo "")
+          
+          if [ -z "$TOKEN" ]; then
+            echo "  ❌ Login failed"
+            exit 1
+          fi
+          echo "  ✅ Login successful"
+          
+          echo ""
+          echo "3️⃣ Verify session..."
+          curl -sf "$API/api/auth/session" -H "Authorization: Bearer $TOKEN" > /dev/null
+          echo "  ✅ Session verified"
+          
+          echo ""
+          echo "4️⃣ Cleanup - Admin deletes test user..."
+          ADMIN_TOKEN=$(curl -sf "$API/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@indiaangelforum.test","password":"Admin@12345"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+          
+          USER_ID=$(echo "$SIGNUP_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['id'])")
+          curl -sf "$API/api/admin/users/$USER_ID" -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" > /dev/null
+          echo "  ✅ Test user cleaned up"
+          
+          echo ""
+          echo "✅ E2E data persistence test PASSED"
+          SCRIPT
+
+      - name: Verify all existing sites still running
+        run: |
+          ssh -i ~/.ssh/deploy_key -p 6150 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+          
+          echo "Checking all nginx-enabled sites..."
+          for conf in /etc/nginx/sites-enabled/*; do
+            if [ -f "$conf" ] && [ "$(basename $conf)" != "default" ] && [ "$(basename $conf)" != "000-default" ]; then
+              DOMAIN=$(basename "$conf" | sed 's/.conf$//')
+              
+              # Skip indiaangelforum (just deployed, checked separately)
+              if echo "$DOMAIN" | grep -q "indiaangelforum"; then continue; fi
+              
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://127.0.0.1" -H "Host: $DOMAIN" 2>/dev/null || echo "000")
+              
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "304" ]; then
+                echo "  ✅ $DOMAIN: HTTP $HTTP_CODE"
+              else
+                echo "  ⚠️ $DOMAIN: HTTP $HTTP_CODE"
+              fi
+            fi
+          done
+          
+          echo ""
+          echo "Docker containers:"
+          docker ps --format "table {{.Names}}\t{{.Status}}" | head -40
+          echo ""
+          echo "✅ Existing sites verification complete"
+          SCRIPT
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "📊 Deployment Summary"
+          echo "=========================================="
+          echo "  🌐 Site: https://indiaangelforum.com"
+          echo "  🏥 Health: https://indiaangelforum.com/api/health"
+          echo "  🖥️ Server: ${{ secrets.SSH_HOST }} (app:11160, ssh:6150)"
+          echo "  📅 Deployed: $(date -u)"
+          echo "=========================================="

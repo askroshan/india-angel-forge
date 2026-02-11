@@ -1,0 +1,105 @@
+# ============================================
+# India Angel Forum - Production Docker Compose
+# ============================================
+# Usage: docker compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: iaf-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-indiaangelforum}
+      POSTGRES_USER: ${POSTGRES_USER:-indiaangel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-indiaangel} -d ${POSTGRES_DB:-indiaangelforum}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iaf-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: iaf-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - iaf-network
+
+  # Application (Express API + Vite static build)
+  app:
+    image: indiaangelforum:latest
+    container_name: iaf-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-indiaangel}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-indiaangelforum}?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      API_PORT: "3001"
+      SEED_ON_START: ${SEED_ON_START:-false}
+    ports:
+      - "127.0.0.1:11160:3001"
+    volumes:
+      - uploads_data:/app/uploads
+      - invoices_data:/app/invoices
+      - attachments_data:/app/attachments
+      - archives_data:/app/archives
+      - public_statements:/app/public/statements
+      - public_certificates:/app/public/certificates
+      - public_uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    networks:
+      - iaf-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  invoices_data:
+    driver: local
+  attachments_data:
+    driver: local
+  archives_data:
+    driver: local
+  public_statements:
+    driver: local
+  public_certificates:
+    driver: local
+  public_uploads:
+    driver: local
+
+networks:
+  iaf-network:
+    driver: bridge
