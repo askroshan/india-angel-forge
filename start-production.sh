@@ -14,7 +14,7 @@ npx prisma generate
 # Seed database if SEED_ON_START is set
 if [ "$SEED_ON_START" = "true" ]; then
   echo "🌱 Seeding database..."
-  node --experimental-specifier-resolution=node dist-server/prisma/seed/index.js || echo "⚠️ Seed skipped or failed (non-fatal)"
+  npx tsx prisma/seed/index.ts || echo "⚠️ Seed skipped or failed (non-fatal)"
 fi
 
 # Start the server using tsx (handles TypeScript ESM)
