@@ -53,7 +53,7 @@ CORS_ORIGINS=https://indiaangelforum.com,https://www.indiaangelforum.com
 # Email (set via GitHub secrets)
 EMAILIT_API_KEY=${EMAILIT_API_KEY:-}
 EMAILIT_FROM_EMAIL=noreply@indiaangelforum.com
-EMAILIT_FROM_NAME=India Angel Forum
+EMAILIT_FROM_NAME="India Angel Forum"
 
 # Razorpay (add later)
 RAZORPAY_KEY_ID=
@@ -90,9 +90,12 @@ fi
 
 # ---- Step 3: Export env vars for docker compose ----
 echo "📋 Loading environment variables..."
-set -a
-source "$ENV_FILE"
-set +a
+# Export env vars safely (handles values with spaces by quoting)
+while IFS='=' read -r key value; do
+  # Skip comments and empty lines
+  [[ -z "$key" || "$key" =~ ^# ]] && continue
+  export "$key=$value"
+done < <(grep -v '^\s*#' "$ENV_FILE" | grep -v '^\s*$')
 
 # ---- Step 4: Stop existing containers (graceful) ----
 echo "🛑 Stopping existing containers..."
