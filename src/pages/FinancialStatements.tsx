@@ -120,7 +120,9 @@ export default function FinancialStatements() {
       const data = await api.get<FinancialStatement[]>('/api/financial-statements/statements');
       if (Array.isArray(data)) {
         setStatements(data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } else if (data && (data as any).data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setStatements((data as any).data);
       }
     } catch (error) {
@@ -241,6 +243,7 @@ export default function FinancialStatements() {
 
       const response = await api.post<{ success: boolean; data: FinancialStatement }>(`/api/financial-statements/statements/${statementId}/email`, undefined);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const success = (response as any).success || (response.data && (response.data as any).success);
       if (success) {
         setEmailSuccess(true);

@@ -26,10 +26,19 @@ const Contact = () => {
 
     document.body.appendChild(script);
 
+    // Load Google reCAPTCHA v3 script
+    const recaptchaScript = document.createElement("script");
+    recaptchaScript.src = "https://www.google.com/recaptcha/api.js?render=explicit";
+    recaptchaScript.async = true;
+    document.body.appendChild(recaptchaScript);
+
     return () => {
-      // Cleanup script on unmount
+      // Cleanup scripts on unmount
       if (script.parentNode) {
         script.parentNode.removeChild(script);
+      }
+      if (recaptchaScript.parentNode) {
+        recaptchaScript.parentNode.removeChild(recaptchaScript);
       }
     };
   }, []);
@@ -171,6 +180,17 @@ const Contact = () => {
                   </div>
                 </CardContent>
               </Card>
+              <p className="text-sm text-muted-foreground mt-3">
+                If the form doesn't load, you can{" "}
+                <a
+                  href="https://app.companyhub.com/webtolead/renderform/MjIzNzM1?name=Contact_IndiaAngelForum"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline hover:text-accent/80"
+                >
+                  open the form directly
+                </a>.
+              </p>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ interface Activity {
   activityType: string;
   type?: string;
   description: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>;
   createdAt: string;
   timestamp?: string;
@@ -21,6 +22,7 @@ interface Activity {
 
 const ACTIVITIES_PER_PAGE = 20;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TYPE_ICONS: Record<string, any> = {
   PAYMENT: DollarSign, EVENT: Calendar, MESSAGE: MessageSquare,
   DOCUMENT: FileText, PROFILE: User,
@@ -104,6 +106,7 @@ export default function ActivityTimeline() {
       if (!response.ok) throw new Error('Failed to fetch activities');
       const data = await response.json();
       const rawItems = data.data || data.activities || [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const items: Activity[] = rawItems.map((item: any) => ({
         ...item,
         activityType: item.activityType || item.type || 'UNKNOWN',

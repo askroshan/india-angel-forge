@@ -56,7 +56,7 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img
-              src="/logo-transparent.png"
+              src="/transparent-iaf-logo.png"
               alt="India Angel Forum"
               className="h-12 w-auto object-contain"
             />
@@ -108,12 +108,14 @@ const Navigation = () => {
                       Membership
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
-                      <Shield className="h-4 w-4" />
-                      Admin Dashboard
-                    </Link>
-                  </DropdownMenuItem>
+                  {user.roles?.includes('admin') && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                        <Shield className="h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
                     <LogOut className="h-4 w-4" />
@@ -176,12 +178,14 @@ const Navigation = () => {
                       Membership
                     </Link>
                   </Button>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link to="/admin" onClick={() => setIsOpen(false)}>
-                      <Shield className="h-4 w-4 mr-2" />
-                      Admin Dashboard
-                    </Link>
-                  </Button>
+                  {user.roles?.includes('admin') && (
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/admin" onClick={() => setIsOpen(false)}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    </Button>
+                  )}
                   <Button variant="destructive" className="w-full" onClick={() => { handleSignOut(); setIsOpen(false); }}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out

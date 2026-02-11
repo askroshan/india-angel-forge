@@ -76,9 +76,9 @@ export default function MyRegistrations() {
             <div className="flex-1 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="font-semibold">{registration.events.title}</h4>
+                  <h4 className="font-semibold">{registration.events?.title || 'Event'}</h4>
                   <Badge variant="outline" className="text-xs mt-1">
-                    {EVENT_TYPE_LABELS[registration.events.event_type]}
+                    {EVENT_TYPE_LABELS[registration.events?.event_type] || 'Event'}
                   </Badge>
                 </div>
                 <Badge variant="secondary" className="text-xs" data-testid="rsvp-status-badge">
@@ -87,20 +87,24 @@ export default function MyRegistrations() {
               </div>
               
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {format(parseISO(registration.events.date), 'MMM d, yyyy')}
-                </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {registration.events.location}
-                </div>
+                {registration.events?.date && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {format(parseISO(registration.events.date), 'MMM d, yyyy')}
+                  </div>
+                )}
+                {(registration.events?.venue_name || registration.events?.location) && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {registration.events?.venue_name || registration.events?.location}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex sm:flex-col gap-2">
               <Button variant="outline" size="sm" asChild className="flex-1">
-                <Link to={`/events/${registration.events.slug}`}>
+                <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
                   View
                   <ArrowRight className="ml-1 h-3 w-3" />
                 </Link>
@@ -122,7 +126,7 @@ export default function MyRegistrations() {
                     <AlertDialogTitle>Cancel Registration?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Are you sure you want to cancel your registration for{" "}
-                      <strong>{registration.events.title}</strong>? 
+                      <strong>{registration.events?.title || 'this event'}</strong>? 
                       You can register again if spots are available.
                     </AlertDialogDescription>
                   </AlertDialogHeader>

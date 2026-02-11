@@ -233,6 +233,7 @@ const Membership = () => {
         toast.error(data?.error || "Invalid discount code");
         setDiscountResult(null);
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to apply discount code");
       setDiscountResult(null);
@@ -250,6 +251,7 @@ const Membership = () => {
     setSubscribing(true);
     setSelectedPlanId(planId);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload: any = { planId };
       if (discountCode.trim() && discountResult) {
         payload.discountCode = discountCode.trim();
@@ -258,6 +260,7 @@ const Membership = () => {
       const data = await apiClient.post<{
         success: boolean;
         membership?: UserMembership;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         paymentOrder?: any;
         gateway?: string;
         error?: string;
@@ -267,6 +270,7 @@ const Membership = () => {
         if (data.membership) {
           // Free plan — activated directly
           toast.success("Membership activated!");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setMembership(data.membership as any);
           setDiscountCode("");
           setDiscountResult(null);
@@ -278,6 +282,7 @@ const Membership = () => {
       } else {
         toast.error(data?.error || "Subscription failed");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to subscribe");
     } finally {
@@ -285,6 +290,7 @@ const Membership = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const openRazorpayCheckout = (order: any, planId: string) => {
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_mock",
@@ -293,10 +299,12 @@ const Membership = () => {
       name: "India Angel Forum",
       description: "Membership Subscription",
       order_id: order.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       handler: async (response: any) => {
         try {
           const verifyData = await apiClient.post<{
             success: boolean;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             membership?: any;
           }>("/api/membership/verify-payment", {
             razorpayOrderId: response.razorpay_order_id,
@@ -320,6 +328,7 @@ const Membership = () => {
       theme: { color: "#6366f1" },
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rzp = new (window as any).Razorpay(options);
     rzp.open();
   };
@@ -330,6 +339,7 @@ const Membership = () => {
     try {
       const data = await apiClient.post<{
         success: boolean;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         membership?: any;
         error?: string;
       }>("/api/membership/change-plan", { newPlanId: changePlanTarget.id });
@@ -341,6 +351,7 @@ const Membership = () => {
       } else {
         toast.error(data?.error || "Plan change failed");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to change plan");
     } finally {
@@ -362,6 +373,7 @@ const Membership = () => {
       } else {
         toast.error(data?.error || "Cancellation failed");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to cancel membership");
     } finally {
