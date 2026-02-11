@@ -178,66 +178,67 @@ jobs:
           bash deploy/production-deploy.sh
           SCRIPT
 
+      - name: Create HTTP-only nginx config for initial SSL setup
+        run: |
+          cat > /tmp/iaf-http-only.conf << 'EOF'
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name indiaangelforum.com www.indiaangelforum.com;
+              location /.well-known/acme-challenge/ { root /var/www/html; }
+              location / {
+                  proxy_pass http://127.0.0.1:11160;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          EOF
+          sed -i 's/^          //' /tmp/iaf-http-only.conf
+          scp -i ~/.ssh/deploy_key -P ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
+            /tmp/iaf-http-only.conf \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.DEPLOY_DIR }}/nginx-http-only.conf
+
       - name: Setup Nginx and SSL
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'SCRIPT'
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'bash -s' << 'SCRIPT'
           set -e
-          
           NGINX_CONF="/etc/nginx/sites-available/indiaangelforum.com"
           NGINX_ENABLED="/etc/nginx/sites-enabled/indiaangelforum.com"
-          
-          if [ ! -f "$NGINX_CONF" ] || ! diff -q /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF" > /dev/null 2>&1; then
-            echo "📝 Updating Nginx configuration..."
-            sudo cp /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF"
-            
+          DEPLOY_DIR="/home/deployuser/indiaangelforum"
+
+          if [ ! -f "$NGINX_CONF" ] || ! diff -q "$DEPLOY_DIR/nginx.conf" "$NGINX_CONF" > /dev/null 2>&1; then
+            echo "Updating Nginx configuration..."
+            sudo cp "$DEPLOY_DIR/nginx.conf" "$NGINX_CONF"
+
             if [ ! -L "$NGINX_ENABLED" ]; then
               sudo ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
             fi
-            
-            # Test nginx config (will fail if SSL certs don't exist yet)
+
             if ! sudo nginx -t 2>/dev/null; then
-              echo "⚠️ SSL certs missing. Setting up HTTP-only first for Certbot..."
-              
-              sudo tee "$NGINX_CONF" > /dev/null << 'TMPCONF'
-server {
-    listen 80;
-    listen [::]:80;
-    server_name indiaangelforum.com www.indiaangelforum.com;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-    
-    location / {
-        proxy_pass http://127.0.0.1:11160;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-TMPCONF
+              echo "SSL certs missing. Setting up HTTP-only first for Certbot..."
+              sudo cp "$DEPLOY_DIR/nginx-http-only.conf" "$NGINX_CONF"
               sudo nginx -t && sudo systemctl reload nginx
-              
-              echo "🔐 Generating SSL certificate with Certbot..."
+
+              echo "Generating SSL certificate with Certbot..."
               sudo certbot --nginx -d indiaangelforum.com -d www.indiaangelforum.com \
                 --non-interactive --agree-tos --email admin@indiaangelforum.com --redirect
-              echo "✅ SSL certificate generated"
-              
-              # Now apply the full SSL nginx config
-              sudo cp /home/deployuser/indiaangelforum/nginx.conf "$NGINX_CONF"
+
+              echo "Applying full SSL nginx config..."
+              sudo cp "$DEPLOY_DIR/nginx.conf" "$NGINX_CONF"
               sudo nginx -t && sudo systemctl reload nginx
-              echo "✅ Full SSL nginx config applied"
+              echo "Full SSL nginx config applied"
             else
               sudo systemctl reload nginx
-              echo "✅ Nginx reloaded with SSL config"
+              echo "Nginx reloaded with SSL config"
             fi
           else
-            echo "✅ Nginx config unchanged"
+            echo "Nginx config unchanged"
             sudo systemctl reload nginx
           fi
           SCRIPT
