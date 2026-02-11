@@ -117,11 +117,13 @@ export default function TransactionHistory() {
     }
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (token) {
       fetchTransactions();
     }
   }, [page, filters.sortBy, filters.sortOrder, token]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Apply filters
   const applyFilters = () => {

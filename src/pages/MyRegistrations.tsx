@@ -40,11 +40,16 @@ export default function MyRegistrationsPage() {
     r => r.events && isPast(parseISO(r.events.date))
   ) || [];
 
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
-    return format(date, 'h:mm a');
+  const formatTime = (time: string | undefined | null) => {
+    if (!time) return '';
+    try {
+      const [hours, minutes] = time.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes));
+      return format(date, 'h:mm a');
+    } catch {
+      return time;
+    }
   };
 
   if (!user) {
@@ -131,10 +136,10 @@ export default function MyRegistrationsPage() {
                           {/* Date Column */}
                           <div className="bg-accent/10 p-6 flex flex-col items-center justify-center min-w-[120px]">
                             <span className="text-3xl font-bold text-accent">
-                              {format(parseISO(registration.events.date), 'd')}
+                              {registration.events?.date ? format(parseISO(registration.events.date), 'd') : '—'}
                             </span>
                             <span className="text-sm font-medium text-accent">
-                              {format(parseISO(registration.events.date), 'MMM yyyy')}
+                              {registration.events?.date ? format(parseISO(registration.events.date), 'MMM yyyy') : ''}
                             </span>
                           </div>
 
@@ -144,7 +149,7 @@ export default function MyRegistrationsPage() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant="outline" className="text-xs">
-                                    {EVENT_TYPE_LABELS[registration.events.event_type]}
+                                    {EVENT_TYPE_LABELS[registration.events?.event_type] || 'Event'}
                                   </Badge>
                                   <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                                     Confirmed
@@ -152,30 +157,35 @@ export default function MyRegistrationsPage() {
                                 </div>
                                 <h3 className="text-xl font-semibold">
                                   <Link 
-                                    to={`/events/${registration.events.slug}`}
+                                    to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}
                                     className="hover:text-accent transition-colors"
                                   >
-                                    {registration.events.title}
+                                    {registration.events?.title || 'Event'}
                                   </Link>
                                 </h3>
                                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="h-4 w-4" />
-                                    {formatTime(registration.events.start_time)} - {formatTime(registration.events.end_time)}
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <MapPin className="h-4 w-4" />
-                                    {registration.events.venue_name || registration.events.location}
-                                  </div>
+                                  {(registration.events?.start_time || registration.events?.end_time) && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="h-4 w-4" />
+                                      {formatTime(registration.events?.start_time)}
+                                      {registration.events?.end_time && ` - ${formatTime(registration.events.end_time)}`}
+                                    </div>
+                                  )}
+                                  {(registration.events?.venue_name || registration.events?.location) && (
+                                    <div className="flex items-center gap-1.5">
+                                      <MapPin className="h-4 w-4" />
+                                      {registration.events?.venue_name || registration.events?.location}
+                                    </div>
+                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground pt-1">
-                                  Registered on {format(parseISO(registration.registered_at), 'MMM d, yyyy')}
+                                  Registered on {registration.registered_at ? format(parseISO(registration.registered_at), 'MMM d, yyyy') : 'N/A'}
                                 </p>
                               </div>
 
                               <div className="flex gap-2 sm:flex-col">
                                 <Button variant="outline" size="sm" asChild className="flex-1">
-                                  <Link to={`/events/${registration.events.slug}`}>
+                                  <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
                                     View Details
                                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                   </Link>
@@ -197,7 +207,7 @@ export default function MyRegistrationsPage() {
                                       <AlertDialogTitle>Cancel Registration?</AlertDialogTitle>
                                       <AlertDialogDescription>
                                         Are you sure you want to cancel your registration for{" "}
-                                        <strong>{registration.events.title}</strong>? 
+                                        <strong>{registration.events?.title || 'this event'}</strong>? 
                                         You can register again later if spots are still available.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
@@ -243,10 +253,10 @@ export default function MyRegistrationsPage() {
                           {/* Date Column */}
                           <div className="bg-muted p-6 flex flex-col items-center justify-center min-w-[120px]">
                             <span className="text-3xl font-bold text-muted-foreground">
-                              {format(parseISO(registration.events.date), 'd')}
+                              {registration.events?.date ? format(parseISO(registration.events.date), 'd') : '—'}
                             </span>
                             <span className="text-sm font-medium text-muted-foreground">
-                              {format(parseISO(registration.events.date), 'MMM yyyy')}
+                              {registration.events?.date ? format(parseISO(registration.events.date), 'MMM yyyy') : ''}
                             </span>
                           </div>
 
@@ -256,25 +266,27 @@ export default function MyRegistrationsPage() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant="outline" className="text-xs">
-                                    {EVENT_TYPE_LABELS[registration.events.event_type]}
+                                    {EVENT_TYPE_LABELS[registration.events?.event_type] || 'Event'}
                                   </Badge>
                                   <Badge variant="secondary" className="text-xs">
                                     Attended
                                   </Badge>
                                 </div>
                                 <h3 className="text-xl font-semibold">
-                                  {registration.events.title}
+                                  {registration.events?.title || 'Event'}
                                 </h3>
                                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
-                                    <MapPin className="h-4 w-4" />
-                                    {registration.events.venue_name || registration.events.location}
-                                  </div>
+                                  {(registration.events?.venue_name || registration.events?.location) && (
+                                    <div className="flex items-center gap-1.5">
+                                      <MapPin className="h-4 w-4" />
+                                      {registration.events?.venue_name || registration.events?.location}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
                               <Button variant="outline" size="sm" asChild>
-                                <Link to={`/events/${registration.events.slug}`}>
+                                <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
                                   View Recap
                                   <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                 </Link>

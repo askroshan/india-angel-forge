@@ -113,6 +113,7 @@ export function InvoiceManagement() {
       queryClient.invalidateQueries({ queryKey: ['admin-failed-invoices'] });
       queryClient.invalidateQueries({ queryKey: ['admin-queue-metrics'] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error(error.message || 'Failed to retry invoice generation');
     },
@@ -123,6 +124,7 @@ export function InvoiceManagement() {
     mutationFn: async (paymentIds: string[]) => {
       return await apiClient.post('/api/admin/invoices/retry-batch', { paymentIds });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSuccess: (response: any) => {
       toast.success(`Queued ${response.retried} invoices for retry`);
       if (response.failed > 0) {
@@ -133,6 +135,7 @@ export function InvoiceManagement() {
       queryClient.invalidateQueries({ queryKey: ['admin-failed-invoices'] });
       queryClient.invalidateQueries({ queryKey: ['admin-queue-metrics'] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       toast.error(error.message || 'Failed to batch retry invoices');
     },

@@ -285,7 +285,8 @@ app.get('/api/events', async (req, res) => {
     const eventType = req.query.eventType as string | undefined;
     const now = new Date();
     
-    let whereClause: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let whereClause: Record<string, any> = {};
     
     if (filter === 'upcoming') {
       whereClause = { eventDate: { gte: now }, status: 'upcoming' };
@@ -337,19 +338,36 @@ app.get('/api/events/my-registrations', authenticateToken, async (req, res) => {
       orderBy: { registeredAt: 'desc' },
     });
 
-    // Helper to normalize event for frontend (component expects `events` with `date`, `slug`, `event_type`)
-    const normalizeEvent = (evt: any) => evt ? {
+    // Helper to normalize event for frontend (component expects snake_case fields)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizeEvent = (evt: Record<string, any> | null) => evt ? {
       ...evt,
+      // snake_case aliases the frontend expects
       date: evt.eventDate?.toISOString?.() || evt.eventDate || new Date().toISOString(),
       slug: evt.id,
       event_type: 'forum',
+      start_time: evt.startTime || '09:00',
+      end_time: evt.endTime || '17:00',
+      venue_name: evt.venue || evt.location || '',
+      event_date: evt.eventDate?.toISOString?.() || evt.eventDate || new Date().toISOString(),
+      registration_deadline: evt.registrationDeadline?.toISOString?.() || evt.registrationDeadline || null,
     } : null;
 
-    // Normalize registrations: add `events` alias (component expects plural)
-    const normalizedRegistrations = registrations.map(r => ({
+    // Helper to normalize registration for frontend (snake_case aliases)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizeRegistration = (r: Record<string, any>) => ({
       ...r,
+      registered_at: r.registeredAt?.toISOString?.() || r.registeredAt || new Date().toISOString(),
+      event_id: r.eventId,
+      user_id: r.userId,
+      full_name: r.fullName || '',
+      dietary_requirements: r.dietaryRequirements || null,
+      reminder_sent: r.reminderSent || false,
       events: normalizeEvent(r.event),
-    }));
+    });
+
+    // Normalize registrations: add `events` alias (component expects plural)
+    const normalizedRegistrations = registrations.map(normalizeRegistration);
 
     // Also get RSVP-based attendance records
     const attendanceRecords = await prisma.eventAttendance.findMany({
@@ -367,8 +385,10 @@ app.get('/api/events/my-registrations', authenticateToken, async (req, res) => {
         userId: a.userId,
         eventId: a.eventId,
         event_id: a.eventId,
+        user_id: a.userId,
         status: a.rsvpStatus === 'CONFIRMED' ? 'registered' : 'waitlist',
         registeredAt: a.createdAt,
+        registered_at: a.createdAt?.toISOString?.() || new Date().toISOString(),
         events: normalizeEvent(a.event),
         event: a.event,
       }));
@@ -477,7 +497,9 @@ app.get('/api/applications/investor-application', authenticateToken, async (req,
 // ==================== APPLICATION CRUD ROUTES (Investor & Founder) ====================
 
 // Helper: Transform InvestorApplication DB record to test-expected field names
-function transformInvestorApp(app: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformInvestorApp(app: Record<string, any>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metadata = (app.metadata as Record<string, any>) || {};
   return {
     ...app,
@@ -489,7 +511,9 @@ function transformInvestorApp(app: any) {
 }
 
 // Helper: Transform FounderApplication DB record to test-expected field names
-function transformFounderApp(app: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformFounderApp(app: Record<string, any>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metadata = (app.metadata as Record<string, any>) || {};
   return {
     ...app,
@@ -605,6 +629,7 @@ app.patch('/api/investors/applications/:id', authenticateToken, async (req: Auth
     }
 
     const { investmentSize, company, experience, targetIndustries, linkedinUrl, notes, ...rest } = req.body;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingMeta = (existing.metadata as Record<string, any>) || {};
 
     const app = await prisma.investorApplication.update({
@@ -743,6 +768,7 @@ app.patch('/api/founders/applications/:id', authenticateToken, async (req: Authe
     }
 
     const { fundingRequired, traction, teamBio, companyDescription, productUrl, fundingStage, industry, companyName, pitchDeckUrl, ...rest } = req.body;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingMeta = (existing.metadata as Record<string, any>) || {};
 
     const app = await prisma.founderApplication.update({
@@ -1247,7 +1273,6 @@ app.get('/api/spvs/:id', authenticateToken, async (req, res) => {
 app.get('/api/spv/:id', authenticateToken, async (req, res) => {
   // Reuse the same handler by internally forwarding
   req.url = `/api/spvs/${req.params.id}`;
-  req.params.id = req.params.id;
   try {
     const spv = await prisma.spv.findUnique({
       where: { id: req.params.id },
@@ -2775,7 +2800,7 @@ app.post('/api/payments/verify', authenticateToken, async (req: AuthenticatedReq
     });
 
     // Queue invoice generation (async with retry)
-    let invoicePath = '';
+    const invoicePath = '';
     try {
       const invoiceData = {
         userId,
@@ -3339,7 +3364,7 @@ app.patch('/api/admin/applications/:id/approve', authenticateToken, requireRole(
     const reviewedBy = getUserId(req);
 
     // Try investor application first
-    let app = await prisma.investorApplication.findUnique({ where: { id } });
+    const app = await prisma.investorApplication.findUnique({ where: { id } });
     if (app) {
       await prisma.investorApplication.update({
         where: { id },
@@ -3355,7 +3380,7 @@ app.patch('/api/admin/applications/:id/approve', authenticateToken, requireRole(
     }
 
     // Try founder application
-    let fApp = await prisma.founderApplication.findUnique({ where: { id } });
+    const fApp = await prisma.founderApplication.findUnique({ where: { id } });
     if (fApp) {
       await prisma.founderApplication.update({
         where: { id },
@@ -3383,7 +3408,7 @@ app.patch('/api/admin/applications/:id/reject', authenticateToken, requireRole([
     const { reason } = req.body;
     const reviewedBy = getUserId(req);
 
-    let app = await prisma.investorApplication.findUnique({ where: { id } });
+    const app = await prisma.investorApplication.findUnique({ where: { id } });
     if (app) {
       await prisma.investorApplication.update({
         where: { id },
@@ -3397,7 +3422,7 @@ app.patch('/api/admin/applications/:id/reject', authenticateToken, requireRole([
       return res.json({ success: true, notification_sent: true });
     }
 
-    let fApp = await prisma.founderApplication.findUnique({ where: { id } });
+    const fApp = await prisma.founderApplication.findUnique({ where: { id } });
     if (fApp) {
       await prisma.founderApplication.update({
         where: { id },

@@ -127,6 +127,7 @@ export function EventManagement() {
       ) : (
         <div className="space-y-4">
           {events.map((event) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const regCount = (event as any).registration_count ?? (event as any)._count?.registrations ?? 0;
             return (
             <Card key={event.id} data-testid="admin-event-card">

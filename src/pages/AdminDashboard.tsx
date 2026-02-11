@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Calendar, FileText, Shield } from "lucide-react";
+import {
+  Users, Building2, Calendar, FileText, Shield,
+  BarChart3, ClipboardList, Globe, CreditCard,
+  Receipt, Activity, Award, MessageSquare,
+  UserCog, Eye, Settings, ChevronRight,
+} from "lucide-react";
 import { EventManagement } from "@/components/admin/EventManagement";
 
 interface FounderApplication {
@@ -189,7 +194,211 @@ const AdminDashboard = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage applications, events, and users</p>
+          <p className="text-muted-foreground">Manage applications, events, and platform operations</p>
+        </div>
+
+        {/* Management Quick Links Grid */}
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Management
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <Link to="/admin/users" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                    <UserCog className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">User & Role Management</p>
+                    <p className="text-xs text-muted-foreground">Manage users and roles</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/events" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
+                    <Calendar className="h-5 w-5 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Event Management</p>
+                    <p className="text-xs text-muted-foreground">Create and manage events</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/applications" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900">
+                    <ClipboardList className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Application Review</p>
+                    <p className="text-xs text-muted-foreground">Review applications</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/cms" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
+                    <Globe className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">CMS / Content Management</p>
+                    <p className="text-xs text-muted-foreground">Manage public content</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/membership" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                    <CreditCard className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Membership Management</p>
+                    <p className="text-xs text-muted-foreground">Plans and subscriptions</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/statistics" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900">
+                    <BarChart3 className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">System Statistics</p>
+                    <p className="text-xs text-muted-foreground">Platform analytics</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/audit-logs" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+                    <Eye className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Audit Logs</p>
+                    <p className="text-xs text-muted-foreground">System activity logs</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/events/statistics" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900">
+                    <Users className="h-5 w-5 text-rose-600 dark:text-rose-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Attendance Statistics</p>
+                    <p className="text-xs text-muted-foreground">Event attendance data</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/financial-statements" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900">
+                    <Receipt className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Financial Statements</p>
+                    <p className="text-xs text-muted-foreground">Revenue and billing</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/transaction-history" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
+                    <FileText className="h-5 w-5 text-orange-600 dark:text-orange-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Transaction History</p>
+                    <p className="text-xs text-muted-foreground">Payment records</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/activity" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900">
+                    <Activity className="h-5 w-5 text-teal-600 dark:text-teal-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Activity Timeline</p>
+                    <p className="text-xs text-muted-foreground">User activity feed</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/certificates" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900">
+                    <Award className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Certificates</p>
+                    <p className="text-xs text-muted-foreground">Issue and manage</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/investor/messages" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900">
+                    <MessageSquare className="h-5 w-5 text-pink-600 dark:text-pink-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Messages</p>
+                    <p className="text-xs text-muted-foreground">Direct messages</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Overview */}

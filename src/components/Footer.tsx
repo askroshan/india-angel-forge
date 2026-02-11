@@ -9,7 +9,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <img
-              src="/logo-transparent.png"
+              src="/transparent-iaf-logo.png"
               alt="India Angel Forum"
               className="h-10 w-auto object-contain brightness-0 invert"
             />

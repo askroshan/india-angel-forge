@@ -227,6 +227,7 @@ function PlansManager() {
       setShowForm(false);
       resetForm();
       fetchPlans();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to save plan");
     } finally { setSaving(false); }
@@ -237,6 +238,7 @@ function PlansManager() {
       await apiClient.delete(`/api/admin/membership/plans/${id}`);
       toast.success("Plan deactivated");
       fetchPlans();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to delete plan");
     }
@@ -352,6 +354,7 @@ function DiscountCodesManager() {
 
   const handleSave = async () => {
     setSaving(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = {
       code: code.toUpperCase(),
       discountType,
@@ -374,6 +377,7 @@ function DiscountCodesManager() {
       setShowForm(false);
       resetForm();
       fetchCodes();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to save discount code");
     } finally { setSaving(false); }
@@ -384,6 +388,7 @@ function DiscountCodesManager() {
       await apiClient.delete(`/api/admin/membership/discount-codes/${id}`);
       toast.success("Discount code deactivated");
       fetchCodes();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to delete");
     }
@@ -647,6 +652,7 @@ function ConfigManager() {
       });
       toast.success(`Config "${key}" saved`);
       fetchConfigs();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to save config");
     } finally { setSaving(null); }
