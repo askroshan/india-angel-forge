@@ -88,18 +88,24 @@ else
   exit 1
 fi
 
-# ---- Step 3: Stop existing containers (graceful) ----
+# ---- Step 3: Export env vars for docker compose ----
+echo "📋 Loading environment variables..."
+set -a
+source "$ENV_FILE"
+set +a
+
+# ---- Step 4: Stop existing containers (graceful) ----
 echo "🛑 Stopping existing containers..."
-docker compose -f "$COMPOSE_FILE" down --timeout 30 2>/dev/null || true
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down --timeout 30 2>/dev/null || true
 
-# ---- Step 4: Start services ----
+# ---- Step 5: Start services ----
 echo "🚀 Starting services..."
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 
-# ---- Step 5: Wait for health checks ----
+# ---- Step 6: Wait for health checks ----
 echo "⏳ Waiting for services to be healthy..."
 RETRIES=30
-until docker compose -f "$COMPOSE_FILE" ps | grep -q "(healthy)" || [ $RETRIES -eq 0 ]; do
+until docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps | grep -q "(healthy)" || [ $RETRIES -eq 0 ]; do
   echo "  Waiting... ($RETRIES retries left)"
   sleep 5
   RETRIES=$((RETRIES - 1))
@@ -107,11 +113,11 @@ done
 
 if [ $RETRIES -eq 0 ]; then
   echo "❌ Services did not become healthy in time"
-  docker compose -f "$COMPOSE_FILE" logs --tail=50
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" logs --tail=50
   exit 1
 fi
 
-# ---- Step 6: Disable seed after first run ----
+# ---- Step 7: Disable seed after first run ----
 if grep -q "SEED_ON_START=true" "$ENV_FILE"; then
   sed -i 's/SEED_ON_START=true/SEED_ON_START=false/' "$ENV_FILE"
   echo "✅ Disabled SEED_ON_START after first deploy"
