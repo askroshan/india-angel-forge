@@ -6,7 +6,7 @@
  * So that: I can access only the features I'm authorized to use
  *
  * Acceptance Criteria:
- * - Logo uses transparent-iaf-logo.png
+ * - Logo uses logo-transparent.png
  * - Admin users see Admin Dashboard link
  * - Admin users see role-appropriate dropdown items
  * - All users see My Registrations & Membership in dropdown
@@ -50,10 +50,10 @@ describe('Navigation Component', () => {
   });
 
   describe('Logo', () => {
-    it('should render logo with transparent-iaf-logo.png', () => {
+    it('should render logo with logo-transparent.png', () => {
       renderNavigation();
       const logo = screen.getByAltText('India Angel Forum');
-      expect(logo).toHaveAttribute('src', '/transparent-iaf-logo.png');
+      expect(logo).toHaveAttribute('src', '/logo-transparent.png');
     });
 
     it('should link logo to home page', () => {

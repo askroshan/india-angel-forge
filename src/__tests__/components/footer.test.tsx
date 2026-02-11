@@ -6,7 +6,7 @@
  * So that: I can navigate the site and identify the brand
  *
  * Acceptance Criteria:
- * - Footer logo uses transparent-iaf-logo.png
+ * - Footer logo uses logo-transparent.png
  * - Footer has LinkedIn and Twitter social links
  * - Footer has links to Terms, Privacy, Code of Conduct
  * - Footer has copyright notice
@@ -33,10 +33,10 @@ const renderFooter = () => {
 
 describe('Footer Component', () => {
   describe('Logo', () => {
-    it('should render logo with transparent-iaf-logo.png', () => {
+    it('should render logo with logo-transparent.png', () => {
       renderFooter();
       const logo = screen.getByAltText('India Angel Forum');
-      expect(logo).toHaveAttribute('src', '/transparent-iaf-logo.png');
+      expect(logo).toHaveAttribute('src', '/logo-transparent.png');
     });
   });
 

@@ -55,9 +55,11 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Cleanup after each test
+// Cleanup after each test (only when DOM available)
 afterEach(() => {
-  cleanup();
+  if (typeof window !== 'undefined') {
+    cleanup();
+  }
   localStorageMock.clear();
 });
 
@@ -68,40 +70,46 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }),
-});
+// Mock window.matchMedia (only in jsdom environment)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
 
-// Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
+// Mock ResizeObserver (only in jsdom environment)
+if (typeof window !== 'undefined') {
+  global.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
 // Mock PointerEvent methods for jsdom compatibility with Radix UI
-if (typeof Element.prototype.hasPointerCapture === 'undefined') {
-  Element.prototype.hasPointerCapture = function() { return false; };
-}
-if (typeof Element.prototype.setPointerCapture === 'undefined') {
-  Element.prototype.setPointerCapture = function() {};
-}
-if (typeof Element.prototype.releasePointerCapture === 'undefined') {
-  Element.prototype.releasePointerCapture = function() {};
-}
+if (typeof Element !== 'undefined') {
+  if (typeof Element.prototype.hasPointerCapture === 'undefined') {
+    Element.prototype.hasPointerCapture = function() { return false; };
+  }
+  if (typeof Element.prototype.setPointerCapture === 'undefined') {
+    Element.prototype.setPointerCapture = function() {};
+  }
+  if (typeof Element.prototype.releasePointerCapture === 'undefined') {
+    Element.prototype.releasePointerCapture = function() {};
+  }
 
-// Mock scrollIntoView for jsdom
-if (typeof Element.prototype.scrollIntoView === 'undefined') {
-  Element.prototype.scrollIntoView = function() {};
+  // Mock scrollIntoView for jsdom
+  if (typeof Element.prototype.scrollIntoView === 'undefined') {
+    Element.prototype.scrollIntoView = function() {};
+  }
 }
