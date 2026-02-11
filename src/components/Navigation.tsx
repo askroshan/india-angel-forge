@@ -56,7 +56,7 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img
-              src="/logo-transparent.png"
+              src="/transparent-iaf-logo.png"
               alt="India Angel Forum"
               className="h-12 w-auto object-contain"
             />
