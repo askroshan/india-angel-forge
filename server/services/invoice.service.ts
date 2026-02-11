@@ -389,7 +389,7 @@ class InvoiceService {
     // Amount in words
     doc
       .fontSize(9)
-      .font('Helvetica-Italic')
+      .font('Helvetica-Oblique')
       .text(`Amount in words: ${this.numberToWords(Number(invoice.totalAmount))}`, 50, y + 40, {
         width: 500,
       });
