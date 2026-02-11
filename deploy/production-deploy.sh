@@ -75,14 +75,16 @@ else
   echo "✅ .env.production already exists"
 fi
 
-# ---- Step 2: Load Docker image ----
+# ---- Step 2: Verify Docker image is loaded ----
 if [ -f "$IMAGE_ARCHIVE" ]; then
   echo "📦 Loading Docker image from archive..."
   docker load -i "$IMAGE_ARCHIVE"
   rm -f "$IMAGE_ARCHIVE"
-  echo "✅ Docker image loaded"
+  echo "✅ Docker image loaded from archive"
+elif docker image inspect indiaangelforum:latest > /dev/null 2>&1; then
+  echo "✅ Docker image already loaded"
 else
-  echo "⚠️  No image archive found at $IMAGE_ARCHIVE"
+  echo "❌ No image archive and no image loaded"
   exit 1
 fi
 
