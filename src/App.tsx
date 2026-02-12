@@ -74,6 +74,9 @@ import FinancialStatements from "./pages/FinancialStatements";
 import ActivityTimeline from "./pages/ActivityTimeline";
 import CMSManagement from "./pages/admin/CMSManagement";
 import MembershipManagement from "./pages/admin/MembershipManagement";
+import InvoiceManagement from "./pages/admin/InvoiceManagement";
+import CompanyManagement from "./pages/admin/CompanyManagement";
+import InvestorManagement from "./pages/admin/InvestorManagement";
 
 /**
  * Role definitions for route protection
@@ -336,6 +339,21 @@ const App = () => (
             <Route path="/admin/membership" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <MembershipManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/invoices" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <InvoiceManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/companies" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <CompanyManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/investors" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <InvestorManagement />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}

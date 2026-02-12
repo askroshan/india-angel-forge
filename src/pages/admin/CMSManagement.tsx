@@ -20,10 +20,17 @@ import {
   useCreatePartner,
   useUpdatePartner,
   useDeletePartner,
+  useEventStartups,
+  useCreateEventStartup,
+  useUpdateEventStartup,
+  useDeleteEventStartup,
+  useAdminEvents,
   type TeamMember,
   type Partner,
+  type EventStartup,
 } from "@/hooks/useCMS";
-import { Plus, Pencil, Trash2, Upload, Users, Building2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Users, Building2, ExternalLink, Rocket } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CMSManagement() {
   const [activeTab, setActiveTab] = useState('team');
@@ -46,6 +53,10 @@ export default function CMSManagement() {
               <Building2 className="h-4 w-4" />
               Partners
             </TabsTrigger>
+            <TabsTrigger value="event-startups" className="gap-2">
+              <Rocket className="h-4 w-4" />
+              Event Startups
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="team">
@@ -54,6 +65,10 @@ export default function CMSManagement() {
 
           <TabsContent value="partners">
             <PartnersManager />
+          </TabsContent>
+
+          <TabsContent value="event-startups">
+            <EventStartupsManager />
           </TabsContent>
         </Tabs>
       </div>
@@ -495,6 +510,255 @@ function PartnerForm({ open, onOpenChange, partner, onSubmit, isLoading }: {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isLoading} data-testid="partner-submit">
               {isLoading ? 'Saving...' : partner ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== Event Startups Manager ====================
+
+function EventStartupsManager() {
+  const { data: events } = useAdminEvents();
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const { data: startups, isLoading: startupsLoading } = useEventStartups(selectedEventId);
+  const createMutation = useCreateEventStartup();
+  const updateMutation = useUpdateEventStartup();
+  const deleteMutation = useDeleteEventStartup();
+  const [showForm, setShowForm] = useState(false);
+  const [editingStartup, setEditingStartup] = useState<EventStartup | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const handleEdit = (startup: EventStartup) => {
+    setEditingStartup(startup);
+    setShowForm(true);
+  };
+
+  const handleCreate = () => {
+    setEditingStartup(null);
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate({ eventId: selectedEventId, startupId: id }, {
+      onSuccess: () => setDeleteConfirm(null),
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Event Startups</h2>
+      </div>
+
+      {/* Event Selector */}
+      <div className="mb-6">
+        <Label>Select an Event</Label>
+        <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an event to manage startups" />
+          </SelectTrigger>
+          <SelectContent>
+            {events?.map(event => (
+              <SelectItem key={event.id} value={event.id}>
+                {event.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {!selectedEventId ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Select an event above to manage its startups.
+          </CardContent>
+        </Card>
+      ) : startupsLoading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-end mb-4">
+            <Button onClick={handleCreate} className="gap-2" data-testid="add-startup">
+              <Plus className="h-4 w-4" />
+              Add Startup
+            </Button>
+          </div>
+
+          {startups && startups.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {startups.map((startup) => (
+                <Card key={startup.id} data-testid="admin-startup-card">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      {startup.companyLogoUrl ? (
+                        <img src={startup.companyLogoUrl} alt={startup.companyName} className="h-10 w-10 object-contain rounded" />
+                      ) : (
+                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          <Rocket className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{startup.companyName}</h3>
+                        <p className="text-sm text-accent">{startup.founderName}</p>
+                        {startup.pitchDescription && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{startup.pitchDescription}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {startup.industry && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{startup.industry}</span>}
+                          {startup.fundingStage && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{startup.fundingStage}</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Order: {startup.displayOrder}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(startup)} data-testid="edit-startup">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(startup.id)} data-testid="delete-startup">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No startups for this event yet. Click "Add Startup" to get started.
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Create/Edit Dialog */}
+      <EventStartupForm
+        open={showForm}
+        onOpenChange={setShowForm}
+        startup={editingStartup}
+        onSubmit={(formData) => {
+          if (editingStartup) {
+            updateMutation.mutate({ eventId: selectedEventId, startupId: editingStartup.id, formData }, {
+              onSuccess: () => setShowForm(false),
+            });
+          } else {
+            createMutation.mutate({ eventId: selectedEventId, formData }, {
+              onSuccess: () => setShowForm(false),
+            });
+          }
+        }}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Startup</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete this startup? This action cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)} disabled={deleteMutation.isPending} data-testid="confirm-delete-startup">
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ==================== Event Startup Form ====================
+
+function EventStartupForm({ open, onOpenChange, startup, onSubmit, isLoading }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  startup: EventStartup | null;
+  onSubmit: (formData: FormData) => void;
+  isLoading: boolean;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData();
+
+    formData.append('companyName', (form.elements.namedItem('companyName') as HTMLInputElement).value);
+    formData.append('founderName', (form.elements.namedItem('founderName') as HTMLInputElement).value);
+    formData.append('founderLinkedin', (form.elements.namedItem('founderLinkedin') as HTMLInputElement).value);
+    formData.append('pitchDescription', (form.elements.namedItem('pitchDescription') as HTMLTextAreaElement).value);
+    formData.append('industry', (form.elements.namedItem('industry') as HTMLInputElement).value);
+    formData.append('fundingStage', (form.elements.namedItem('fundingStage') as HTMLInputElement).value);
+    formData.append('displayOrder', (form.elements.namedItem('displayOrder') as HTMLInputElement).value);
+
+    const fileInput = fileInputRef.current;
+    if (fileInput?.files?.[0]) {
+      formData.append('companyLogo', fileInput.files[0]);
+    }
+
+    onSubmit(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{startup ? 'Edit' : 'Add'} Event Startup</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="event-startup-form">
+          <div>
+            <Label htmlFor="companyName">Company Name *</Label>
+            <Input id="companyName" name="companyName" defaultValue={startup?.companyName || ''} required data-testid="startup-company-input" />
+          </div>
+          <div>
+            <Label htmlFor="founderName">Founder Name *</Label>
+            <Input id="founderName" name="founderName" defaultValue={startup?.founderName || ''} required data-testid="startup-founder-input" />
+          </div>
+          <div>
+            <Label htmlFor="founderLinkedin">Founder LinkedIn</Label>
+            <Input id="founderLinkedin" name="founderLinkedin" defaultValue={startup?.founderLinkedin || ''} data-testid="startup-linkedin-input" />
+          </div>
+          <div>
+            <Label htmlFor="pitchDescription">Pitch Description</Label>
+            <Textarea id="pitchDescription" name="pitchDescription" defaultValue={startup?.pitchDescription || ''} rows={3} data-testid="startup-pitch-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="industry">Industry</Label>
+              <Input id="industry" name="industry" defaultValue={startup?.industry || ''} data-testid="startup-industry-input" />
+            </div>
+            <div>
+              <Label htmlFor="fundingStage">Funding Stage</Label>
+              <Input id="fundingStage" name="fundingStage" defaultValue={startup?.fundingStage || ''} data-testid="startup-stage-input" />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="startup-logo">Company Logo</Label>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1">
+                <Upload className="h-4 w-4" />
+                Upload
+              </Button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" data-testid="startup-logo-input" />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="displayOrder">Display Order</Label>
+            <Input id="displayOrder" name="displayOrder" type="number" defaultValue={startup?.displayOrder || 0} data-testid="startup-order-input" />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={isLoading} data-testid="startup-submit">
+              {isLoading ? 'Saving...' : startup ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>
         </form>

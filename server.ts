@@ -3445,6 +3445,46 @@ app.patch('/api/admin/applications/:id/reject', authenticateToken, requireRole([
 
 // PATCH /api/admin/users/:id/role - Change user role
 app.patch('/api/admin/users/:id/role', authenticateToken, requireRole(['admin']), async (req, res) => {
+
+// POST /api/admin/users - Create a new user (admin only)
+app.post('/api/admin/users', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { email, password, fullName, role } = req.body;
+    const adminId = getUserId(req);
+
+    if (!email || !password || !fullName) {
+      return res.status(400).json({ error: 'Email, password, and full name are required' });
+    }
+
+    // Check if user already exists
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ error: 'A user with this email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: { email, passwordHash, fullName },
+    });
+
+    // Assign role if provided
+    if (role) {
+      await prisma.userRole.create({
+        data: { userId: user.id, role },
+      });
+    }
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'create_user', entity: 'user', entityId: user.id, details: `Created user: ${email} with role ${role || 'user'}` },
+    });
+
+    res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -3510,6 +3550,53 @@ app.delete('/api/admin/users/:id', authenticateToken, requireRole(['admin']), as
 
 // DELETE /api/admin/companies/:id - Delete a company (admin only)
 app.delete('/api/admin/companies/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+
+// GET /api/admin/companies - List all companies (admin only)
+app.get('/api/admin/companies', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    // Get companies from both Company and CompanyProfile models
+    const companyProfiles = await prisma.companyProfile.findMany({
+      include: { founder: { select: { email: true, fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const companies = await prisma.company.findMany({
+      include: { founder: { select: { email: true, fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Merge and normalize
+    const merged = [
+      ...companyProfiles.map(cp => ({
+        id: cp.id,
+        name: cp.companyName,
+        description: cp.description,
+        sector: cp.industry,
+        stage: cp.stage,
+        website: cp.website,
+        location: cp.location,
+        founder: cp.founder,
+        createdAt: cp.createdAt,
+      })),
+      ...companies.map(c => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        sector: c.sector,
+        stage: c.stage,
+        website: c.website,
+        location: c.location,
+        founder: c.founder,
+        createdAt: c.createdAt,
+      })),
+    ];
+
+    res.json(merged);
+  } catch (error) {
+    console.error('List companies error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
   try {
     const { id } = req.params;
     const adminId = getUserId(req);

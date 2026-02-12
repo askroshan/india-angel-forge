@@ -398,6 +398,51 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </Link>
+
+            <Link to="/admin/invoices" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
+                    <Receipt className="h-5 w-5 text-orange-600 dark:text-orange-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Invoice Management</p>
+                    <p className="text-xs text-muted-foreground">Monitor & retry invoices</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/companies" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900">
+                    <Building2 className="h-5 w-5 text-teal-600 dark:text-teal-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Company Management</p>
+                    <p className="text-xs text-muted-foreground">Manage company profiles</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/investors" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900">
+                    <Users className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Investor Management</p>
+                    <p className="text-xs text-muted-foreground">View all investors</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
 

@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, Edit, Search } from 'lucide-react';
+import { Users, Shield, Edit, Search, Trash2, UserPlus } from 'lucide-react';
 
 interface User {
   id: string;
@@ -46,6 +46,9 @@ export default function UserRoleManagement() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [accessDenied, setAccessDenied] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: '', fullName: '', password: '', role: 'user' });
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -191,6 +194,75 @@ export default function UserRoleManagement() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deleteConfirmUser) return;
+
+    try {
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/admin/users/${deleteConfirmUser.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete user');
+      }
+
+      toast({
+        title: 'Success',
+        description: `User ${deleteConfirmUser.email} has been deleted`,
+      });
+
+      setDeleteConfirmUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.email || !createForm.password || !createForm.fullName) return;
+
+    try {
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(createForm),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create user');
+      }
+
+      toast({
+        title: 'Success',
+        description: `User ${createForm.email} has been created`,
+      });
+
+      setShowCreateDialog(false);
+      setCreateForm({ email: '', fullName: '', password: '', role: 'user' });
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create user',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (accessDenied) {
     return (
       <div className="container mx-auto py-8">
@@ -207,10 +279,18 @@ export default function UserRoleManagement() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">User Role Management</h1>
-        <p className="text-muted-foreground">
-          Assign and manage user roles across the platform
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">User Role Management</h1>
+            <p className="text-muted-foreground">
+              Assign and manage user roles across the platform
+            </p>
+          </div>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -312,14 +392,28 @@ export default function UserRoleManagement() {
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenRoleDialog(user)}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Change Role
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenRoleDialog(user)}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Change Role
+                    </Button>
+
+                    {user.id !== currentUserId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteConfirmUser(user)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -370,6 +464,95 @@ export default function UserRoleManagement() {
             </Button>
             <Button onClick={handleAssignRole}>
               Assign Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmUser !== null} onOpenChange={(open) => !open && setDeleteConfirmUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {deleteConfirmUser?.email}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmUser(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteUser}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>
+              Create a new user account on the platform
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="create-email">Email</Label>
+              <Input
+                id="create-email"
+                type="email"
+                required
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                placeholder="user@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create-fullname">Full Name</Label>
+              <Input
+                id="create-fullname"
+                required
+                value={createForm.fullName}
+                onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+                placeholder="John Doe"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create-password">Password</Label>
+              <Input
+                id="create-password"
+                type="password"
+                required
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="Minimum 8 characters"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create-role">Role</Label>
+              <Select value={createForm.role} onValueChange={(value) => setCreateForm({ ...createForm, role: value })}>
+                <SelectTrigger id="create-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_ROLES.map(role => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser}>
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

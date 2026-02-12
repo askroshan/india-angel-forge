@@ -297,3 +297,41 @@ export function useDeleteEventStartup() {
     onError: (error: Error) => toast.error(error.message),
   });
 }
+
+export function useUpdateEventStartup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, startupId, formData }: { eventId: string; startupId: string; formData: FormData }) => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/events/${eventId}/startups/${startupId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to update event startup');
+      }
+      return response.json();
+    },
+    onSuccess: (_, { eventId }) => {
+      queryClient.invalidateQueries({ queryKey: ['event-startups', eventId] });
+      toast.success('Event startup updated successfully');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useAdminEvents() {
+  return useQuery<Array<{ id: string; title: string; date: string; status: string }>>({
+    queryKey: ['admin-events'],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/admin/events', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch events');
+      return response.json();
+    },
+  });
+}
