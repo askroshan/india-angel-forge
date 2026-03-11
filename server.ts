@@ -4291,10 +4291,150 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ==================== CMS - TEAM MEMBERS ====================
+
+// GET /api/team-members - public, returns active team members ordered by displayOrder
+app.get('/api/team-members', async (_req, res) => {
+  try {
+    const members = await prisma.teamMember.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+    res.json(members);
+  } catch (error) {
+    console.error('Get team members error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/admin/team-members - admin, returns all team members including inactive
+app.get('/api/admin/team-members', authenticateToken, requireRole(['admin']), async (_req, res) => {
+  try {
+    const members = await prisma.teamMember.findMany({ orderBy: { displayOrder: 'asc' } });
+    res.json(members);
+  } catch (error) {
+    console.error('Admin get team members error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/team-members - create team member
+app.post('/api/admin/team-members', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { name, role, bio, photoUrl, linkedinUrl, displayOrder } = req.body;
+    if (!name || !role) return res.status(400).json({ error: { message: 'name and role are required', code: 'VALIDATION_ERROR' } });
+    const member = await prisma.teamMember.create({
+      data: { name, role, bio, photoUrl, linkedinUrl, displayOrder: displayOrder ?? 0 },
+    });
+    res.status(201).json(member);
+  } catch (error) {
+    console.error('Create team member error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/team-members/:id - update team member
+app.patch('/api/admin/team-members/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, role, bio, photoUrl, linkedinUrl, displayOrder, isActive } = req.body;
+    const member = await prisma.teamMember.update({
+      where: { id },
+      data: { ...(name !== undefined && { name }), ...(role !== undefined && { role }), ...(bio !== undefined && { bio }), ...(photoUrl !== undefined && { photoUrl }), ...(linkedinUrl !== undefined && { linkedinUrl }), ...(displayOrder !== undefined && { displayOrder }), ...(isActive !== undefined && { isActive }) },
+    });
+    res.json(member);
+  } catch (error) {
+    console.error('Update team member error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/admin/team-members/:id - soft delete (set isActive=false)
+app.delete('/api/admin/team-members/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.teamMember.update({ where: { id }, data: { isActive: false } });
+    res.json({ message: 'Team member deactivated' });
+  } catch (error) {
+    console.error('Delete team member error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== CMS - PARTNERS ====================
+
+// GET /api/partners - public, returns active partners ordered by displayOrder
+app.get('/api/partners', async (_req, res) => {
+  try {
+    const partners = await prisma.partner.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+    res.json(partners);
+  } catch (error) {
+    console.error('Get partners error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/admin/partners - admin, returns all partners including inactive
+app.get('/api/admin/partners', authenticateToken, requireRole(['admin']), async (_req, res) => {
+  try {
+    const partners = await prisma.partner.findMany({ orderBy: { displayOrder: 'asc' } });
+    res.json(partners);
+  } catch (error) {
+    console.error('Admin get partners error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/partners - create partner
+app.post('/api/admin/partners', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { name, logoUrl, websiteUrl, description, displayOrder } = req.body;
+    if (!name) return res.status(400).json({ error: { message: 'name is required', code: 'VALIDATION_ERROR' } });
+    const partner = await prisma.partner.create({
+      data: { name, logoUrl, websiteUrl, description, displayOrder: displayOrder ?? 0 },
+    });
+    res.status(201).json(partner);
+  } catch (error) {
+    console.error('Create partner error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/partners/:id - update partner
+app.patch('/api/admin/partners/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, logoUrl, websiteUrl, description, displayOrder, isActive } = req.body;
+    const partner = await prisma.partner.update({
+      where: { id },
+      data: { ...(name !== undefined && { name }), ...(logoUrl !== undefined && { logoUrl }), ...(websiteUrl !== undefined && { websiteUrl }), ...(description !== undefined && { description }), ...(displayOrder !== undefined && { displayOrder }), ...(isActive !== undefined && { isActive }) },
+    });
+    res.json(partner);
+  } catch (error) {
+    console.error('Update partner error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/admin/partners/:id - soft delete
+app.delete('/api/admin/partners/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.partner.update({ where: { id }, data: { isActive: false } });
+    res.json({ message: 'Partner deactivated' });
+  } catch (error) {
+    console.error('Delete partner error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 // ==================== INDUSTRY & FUNDING STAGE MANAGEMENT ====================
 
 // GET /api/industries - public endpoint for dropdowns (used by deal filtering, forms)
-app.get('/api/industries', authenticateToken, async (_req, res) => {
+app.get('/api/industries', async (_req, res) => {
   try {
     const industries = await prisma.industry.findMany({
       where: { isActive: true },
