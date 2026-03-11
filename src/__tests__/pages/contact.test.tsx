@@ -91,39 +91,25 @@ describe('Contact Page', () => {
   });
 
   describe('CompanyHub Form Integration', () => {
-    it('should load the CompanyHub form script', () => {
+    it('should embed the CompanyHub form via iframe', () => {
       renderContact();
-
-      const scripts = Array.from(document.body.querySelectorAll('script'));
-      const companyhubScript = scripts.find(
-        s => s.src?.includes('companyhub.com/scripts/companyhub.forms.js')
-      );
-      // The script should have been appended
-      expect(companyhubScript || appendChildSpy).toBeTruthy();
+      const iframe = document.querySelector('iframe[title="Contact India Angel Forum"]') as HTMLIFrameElement;
+      expect(iframe).toBeInTheDocument();
+      expect(iframe?.src).toContain('companyhub.com/webtolead/renderform');
     });
 
-    it('should render the form container element', () => {
+    it('should render the iframe with correct sandbox attributes', () => {
       renderContact();
-      const container = document.getElementById('companyhub-form');
-      expect(container).toBeInTheDocument();
+      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+      expect(iframe).toBeInTheDocument();
+      expect(iframe?.getAttribute('sandbox')).toContain('allow-forms');
+      expect(iframe?.getAttribute('sandbox')).toContain('allow-scripts');
     });
 
-    it('should show loading spinner while form loads', () => {
+    it('should use lazy loading on the iframe', () => {
       renderContact();
-      expect(screen.getByText(/loading contact form/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('reCAPTCHA v3 Integration', () => {
-    it('should load the Google reCAPTCHA v3 script', () => {
-      renderContact();
-
-      // Check that a recaptcha script tag was appended to the document
-      const allScriptCalls = appendChildSpy.mock.calls.map(call => call[0]);
-      const recaptchaScript = allScriptCalls.find(
-        (node: HTMLElement) => node?.tagName === 'SCRIPT' && (node as HTMLScriptElement)?.src?.includes('recaptcha')
-      );
-      expect(recaptchaScript).toBeTruthy();
+      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+      expect(iframe?.getAttribute('loading')).toBe('lazy');
     });
   });
 

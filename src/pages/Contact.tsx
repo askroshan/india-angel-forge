@@ -1,47 +1,13 @@
-import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { MapPin, Clock, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
+const COMPANYHUB_FORM_URL =
+  "https://app.companyhub.com/webtolead/renderform/MjIzNzM1?name=Contact_IndiaAngelForum";
+
 const Contact = () => {
-  const formContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Load CompanyHub form script
-    const script = document.createElement("script");
-    script.src = "https://app.companyhub.com/scripts/companyhub.forms.js";
-    script.async = true;
-
-    script.onload = () => {
-      // Initialize the form after script loads
-      if (window.companyhubForms && formContainerRef.current) {
-        window.companyhubForms.render(
-          "https://app.companyhub.com/webtolead/renderform/MjIzNzM1?name=Contact_IndiaAngelForum",
-          "companyhub-form"
-        );
-      }
-    };
-
-    document.body.appendChild(script);
-
-    // Load Google reCAPTCHA v3 script
-    const recaptchaScript = document.createElement("script");
-    recaptchaScript.src = "https://www.google.com/recaptcha/api.js?render=explicit";
-    recaptchaScript.async = true;
-    document.body.appendChild(recaptchaScript);
-
-    return () => {
-      // Cleanup scripts on unmount
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-      if (recaptchaScript.parentNode) {
-        recaptchaScript.parentNode.removeChild(recaptchaScript);
-      }
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -163,27 +129,20 @@ const Contact = () => {
               </div>
 
               <Card className="border-2">
-                <CardContent className="p-6">
-                  <div
-                    id="companyhub-form"
-                    ref={formContainerRef}
-                    style={{ minHeight: "400px", width: "100%" }}
-                    className="companyhub-form-container"
-                  >
-                    {/* Loading state */}
-                    <div className="flex items-center justify-center h-64">
-                      <div className="text-center space-y-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
-                        <p className="text-muted-foreground text-sm">Loading contact form...</p>
-                      </div>
-                    </div>
-                  </div>
+                <CardContent className="p-0 overflow-hidden rounded-lg">
+                  <iframe
+                    title="Contact India Angel Forum"
+                    src={COMPANYHUB_FORM_URL}
+                    style={{ width: "100%", minHeight: "900px", border: "0" }}
+                    loading="lazy"
+                    sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                  />
                 </CardContent>
               </Card>
               <p className="text-sm text-muted-foreground mt-3">
                 If the form doesn't load, you can{" "}
                 <a
-                  href="https://app.companyhub.com/webtolead/renderform/MjIzNzM1?name=Contact_IndiaAngelForum"
+                  href={COMPANYHUB_FORM_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-accent underline hover:text-accent/80"
@@ -200,14 +159,5 @@ const Contact = () => {
     </div>
   );
 };
-
-// Add type declaration for CompanyHub
-declare global {
-  interface Window {
-    companyhubForms?: {
-      render: (url: string, containerId: string) => void;
-    };
-  }
-}
 
 export default Contact;
