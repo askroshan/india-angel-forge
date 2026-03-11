@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../db';
 import { invoiceService } from '../../../server/services/invoice.service';
 import fs from 'fs/promises';
 import path from 'path';
@@ -13,8 +13,6 @@ import zlib from 'zlib';
  * PDF content is validated by decompressing FlateDecode streams
  * and searching for text strings in PDF drawing commands.
  */
-
-const prisma = new PrismaClient();
 
 /** Helper: read PDF file, decompress FlateDecode streams, extract text */
 async function readPDFContent(filePath: string): Promise<string> {

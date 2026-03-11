@@ -63,7 +63,7 @@ export async function sendEmailNotification(options: EmailNotificationOptions): 
     // Get user details
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { notificationPreferences: true },
+      include: { notificationPreference: true },
     });
 
     if (!user) {
@@ -72,7 +72,7 @@ export async function sendEmailNotification(options: EmailNotificationOptions): 
     }
 
     // Check notification preferences (default to enabled if not set)
-    const preferences = user.notificationPreferences?.[0];
+    const preferences = user.notificationPreference?.[0];
     if (preferences && !preferences.emailEnabled) {
       console.log(`Email notifications disabled for user: ${userId}`);
       return false;

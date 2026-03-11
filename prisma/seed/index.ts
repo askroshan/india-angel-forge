@@ -6,7 +6,8 @@
  * Or: npm run db:seed
  */
 
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PrismaClient, ActivityType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { seedEventAttendance } from './event-attendance-seed';
 import { seedFinancialStatements } from './financial-statements-seed';
@@ -195,7 +196,7 @@ async function main() {
           data: {
             eventId: event.id,
             userId: user.id,
-            fullName: user.fullName,
+            fullName: user.fullName ?? '',
             email: user.email,
             status: 'registered',
           },
@@ -565,7 +566,7 @@ async function main() {
     ];
     
     for (const activity of sampleActivities) {
-      await prisma.activityLog.create({ data: activity });
+      await prisma.activityLog.create({ data: { ...activity, activityType: activity.activityType as ActivityType } });
     }
     console.log(`✅ Created ${sampleActivities.length} sample activities`);
   }

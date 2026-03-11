@@ -79,7 +79,7 @@ export interface IApiClient {
   list<T>(table: string, options?: QueryOptions): Promise<ApiResponse<PaginatedResponse<T>>>;
   create<T>(table: string, data: Partial<T>): Promise<ApiResponse<T>>;
   update<T>(table: string, id: string, data: Partial<T>): Promise<ApiResponse<T>>;
-  delete(table: string, id: string): Promise<ApiResponse<void>>;
+  delete(tableOrUrl: string, id?: string): Promise<ApiResponse<void>>;
   
   // RPC/Functions
   rpc<T>(functionName: string, params?: Record<string, unknown>): Promise<ApiResponse<T>>;

@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../db';
 
 /**
@@ -112,7 +113,7 @@ class InvoiceService {
           sellerGST: this.sellerDetails.gst,
           sellerPAN: this.sellerDetails.pan,
           sellerAddress: this.sellerDetails.address,
-          lineItems: data.lineItems,
+          lineItems: data.lineItems as unknown as Prisma.InputJsonValue,
           subtotal: data.subtotal,
           cgst: data.cgst || 0,
           sgst: data.sgst || 0,

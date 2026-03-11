@@ -191,11 +191,12 @@ const Membership = () => {
   const handleStartVerification = async () => {
     setVerifying(true);
     try {
-      const data = await apiClient.post<{
+      const resp = await apiClient.post<{
         success: boolean;
         alreadyVerified?: boolean;
         inquiryUrl?: string;
       }>("/api/verification/start", {});
+      const data = resp.data;
 
       if (data?.success) {
         if (data.alreadyVerified) {
@@ -217,12 +218,13 @@ const Membership = () => {
     if (!discountCode.trim() || !selectedPlanId) return;
     setApplyingDiscount(true);
     try {
-      const data = await apiClient.post<
+      const resp = await apiClient.post<
         DiscountResult & { success: boolean; error?: string }
       >("/api/membership/apply-discount", {
         code: discountCode.trim(),
         planId: selectedPlanId,
       });
+      const data = resp.data;
 
       if (data?.success) {
         setDiscountResult(data);
@@ -230,7 +232,7 @@ const Membership = () => {
           `Discount applied! ₹${data.discountAmount.toLocaleString("en-IN")} off`
         );
       } else {
-        toast.error(data?.error || "Invalid discount code");
+        toast.error(resp.error?.message || data?.error || "Invalid discount code");
         setDiscountResult(null);
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -257,7 +259,7 @@ const Membership = () => {
         payload.discountCode = discountCode.trim();
       }
 
-      const data = await apiClient.post<{
+      const resp = await apiClient.post<{
         success: boolean;
         membership?: UserMembership;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,6 +267,7 @@ const Membership = () => {
         gateway?: string;
         error?: string;
       }>("/api/membership/subscribe", payload);
+      const data = resp.data;
 
       if (data?.success) {
         if (data.membership) {
@@ -280,7 +283,7 @@ const Membership = () => {
           openRazorpayCheckout(data.paymentOrder, planId);
         }
       } else {
-        toast.error(data?.error || "Subscription failed");
+        toast.error(resp.error?.message || data?.error || "Subscription failed");
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -302,7 +305,7 @@ const Membership = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       handler: async (response: any) => {
         try {
-          const verifyData = await apiClient.post<{
+          const verifyResp = await apiClient.post<{
             success: boolean;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             membership?: any;
@@ -314,7 +317,7 @@ const Membership = () => {
             discountCode: discountCode.trim() || undefined,
           });
 
-          if (verifyData?.success) {
+          if (verifyResp.data?.success) {
             toast.success("Payment verified! Membership activated.");
             setDiscountCode("");
             setDiscountResult(null);
@@ -337,19 +340,20 @@ const Membership = () => {
     if (!changePlanTarget) return;
     setChangingPlan(true);
     try {
-      const data = await apiClient.post<{
+      const resp = await apiClient.post<{
         success: boolean;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         membership?: any;
         error?: string;
       }>("/api/membership/change-plan", { newPlanId: changePlanTarget.id });
+      const data = resp.data;
 
       if (data?.success) {
         toast.success(`Plan changed to ${changePlanTarget.name}!`);
         setChangePlanDialog(false);
         await fetchMembership();
       } else {
-        toast.error(data?.error || "Plan change failed");
+        toast.error(resp.error?.message || data?.error || "Plan change failed");
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -362,16 +366,17 @@ const Membership = () => {
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const data = await apiClient.post<{ success: boolean; error?: string }>(
+      const resp = await apiClient.post<{ success: boolean; error?: string }>(
         "/api/membership/cancel",
         {}
       );
+      const data = resp.data;
       if (data?.success) {
         toast.success("Membership cancelled");
         setCancelConfirm(false);
         await fetchMembership();
       } else {
-        toast.error(data?.error || "Cancellation failed");
+        toast.error(resp.error?.message || data?.error || "Cancellation failed");
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

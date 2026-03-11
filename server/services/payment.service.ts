@@ -31,6 +31,8 @@ export interface PaymentResult {
   signature?: string;
   error?: string;
   gateway: PaymentGateway;
+  checkoutUrl?: string;
+  refundId?: string;
 }
 
 export interface RefundRequest {

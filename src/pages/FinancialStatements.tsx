@@ -200,8 +200,8 @@ export default function FinancialStatements() {
         format: generateFormat,
       });
 
-      // Handle both { success, data } and { data: { success, data } } response formats
-      const success = response.success || (response.data && response.data.success);
+      // Handle API response
+      const success = response?.data?.success;
       
       if (success) {
         setGenerationSuccess(true);

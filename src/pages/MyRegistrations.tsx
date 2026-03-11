@@ -157,7 +157,7 @@ export default function MyRegistrationsPage() {
                                 </div>
                                 <h3 className="text-xl font-semibold">
                                   <Link 
-                                    to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}
+                                    to={`/events/${registration.events?.slug || registration.event_id}`}
                                     className="hover:text-accent transition-colors"
                                   >
                                     {registration.events?.title || 'Event'}
@@ -185,7 +185,7 @@ export default function MyRegistrationsPage() {
 
                               <div className="flex gap-2 sm:flex-col">
                                 <Button variant="outline" size="sm" asChild className="flex-1">
-                                  <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
+                                  <Link to={`/events/${registration.events?.slug || registration.event_id}`}>
                                     View Details
                                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                   </Link>
@@ -286,7 +286,7 @@ export default function MyRegistrationsPage() {
                               </div>
 
                               <Button variant="outline" size="sm" asChild>
-                                <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
+                                <Link to={`/events/${registration.events?.slug || registration.event_id}`}>
                                   View Recap
                                   <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                 </Link>

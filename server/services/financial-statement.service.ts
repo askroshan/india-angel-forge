@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import prisma from '../../db';
 import PDFDocument from 'pdfkit';
 import fs from 'fs/promises';
 import * as fsSync from 'fs';
 import path from 'path';
 import { emailService } from './email.service';
-
-const prisma = new PrismaClient();
 
 interface StatementGenerationParams {
   userId: string;

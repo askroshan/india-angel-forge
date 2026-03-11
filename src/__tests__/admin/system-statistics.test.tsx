@@ -8,7 +8,7 @@ import * as apiClient from '../../api/client';
 // Mock the API client
 vi.mock('../../api/client');
 
-const mockApiClient = apiClient as { getSystemStatistics: ReturnType<typeof vi.fn> };
+const mockApiClient = apiClient as unknown as { getSystemStatistics: ReturnType<typeof vi.fn> };
 
 const queryClient = new QueryClient({
   defaultOptions: {

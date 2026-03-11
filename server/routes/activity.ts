@@ -1,10 +1,9 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../db';
 import { AuthenticatedRequest, authenticateUser } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * Activity Timeline API Routes

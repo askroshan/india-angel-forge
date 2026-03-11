@@ -104,7 +104,7 @@ export default function MyRegistrations() {
 
             <div className="flex sm:flex-col gap-2">
               <Button variant="outline" size="sm" asChild className="flex-1">
-                <Link to={`/events/${registration.events?.slug || registration.eventId || registration.event_id}`}>
+                <Link to={`/events/${registration.events?.slug || registration.event_id}`}>
                   View
                   <ArrowRight className="ml-1 h-3 w-3" />
                 </Link>

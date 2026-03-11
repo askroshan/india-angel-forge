@@ -5,7 +5,8 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import prisma from './db';
 import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -30,6 +31,14 @@ import identityVerificationRouter from './server/routes/identity-verification';
 import path from 'path';
 import fs from 'fs';
 
+// Fix Express 5 route param types: named route params are always strings
+// (Express 5 changed ParamsDictionary to string | string[], but route params are always strings)
+declare module 'express-serve-static-core' {
+  interface ParamsDictionary {
+    [key: string]: string;
+  }
+}
+
 dotenv.config();
 
 // Extend Express Request to include user
@@ -38,7 +47,6 @@ interface AuthenticatedRequest extends Request {
 }
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.API_PORT || 3001;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
@@ -594,7 +602,7 @@ app.get('/api/investors/applications/:id', authenticateToken, async (req: Authen
   try {
     const userId = getUserId(req);
     const app = await prisma.investorApplication.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
     });
 
     if (!app) {
@@ -617,7 +625,7 @@ app.patch('/api/investors/applications/:id', authenticateToken, async (req: Auth
   try {
     const userId = getUserId(req);
     const existing = await prisma.investorApplication.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
     });
 
     if (!existing) {
@@ -633,7 +641,7 @@ app.patch('/api/investors/applications/:id', authenticateToken, async (req: Auth
     const existingMeta = (existing.metadata as Record<string, any>) || {};
 
     const app = await prisma.investorApplication.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         ...(investmentSize !== undefined && { investmentRange: investmentSize }),
         ...(company !== undefined && { organization: company }),
@@ -670,7 +678,7 @@ app.patch('/api/admin/applications/investors/:id', authenticateToken, requireRol
     const reviewedBy = getUserId(req);
 
     const app = await prisma.investorApplication.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         status,
         reviewedBy,
@@ -756,7 +764,7 @@ app.patch('/api/founders/applications/:id', authenticateToken, async (req: Authe
   try {
     const userId = getUserId(req);
     const existing = await prisma.founderApplication.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
     });
 
     if (!existing) {
@@ -772,7 +780,7 @@ app.patch('/api/founders/applications/:id', authenticateToken, async (req: Authe
     const existingMeta = (existing.metadata as Record<string, any>) || {};
 
     const app = await prisma.founderApplication.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         ...(companyName !== undefined && { companyName }),
         ...(industry !== undefined && { industry }),
@@ -817,7 +825,7 @@ app.patch('/api/admin/applications/founders/:id', authenticateToken, requireRole
     const reviewedBy = getUserId(req);
 
     const app = await prisma.founderApplication.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         status,
         reviewedBy,
@@ -998,12 +1006,12 @@ app.delete('/api/deals/interests/:id', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
     const interest = await prisma.dealInterest.findFirst({
-      where: { id: req.params.id, investorId: userId },
+      where: { id: req.params.id as string, investorId: userId },
     });
     if (!interest) {
       return res.status(404).json({ error: { message: 'Interest not found', code: 'NOT_FOUND' } });
     }
-    await prisma.dealInterest.delete({ where: { id: req.params.id } });
+    await prisma.dealInterest.delete({ where: { id: req.params.id as string } });
     res.json({ message: 'Deleted' });
   } catch (error) {
     console.error('Delete deal interest error:', error);
@@ -1015,7 +1023,7 @@ app.delete('/api/deals/interests/:id', authenticateToken, async (req, res) => {
 app.post('/api/deals/:id/interest', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
-    const dealId = req.params.id;
+    const dealId = req.params.id as string;
     const { commitmentAmount, notes } = req.body;
     
     // Check deal exists
@@ -1231,7 +1239,7 @@ app.post('/api/spvs', authenticateToken, async (req, res) => {
 app.get('/api/spvs/:id', authenticateToken, async (req, res) => {
   try {
     const spv = await prisma.spv.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: {
         members: {
           include: {
@@ -1283,7 +1291,7 @@ app.get('/api/spv/:id', authenticateToken, async (req, res) => {
   req.url = `/api/spvs/${req.params.id}`;
   try {
     const spv = await prisma.spv.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: {
         members: {
           include: {
@@ -1333,7 +1341,7 @@ app.get('/api/spv/:id', authenticateToken, async (req, res) => {
 app.get('/api/spvs/:id/members', authenticateToken, async (req, res) => {
   try {
     const members = await prisma.spvMember.findMany({
-      where: { spvId: req.params.id },
+      where: { spvId: req.params.id as string },
       include: {
         investor: {
           select: { id: true, fullName: true, email: true },
@@ -1363,7 +1371,7 @@ app.put('/api/spvs/:id/members/:memberId', authenticateToken, async (req, res) =
     const { paymentStatus, commitmentAmount } = req.body;
     
     const member = await prisma.spvMember.findUnique({
-      where: { id: req.params.memberId },
+      where: { id: req.params.memberId as string },
     });
     if (!member || member.spvId !== req.params.id) {
       return res.status(404).json({ error: { message: 'Member not found', code: 'NOT_FOUND' } });
@@ -1374,7 +1382,7 @@ app.put('/api/spvs/:id/members/:memberId', authenticateToken, async (req, res) =
     if (commitmentAmount !== undefined) updateData.commitmentAmount = commitmentAmount;
     
     const updated = await prisma.spvMember.update({
-      where: { id: req.params.memberId },
+      where: { id: req.params.memberId as string },
       data: updateData,
     });
     
@@ -1393,13 +1401,13 @@ app.put('/api/spvs/:id/members/:memberId', authenticateToken, async (req, res) =
 app.delete('/api/spvs/:id/members/:memberId', authenticateToken, async (req, res) => {
   try {
     const member = await prisma.spvMember.findUnique({
-      where: { id: req.params.memberId },
+      where: { id: req.params.memberId as string },
     });
     if (!member || member.spvId !== req.params.id) {
       return res.status(404).json({ error: { message: 'Member not found', code: 'NOT_FOUND' } });
     }
     
-    await prisma.spvMember.delete({ where: { id: req.params.memberId } });
+    await prisma.spvMember.delete({ where: { id: req.params.memberId as string } });
     res.json({ message: 'Member removed' });
   } catch (error) {
     console.error('Delete SPV member error:', error);
@@ -1413,14 +1421,14 @@ app.put('/api/spv-members/:memberId/allocation', authenticateToken, async (req, 
     const { commitmentAmount } = req.body;
     
     const member = await prisma.spvMember.findUnique({
-      where: { id: req.params.memberId },
+      where: { id: req.params.memberId as string },
     });
     if (!member) {
       return res.status(404).json({ error: { message: 'Member not found', code: 'NOT_FOUND' } });
     }
     
     const updated = await prisma.spvMember.update({
-      where: { id: req.params.memberId },
+      where: { id: req.params.memberId as string },
       data: { commitmentAmount },
     });
     
@@ -1507,7 +1515,7 @@ app.post('/api/moderator/applications/:id/screening-notes', authenticateToken, r
     // Return a mock note since we don't have a screening notes table
     res.json({
       id: `note-${Date.now()}`,
-      application_id: req.params.id,
+      application_id: req.params.id as string,
       moderator_id: getUserId(req),
       notes,
       created_at: new Date().toISOString(),
@@ -1780,7 +1788,7 @@ app.get('/api/portfolio/companies', authenticateToken, async (req, res) => {
         investor_id: pc.investorId,
         deal_id: pc.companyId,
         investment_amount: Number(pc.investmentAmount),
-        investment_date: pc.investmentDate.toISOString(),
+        investment_date: pc.investmentDate?.toISOString() ?? null,
         ownership_percentage: pc.ownershipPercent ? Number(pc.ownershipPercent) : null,
         current_valuation: pc.currentValuation ? Number(pc.currentValuation) : null,
         irr: null,
@@ -2371,7 +2379,7 @@ app.delete('/api/events/registrations/:id', authenticateToken, async (req, res) 
 app.get('/api/events/:id/registration-count', async (req, res) => {
   try {
     const count = await prisma.eventAttendance.count({
-      where: { eventId: req.params.id, rsvpStatus: 'CONFIRMED' },
+      where: { eventId: req.params.id as string, rsvpStatus: 'CONFIRMED' },
     });
     res.json({ count });
   } catch (error) {
@@ -2653,7 +2661,6 @@ app.post('/api/payments/create-order', authenticateToken, async (req: Authentica
     }
 
     res.status(201).json({
-      success: true,
       ...result,
       paymentId: payment.id,
       payment
@@ -3095,7 +3102,7 @@ app.get('/api/admin/invoices/failed', authenticateToken, requireRole(['admin']),
  */
 app.post('/api/admin/invoices/:paymentId/retry', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { paymentId } = req.params;
+    const paymentId = req.params.paymentId as string;
 
     const job = await invoiceQueueService.retryInvoiceJob(paymentId);
 
@@ -3368,7 +3375,7 @@ app.get('/api/admin/applications', authenticateToken, requireRole(['admin']), as
 // PATCH /api/admin/applications/:id/approve - Approve application
 app.patch('/api/admin/applications/:id/approve', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const reviewedBy = getUserId(req);
 
     // Try investor application first
@@ -3412,7 +3419,7 @@ app.patch('/api/admin/applications/:id/approve', authenticateToken, requireRole(
 // PATCH /api/admin/applications/:id/reject - Reject application with reason
 app.patch('/api/admin/applications/:id/reject', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { reason } = req.body;
     const reviewedBy = getUserId(req);
 
@@ -3494,7 +3501,7 @@ app.post('/api/admin/users', authenticateToken, requireRole(['admin']), async (r
   }
 });
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { role } = req.body;
     const adminId = getUserId(req);
 
@@ -3519,7 +3526,7 @@ app.post('/api/admin/users', authenticateToken, requireRole(['admin']), async (r
 // DELETE /api/admin/users/:id - Delete a user (admin only)
 app.delete('/api/admin/users/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const adminId = getUserId(req);
 
     // Prevent admin from deleting themselves
@@ -3606,7 +3613,7 @@ app.get('/api/admin/companies', authenticateToken, requireRole(['admin']), async
   }
 });
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const adminId = getUserId(req);
 
     // Try to find and delete from CompanyProfile first
@@ -3742,7 +3749,7 @@ app.get('/api/compliance/accreditation/list', authenticateToken, requireRole(['c
 // PATCH /api/compliance/accreditation/:id/approve - Approve accreditation
 app.patch('/api/compliance/accreditation/:id/approve', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { expiry_date } = req.body;
     const reviewedBy = getUserId(req);
 
@@ -3770,7 +3777,7 @@ app.patch('/api/compliance/accreditation/:id/approve', authenticateToken, requir
 // PATCH /api/compliance/accreditation/:id/reject - Reject accreditation
 app.patch('/api/compliance/accreditation/:id/reject', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { reason } = req.body;
     const reviewedBy = getUserId(req);
 
@@ -3853,7 +3860,7 @@ app.get('/api/messages/threads', authenticateToken, async (req, res) => {
 // GET /api/messages/threads/:id/messages - Get messages for a thread
 app.get('/api/messages/threads/:id/messages', authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const userId = getUserId(req);
 
     // Verify user is participant
@@ -4336,7 +4343,7 @@ app.post('/api/admin/team-members', authenticateToken, requireRole(['admin']), a
 // PATCH /api/admin/team-members/:id - update team member
 app.patch('/api/admin/team-members/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { name, role, bio, photoUrl, linkedinUrl, displayOrder, isActive } = req.body;
     const member = await prisma.teamMember.update({
       where: { id },
@@ -4352,7 +4359,7 @@ app.patch('/api/admin/team-members/:id', authenticateToken, requireRole(['admin'
 // DELETE /api/admin/team-members/:id - soft delete (set isActive=false)
 app.delete('/api/admin/team-members/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     await prisma.teamMember.update({ where: { id }, data: { isActive: false } });
     res.json({ message: 'Team member deactivated' });
   } catch (error) {
@@ -4406,7 +4413,7 @@ app.post('/api/admin/partners', authenticateToken, requireRole(['admin']), async
 // PATCH /api/admin/partners/:id - update partner
 app.patch('/api/admin/partners/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { name, logoUrl, websiteUrl, description, displayOrder, isActive } = req.body;
     const partner = await prisma.partner.update({
       where: { id },
@@ -4422,7 +4429,7 @@ app.patch('/api/admin/partners/:id', authenticateToken, requireRole(['admin']), 
 // DELETE /api/admin/partners/:id - soft delete
 app.delete('/api/admin/partners/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     await prisma.partner.update({ where: { id }, data: { isActive: false } });
     res.json({ message: 'Partner deactivated' });
   } catch (error) {
@@ -4489,7 +4496,7 @@ app.post('/api/admin/industries', authenticateToken, requireRole(['admin']), asy
 app.patch('/api/admin/industries/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const adminId = getUserId(req);
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { name, code, description, icon, displayOrder, isActive } = req.body;
     const existing = await prisma.industry.findUnique({ where: { id } });
     if (!existing) {
@@ -4520,7 +4527,7 @@ app.patch('/api/admin/industries/:id', authenticateToken, requireRole(['admin'])
 app.delete('/api/admin/industries/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const adminId = getUserId(req);
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const existing = await prisma.industry.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ error: { message: 'Industry not found', code: 'NOT_FOUND' } });
@@ -4578,7 +4585,7 @@ app.post('/api/admin/funding-stages', authenticateToken, requireRole(['admin']),
 app.patch('/api/admin/funding-stages/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const adminId = getUserId(req);
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const { name, code, description, typicalMin, typicalMax, displayOrder, isActive } = req.body;
     const existing = await prisma.fundingStage.findUnique({ where: { id } });
     if (!existing) {
@@ -4610,7 +4617,7 @@ app.patch('/api/admin/funding-stages/:id', authenticateToken, requireRole(['admi
 app.delete('/api/admin/funding-stages/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const adminId = getUserId(req);
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
     const existing = await prisma.fundingStage.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ error: { message: 'Funding stage not found', code: 'NOT_FOUND' } });
@@ -4634,45 +4641,45 @@ app.get('/api/admin/communications', authenticateToken, requireRole(['admin']), 
     const { q, page = '1', limit = '50' } = req.query as Record<string, string>;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Fetch all message threads with sender/recipient info
+    // Fetch all message threads with participant info (using MessageThread model)
     const where = q
       ? {
           OR: [
-            { sender: { fullName: { contains: q, mode: 'insensitive' as const } } },
-            { sender: { email: { contains: q, mode: 'insensitive' as const } } },
-            { recipient: { fullName: { contains: q, mode: 'insensitive' as const } } },
-            { recipient: { email: { contains: q, mode: 'insensitive' as const } } },
+            { participant1: { fullName: { contains: q, mode: 'insensitive' as const } } },
+            { participant1: { email: { contains: q, mode: 'insensitive' as const } } },
+            { participant2: { fullName: { contains: q, mode: 'insensitive' as const } } },
+            { participant2: { email: { contains: q, mode: 'insensitive' as const } } },
             { subject: { contains: q, mode: 'insensitive' as const } },
           ],
         }
       : {};
 
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where: { ...where, parentId: null }, // only root messages (thread starters)
+    const [threads, total] = await Promise.all([
+      prisma.messageThread.findMany({
+        where,
         include: {
-          sender: { select: { id: true, fullName: true, email: true } },
-          recipient: { select: { id: true, fullName: true, email: true } },
-          replies: { select: { id: true } },
+          participant1: { select: { id: true, fullName: true, email: true } },
+          participant2: { select: { id: true, fullName: true, email: true } },
+          _count: { select: { messages: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { lastMessageAt: 'desc' },
         skip,
         take: parseInt(limit),
       }),
-      prisma.message.count({ where: { ...where, parentId: null } }),
+      prisma.messageThread.count({ where }),
     ]);
 
-    const result = messages.map(m => ({
+    const result = threads.map(m => ({
       id: m.id,
-      senderId: m.senderId,
-      recipientId: m.recipientId,
-      senderName: m.sender?.fullName || m.sender?.email || 'Unknown',
-      recipientName: m.recipient?.fullName || m.recipient?.email || 'Unknown',
+      senderId: m.participant1Id,
+      recipientId: m.participant2Id,
+      senderName: m.participant1?.fullName || m.participant1?.email || 'Unknown',
+      recipientName: m.participant2?.fullName || m.participant2?.email || 'Unknown',
       subject: m.subject || '(no subject)',
-      preview: m.content?.substring(0, 120) || '',
-      sentAt: m.createdAt.toISOString(),
+      preview: m.lastMessagePreview || '',
+      sentAt: m.lastMessageAt.toISOString(),
       threadId: m.id,
-      messageCount: 1 + (m.replies?.length || 0),
+      messageCount: m._count.messages,
     }));
 
     res.json({ messages: result, total });

@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import prisma from '../../db';
 import { AuthenticatedRequest, authenticateUser, requireRoles } from '../middleware/auth';
 import {
   generateFinancialStatement,
@@ -190,9 +191,6 @@ router.get(
           code: 'INVALID_ID',
         });
       }
-
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
 
       const statement = await prisma.financialStatement.findUnique({
         where: { id: statementId },

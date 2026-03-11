@@ -241,14 +241,22 @@ export class ApiClient implements IApiClient {
     });
   }
 
-  async delete(table: string, id: string): Promise<ApiResponse<void>> {
-    return this.request<void>(`${this.baseUrl}/${table}/${id}`, {
+  async delete(tableOrUrl: string, id?: string): Promise<ApiResponse<void>> {
+    let url: string;
+    if (tableOrUrl.startsWith('/api/') || (tableOrUrl.startsWith('/') && !id)) {
+      url = tableOrUrl;
+    } else if (id !== undefined) {
+      url = `${this.baseUrl}/${tableOrUrl}/${id}`;
+    } else {
+      url = `${this.baseUrl}/${tableOrUrl}`;
+    }
+    return this.request<void>(url, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
   }
 
-  async post<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
+  async post<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = this.getHeaders();
     const isFormData = data instanceof FormData;
     
@@ -262,11 +270,11 @@ export class ApiClient implements IApiClient {
     return this.request<T>(fullUrl, {
       method: 'POST',
       headers,
-      body: isFormData ? data : JSON.stringify(data),
+      body: isFormData ? (data as FormData) : JSON.stringify(data),
     });
   }
 
-  async put<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
+  async put<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = this.getHeaders();
     const isFormData = data instanceof FormData;
     
@@ -280,7 +288,7 @@ export class ApiClient implements IApiClient {
     return this.request<T>(fullUrl, {
       method: 'PUT',
       headers,
-      body: isFormData ? data : JSON.stringify(data),
+      body: isFormData ? (data as FormData) : JSON.stringify(data),
     });
   }
 
