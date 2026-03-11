@@ -77,6 +77,8 @@ import MembershipManagement from "./pages/admin/MembershipManagement";
 import InvoiceManagement from "./pages/admin/InvoiceManagement";
 import CompanyManagement from "./pages/admin/CompanyManagement";
 import InvestorManagement from "./pages/admin/InvestorManagement";
+import SeedDataManagement from "./pages/admin/SeedDataManagement";
+import CommunicationAuditLog from "./pages/admin/CommunicationAuditLog";
 
 /**
  * Role definitions for route protection
@@ -354,6 +356,16 @@ const App = () => (
             <Route path="/admin/investors" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <InvestorManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/seed-data" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <SeedDataManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/communications" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <CommunicationAuditLog />
               </ProtectedRoute>
             } />
             {/* Moderator Routes */}

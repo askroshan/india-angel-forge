@@ -909,8 +909,8 @@ General community members with access to educational content and events (not cov
 | `/moderator/*` | moderator, admin |
 | `/operator/*` | operator_angel, admin |
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (authorization.spec.ts — role-based route guards verified across all 5 browser projects)  
 **Database Tables:** `user_roles`
 
 ---
@@ -941,8 +941,8 @@ General community members with access to educational content and events (not cov
 | `GET/POST /api/pitch/*` | founder |
 | `GET/PUT /api/company/*` | founder |
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (authorization.spec.ts — 403 enforcement on all protected routes)  
 **Database Tables:** `user_roles`, `audit_logs`
 
 ---
@@ -966,8 +966,8 @@ General community members with access to educational content and events (not cov
 - AND the page is responsive (mobile, tablet, desktop)
 - AND focus is managed properly (no focus trap)
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (authorization.spec.ts — AccessDenied page verified with heading, role display, keyboard nav, WCAG 2.2 AA contrast)  
 **Database Tables:** None
 
 ---
@@ -990,8 +990,8 @@ General community members with access to educational content and events (not cov
 - AND errors are displayed if data fetch fails
 - AND empty states are shown when no data exists
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (admin-operations.spec.ts — dashboard stats, user counts, event counts verified)  
 **Database Tables:** `users`, `user_roles`, `applications`, `events`, `audit_logs`
 
 ---
@@ -1013,8 +1013,8 @@ General community members with access to educational content and events (not cov
 - AND I can sort by date submitted or priority
 - AND the UI updates after taking actions
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (compliance-kyc.spec.ts — KYC/AML/accreditation data verified)  
 **Database Tables:** `kyc_documents`, `aml_screenings`, `accreditations`
 
 ---
@@ -1036,8 +1036,8 @@ General community members with access to educational content and events (not cov
 - AND my KYC/accreditation status is visible
 - AND I see prompts if KYC is incomplete
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (crud-operations.spec.ts, deal-management.spec.ts — deal browsing, interests, commitments, portfolio verified)  
 **Database Tables:** `deals`, `deal_interests`, `commitments`, `portfolio_companies`
 
 ---
@@ -1059,8 +1059,8 @@ General community members with access to educational content and events (not cov
 - AND I see prompts to complete profile if incomplete
 - AND I see next steps based on my status
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (application-crud-full.spec.ts — application status, pitch sessions, company profile verified)  
 **Database Tables:** `founder_applications`, `companies`, `pitch_sessions`, `fundraising_rounds`
 
 ---
@@ -1081,8 +1081,8 @@ General community members with access to educational content and events (not cov
 - AND items are prioritized by submission date
 - AND I can take action directly from the list
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (admin-registrations.spec.ts, application-crud-full.spec.ts — moderation tasks verified)  
 **Database Tables:** `founder_applications`, `investor_applications`, `content_flags`
 
 ---
@@ -1103,8 +1103,8 @@ General community members with access to educational content and events (not cov
 - AND I can switch between investor and advisory views
 - AND metrics show my impact as an advisor
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** 0 test cases  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (authorization.spec.ts, crud-operations.spec.ts — advisory profiles, deal access, mentorship verified)  
 **Database Tables:** `deals`, `advisory_profiles`, `mentorships`, `advisory_hours`
 
 ---
@@ -1166,8 +1166,8 @@ errors and showed AccessDenied even when ProtectedRoute correctly verified the a
 - AND there's a link back to my appropriate dashboard
 - AND the information is readable and accessible
 
-**Implementation Status:** 🔄 In Progress  
-**Test Coverage:** E2E tests  
+**Implementation Status:** ✅ Complete  
+**Test Coverage:** E2E tests (authorization.spec.ts — AccessDenied page shows current role vs required role)  
 **Database Tables:** `user_roles`
 
 ---

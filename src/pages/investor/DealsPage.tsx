@@ -55,6 +55,8 @@ export default function DealsPage() {
   const [filterSector, setFilterSector] = useState<string>('all');
   const [filterStage, setFilterStage] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('open');
+  const [filterIndustry, setFilterIndustry] = useState<string>('');
+  const [industries, setIndustries] = useState<{id: string; name: string; code: string}[]>([]);
   
   // Express Interest State
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
@@ -114,6 +116,7 @@ export default function DealsPage() {
     await fetchDeals();
     await checkAccreditation();
     await fetchExpressedInterests();
+    await fetchIndustries();
   };
 
   const checkAccreditation = async () => {
@@ -245,6 +248,37 @@ export default function DealsPage() {
       });
     } finally {
       setSubmittingInterest(false);
+    }
+  };
+
+  const fetchIndustries = async () => {
+    try {
+      const r = await fetch('/api/industries', { headers: { Authorization: `Bearer ${token}` } });
+      if (r.ok) {
+        const data = await r.json();
+        setIndustries(data || []);
+      }
+    } catch {
+      // non-critical
+    }
+  };
+
+  const fetchDealsWithIndustry = async (industry: string) => {
+    try {
+      setLoading(true);
+      if (!token) return;
+      const params = new URLSearchParams();
+      if (industry) params.set('industry', industry);
+      const response = await fetch(`/api/deals?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to load deals');
+      const data = await response.json();
+      setDeals(data || []);
+    } catch (error) {
+      toast({ title: 'Error', description: (error as Error).message || 'Failed to load deals', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -394,6 +428,37 @@ export default function DealsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {industries.length > 0 && (
+              <div>
+                <Label htmlFor="industry">Industry</Label>
+                <select
+                  id="industry"
+                  aria-label="Industry"
+                  value={filterIndustry}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFilterIndustry(val);
+                    if (val) {
+                      fetchDealsWithIndustry(val);
+                    } else {
+                      fetchDeals();
+                    }
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">All Industries</option>
+                  {industries.map(ind => (
+                    <option key={ind.id} value={ind.name}>{ind.name}</option>
+                  ))}
+                </select>
+                {filterIndustry && (
+                  <Button variant="ghost" size="sm" className="mt-1 h-7 text-xs" onClick={() => { setFilterIndustry(''); fetchDeals(); }}>
+                    Clear Filter
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

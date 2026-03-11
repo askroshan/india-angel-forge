@@ -12,7 +12,7 @@ import {
   Users, Building2, Calendar, FileText, Shield,
   BarChart3, ClipboardList, Globe, CreditCard,
   Receipt, Activity, Award, MessageSquare,
-  UserCog, Eye, Settings, ChevronRight,
+  UserCog, Eye, Settings, ChevronRight, Tag, Mail,
 } from "lucide-react";
 import { EventManagement } from "@/components/admin/EventManagement";
 
@@ -438,6 +438,36 @@ const AdminDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">Investor Management</p>
                     <p className="text-xs text-muted-foreground">View all investors</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/seed-data" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-lime-100 dark:bg-lime-900">
+                    <Tag className="h-5 w-5 text-lime-600 dark:text-lime-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Seed Data</p>
+                    <p className="text-xs text-muted-foreground">Industries & funding stages</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/admin/communications" className="group">
+              <Card className="h-full transition-colors hover:border-accent">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900">
+                    <Mail className="h-5 w-5 text-violet-600 dark:text-violet-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">Communication Audit</p>
+                    <p className="text-xs text-muted-foreground">Audit platform conversations</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
                 </CardContent>

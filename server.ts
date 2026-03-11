@@ -838,7 +838,15 @@ app.patch('/api/admin/applications/founders/:id', authenticateToken, requireRole
 app.get('/api/deals', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
+    const { industry, stage, status } = req.query as Record<string, string>;
+
+    const where: Record<string, unknown> = {};
+    if (industry) where.industry = { contains: industry, mode: 'insensitive' };
+    if (stage) where.stage = { contains: stage, mode: 'insensitive' };
+    if (status) where.status = status;
+
     const deals = await prisma.deal.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         dealInterests: {
@@ -4281,6 +4289,257 @@ app.post('/api/test/seed-messages', authenticateToken, async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ==================== INDUSTRY & FUNDING STAGE MANAGEMENT ====================
+
+// GET /api/industries - public endpoint for dropdowns (used by deal filtering, forms)
+app.get('/api/industries', authenticateToken, async (_req, res) => {
+  try {
+    const industries = await prisma.industry.findMany({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
+    res.json(industries);
+  } catch (error) {
+    console.error('Get industries error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/admin/industries - list all industries including inactive (admin only)
+app.get('/api/admin/industries', authenticateToken, requireRole(['admin']), async (_req, res) => {
+  try {
+    const industries = await prisma.industry.findMany({
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
+    res.json(industries);
+  } catch (error) {
+    console.error('Get admin industries error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/industries - create new industry (admin only)
+app.post('/api/admin/industries', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { name, code, description, icon, displayOrder } = req.body;
+    if (!name || !code) {
+      return res.status(400).json({ error: { message: 'name and code are required', code: 'VALIDATION_ERROR' } });
+    }
+    const existing = await prisma.industry.findFirst({ where: { OR: [{ name }, { code }] } });
+    if (existing) {
+      return res.status(409).json({ error: { message: 'Industry with this name or code already exists', code: 'CONFLICT' } });
+    }
+    const industry = await prisma.industry.create({
+      data: { name, code: code.toUpperCase(), description: description || null, icon: icon || null, displayOrder: displayOrder ?? 0 },
+    });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'create_industry', entity: 'industry', entityId: industry.id, details: `Created industry: ${name}` },
+    });
+    res.status(201).json(industry);
+  } catch (error) {
+    console.error('Create industry error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/industries/:id - update industry (admin only)
+app.patch('/api/admin/industries/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { id } = req.params;
+    const { name, code, description, icon, displayOrder, isActive } = req.body;
+    const existing = await prisma.industry.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'Industry not found', code: 'NOT_FOUND' } });
+    }
+    const updated = await prisma.industry.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(code !== undefined && { code: code.toUpperCase() }),
+        ...(description !== undefined && { description }),
+        ...(icon !== undefined && { icon }),
+        ...(displayOrder !== undefined && { displayOrder }),
+        ...(isActive !== undefined && { isActive }),
+      },
+    });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'update_industry', entity: 'industry', entityId: id, details: `Updated industry: ${updated.name}` },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('Update industry error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/admin/industries/:id - disable industry (soft delete, admin only)
+app.delete('/api/admin/industries/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { id } = req.params;
+    const existing = await prisma.industry.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'Industry not found', code: 'NOT_FOUND' } });
+    }
+    const updated = await prisma.industry.update({ where: { id }, data: { isActive: false } });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'disable_industry', entity: 'industry', entityId: id, details: `Disabled industry: ${existing.name}` },
+    });
+    res.json({ message: 'Industry disabled', industry: updated });
+  } catch (error) {
+    console.error('Disable industry error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/admin/funding-stages - list all funding stages including inactive (admin only)
+app.get('/api/admin/funding-stages', authenticateToken, requireRole(['admin']), async (_req, res) => {
+  try {
+    const stages = await prisma.fundingStage.findMany({
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
+    res.json(stages);
+  } catch (error) {
+    console.error('Get admin funding stages error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/funding-stages - create new funding stage (admin only)
+app.post('/api/admin/funding-stages', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { name, code, description, typicalMin, typicalMax, displayOrder } = req.body;
+    if (!name || !code) {
+      return res.status(400).json({ error: { message: 'name and code are required', code: 'VALIDATION_ERROR' } });
+    }
+    const existing = await prisma.fundingStage.findFirst({ where: { OR: [{ name }, { code }] } });
+    if (existing) {
+      return res.status(409).json({ error: { message: 'Stage with this name or code already exists', code: 'CONFLICT' } });
+    }
+    const stage = await prisma.fundingStage.create({
+      data: { name, code: code.toUpperCase(), description: description || null, typicalMin: typicalMin ?? null, typicalMax: typicalMax ?? null, displayOrder: displayOrder ?? 0 },
+    });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'create_funding_stage', entity: 'funding_stage', entityId: stage.id, details: `Created funding stage: ${name}` },
+    });
+    res.status(201).json(stage);
+  } catch (error) {
+    console.error('Create funding stage error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/funding-stages/:id - update funding stage (admin only)
+app.patch('/api/admin/funding-stages/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { id } = req.params;
+    const { name, code, description, typicalMin, typicalMax, displayOrder, isActive } = req.body;
+    const existing = await prisma.fundingStage.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'Funding stage not found', code: 'NOT_FOUND' } });
+    }
+    const updated = await prisma.fundingStage.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(code !== undefined && { code: code.toUpperCase() }),
+        ...(description !== undefined && { description }),
+        ...(typicalMin !== undefined && { typicalMin }),
+        ...(typicalMax !== undefined && { typicalMax }),
+        ...(displayOrder !== undefined && { displayOrder }),
+        ...(isActive !== undefined && { isActive }),
+      },
+    });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'update_funding_stage', entity: 'funding_stage', entityId: id, details: `Updated funding stage: ${updated.name}` },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('Update funding stage error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/admin/funding-stages/:id - disable funding stage (soft delete, admin only)
+app.delete('/api/admin/funding-stages/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const adminId = getUserId(req);
+    const { id } = req.params;
+    const existing = await prisma.fundingStage.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'Funding stage not found', code: 'NOT_FOUND' } });
+    }
+    const updated = await prisma.fundingStage.update({ where: { id }, data: { isActive: false } });
+    await prisma.auditLog.create({
+      data: { userId: adminId, action: 'disable_funding_stage', entity: 'funding_stage', entityId: id, details: `Disabled funding stage: ${existing.name}` },
+    });
+    res.json({ message: 'Stage disabled', stage: updated });
+  } catch (error) {
+    console.error('Disable funding stage error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== COMMUNICATION AUDIT LOG ====================
+
+// GET /api/admin/communications - list all message threads for compliance audit (admin only)
+app.get('/api/admin/communications', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { q, page = '1', limit = '50' } = req.query as Record<string, string>;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch all message threads with sender/recipient info
+    const where = q
+      ? {
+          OR: [
+            { sender: { fullName: { contains: q, mode: 'insensitive' as const } } },
+            { sender: { email: { contains: q, mode: 'insensitive' as const } } },
+            { recipient: { fullName: { contains: q, mode: 'insensitive' as const } } },
+            { recipient: { email: { contains: q, mode: 'insensitive' as const } } },
+            { subject: { contains: q, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
+
+    const [messages, total] = await Promise.all([
+      prisma.message.findMany({
+        where: { ...where, parentId: null }, // only root messages (thread starters)
+        include: {
+          sender: { select: { id: true, fullName: true, email: true } },
+          recipient: { select: { id: true, fullName: true, email: true } },
+          replies: { select: { id: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit),
+      }),
+      prisma.message.count({ where: { ...where, parentId: null } }),
+    ]);
+
+    const result = messages.map(m => ({
+      id: m.id,
+      senderId: m.senderId,
+      recipientId: m.recipientId,
+      senderName: m.sender?.fullName || m.sender?.email || 'Unknown',
+      recipientName: m.recipient?.fullName || m.recipient?.email || 'Unknown',
+      subject: m.subject || '(no subject)',
+      preview: m.content?.substring(0, 120) || '',
+      sentAt: m.createdAt.toISOString(),
+      threadId: m.id,
+      messageCount: 1 + (m.replies?.length || 0),
+    }));
+
+    res.json({ messages: result, total });
+  } catch (error) {
+    console.error('Get communications audit error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
 });
 
 // ==================== PRODUCTION STATIC FILE SERVING ====================
