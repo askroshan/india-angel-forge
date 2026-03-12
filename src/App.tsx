@@ -313,6 +313,11 @@ const App = () => (
                 <AdminEvents />
               </ProtectedRoute>
             } />
+            <Route path="/admin/events/:eventId/attendance" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <EventAttendance />
+              </ProtectedRoute>
+            } />
             <Route path="/admin/events/statistics" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AttendanceStatistics />
@@ -404,6 +409,11 @@ const App = () => (
             <Route path="/transaction-history" element={
               <ProtectedRoute>
                 <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/financial-statements" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <FinancialStatements />
               </ProtectedRoute>
             } />
             <Route path="/financial-statements" element={

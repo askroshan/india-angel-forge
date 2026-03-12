@@ -174,7 +174,143 @@ General community members with access to educational content and events (not cov
 - AND I can export logs to CSV
 - AND sensitive actions (role changes, deletions) are highlighted
 
-**Implementation Status:** ✅ Complete  
+US-ADMIN-007 — Application Approve/Reject from Modal
+
+As an Admin, I want Approve and Reject buttons directly within the Application Details modal so that I can take action without navigating away.
+
+GIVEN I open Application Details for any pending application
+
+THEN I see Approve (green) and Reject with reason (red) buttons
+
+AND the modal is scrollable to show all fields + action buttons
+
+AND clicking Approve sends approval email and changes status
+
+AND clicking Reject opens a reason input and sends rejection email
+
+US-ADMIN-008 — Fix Membership Management Page
+
+As an Admin, I want the Membership Management page to display membership plans, subscriber counts, and revenue so that I can manage platform subscriptions.
+
+GIVEN I navigate to /admin/membership
+
+THEN I see a list of membership tiers (Associate, Full Member, Lead Angel)
+
+AND I see active subscriber count, revenue per tier
+
+AND I can create, edit, or deactivate membership plans
+
+US-ADMIN-009 — Fix Invoice Management Page
+
+As an Admin, I want the Invoice Management page to list all generated invoices with retry functionality so that I can manage payment failures.
+
+GIVEN I navigate to /admin/invoices
+
+THEN I see all invoices with status (paid, failed, pending)
+
+AND I can retry failed invoices
+
+AND I can download individual invoice PDFs
+
+AND I can filter by date, status, user
+
+US-ADMIN-010 — INR Currency Consistency in System Statistics
+
+As an Admin, I want all monetary values in System Statistics to be displayed in INR (₹) so that data is consistent with the Indian platform context.
+
+GIVEN I view System Statistics
+
+THEN Total Investment shows ₹ format (e.g., ₹2.3 Cr)
+
+AND user counts by role reflect actual distinct role assignments without double-counting
+
+US-ADMIN-011 — User Role Filter for Investor Sub-types
+
+As an Admin, I want to filter users by Investor, Operator Angel, Family Office, and Founder roles in User Role Management so that I can view platform members by investment type.
+
+GIVEN I use Filter by Role on /admin/users
+
+THEN the dropdown includes: Investor, Operator Angel, Family Office, Founder (in addition to existing options)
+
+US-ADMIN-012 — Investor KYC Verification Status Counts
+
+As an Admin, I want the Investor Management page to accurately show Verified and Pending KYC counts so that I can monitor compliance completion.
+
+GIVEN I view /admin/investors
+
+THEN Verified count = number of investors with approved KYC
+
+AND Pending count = number with submitted but not yet verified KYC
+
+US-ADMIN-013 — Company Management — Fix API and Add Company Creation
+
+As an Admin, I want to view and manage all founder company profiles from /admin/companies so that I can oversee startup registrations.
+
+GIVEN I navigate to /admin/companies
+
+THEN the page loads without API errors
+
+AND lists all companies with founder name, sector, stage, status
+
+AND I can search by name, sector, location
+
+AND I can view/edit company details
+
+US-ADMIN-014 — Certificate PDF Generation
+
+As an Admin, I want the system to generate and store certificate PDFs on event check-out so that attendees can download proof of attendance.
+
+GIVEN an attendee completes check-in AND check-out at an event
+
+THEN a certificate PDF is automatically generated and stored
+
+AND the Certificate button on attendance management downloads the PDF
+
+AND the attendee receives the certificate on their /certificates page
+
+AND /verify-certificate/{code} validates the certificate publicly
+
+US-ADMIN-015 — Message Subjects in Communication Audit
+
+As an Admin, I want messages in the Communication Audit log to show meaningful subjects or first-line previews so that I can identify conversations without opening each one.
+
+GIVEN I view /admin/communications
+
+THEN each thread shows a subject or auto-generated first-message preview
+
+AND I can filter by sender, recipient, date range
+
+AND I can export conversation logs to CSV
+
+US-ADMIN-016 — Activity Timeline — Diverse Activity Types
+
+As an Admin, I want the Activity Timeline to show all platform activity types (deal interests, payments, event check-ins, KYC submissions, profile updates) so that I have a complete audit trail.
+
+GIVEN I view /activity
+
+THEN I see activities of types: Deal, Payment, Event, Document, Profile, KYC, AML
+
+AND I can filter by activity type
+
+AND I can filter by user
+
+AND I can export filtered activity to CSV
+
+US-ADMIN-017 — Admin Deal Oversight View
+
+As an Admin, I want read-only access to browse all active deals so that I can oversee investment activity without needing an investor application.
+
+GIVEN I am logged in as admin
+
+WHEN I navigate to /admin/deals
+
+THEN I see all active deals with amounts, investor interests, commitments
+
+AND I can view deal details, data room access logs
+
+AND I cannot commit to deals (read-only)
+
+**Implementation Status:** Pending
 **Test Coverage:** 12 test cases  
 **Database Tables:** `audit_logs`
 

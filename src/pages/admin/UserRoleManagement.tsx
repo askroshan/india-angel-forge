@@ -33,6 +33,10 @@ const AVAILABLE_ROLES = [
   { value: 'admin', label: 'Administrator', description: 'Full system access' },
   { value: 'moderator', label: 'Moderator', description: 'Content moderation and event management' },
   { value: 'compliance_officer', label: 'Compliance Officer', description: 'KYC and AML verification' },
+  { value: 'investor', label: 'Investor', description: 'Angel investor — browse deals and invest' },
+  { value: 'operator_angel', label: 'Operator Angel', description: 'Active founder/operator who also invests' },
+  { value: 'family_office', label: 'Family Office', description: 'Professional investment management' },
+  { value: 'founder', label: 'Founder', description: 'Startup founder seeking investment' },
   { value: 'user', label: 'Standard User', description: 'Basic platform access' },
 ];
 

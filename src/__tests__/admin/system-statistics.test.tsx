@@ -147,7 +147,12 @@ describe('US-ADMIN-005: System Statistics', () => {
       renderComponent();
       
       await waitFor(() => {
-        expect(screen.getByText(/\$5,000,000/)).toBeInTheDocument();
+        // M1 FIX: should use ₹ (INR) not $ (USD) for Indian platform
+        const investmentEl = screen.getByText(/total investment/i).closest('.rounded-xl, [class*="card"]') ||
+          screen.getByText(/total investment/i).parentElement?.parentElement;
+        const allText = document.body.textContent || '';
+        expect(allText).not.toMatch(/\$5,000,000/);
+        expect(allText).toMatch(/₹|INR|5,00,000|50,00,000/);
         expect(screen.getByText(/total investment/i)).toBeInTheDocument();
       });
     });

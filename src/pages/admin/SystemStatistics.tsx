@@ -64,7 +64,7 @@ export default function SystemStatistics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(stats?.deals.totalInvestment || 0).toLocaleString()}
+              {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(stats?.deals.totalInvestment || 0)}
             </div>
           </CardContent>
         </Card>

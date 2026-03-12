@@ -98,6 +98,7 @@ const DirectMessages = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [subjectText, setSubjectText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch message threads
@@ -159,7 +160,7 @@ const DirectMessages = () => {
 
   // Start new conversation mutation
   const startConversationMutation = useMutation({
-    mutationFn: async (data: { recipient_id: string; initial_message: string }) => {
+    mutationFn: async (data: { recipient_id: string; initial_message: string; subject?: string }) => {
       const response = await apiClient.post<MessageThread>('/api/messages/threads', data);
       if (response.error) throw new Error(response.error.message);
       return response.data as MessageThread;
@@ -168,6 +169,7 @@ const DirectMessages = () => {
       toast.success('Conversation started');
       setNewConversationOpen(false);
       setSelectedUserId('');
+      setSubjectText('');
       setMessageText('');
       queryClient.invalidateQueries({ queryKey: ['message-threads'] });
       setSelectedThreadId(data?.id ?? null);
@@ -203,6 +205,7 @@ const DirectMessages = () => {
     startConversationMutation.mutate({
       recipient_id: selectedUserId,
       initial_message: messageText,
+      subject: subjectText.trim() || undefined,
     });
   };
 
@@ -268,6 +271,15 @@ const DirectMessages = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="conversation-subject">Subject</Label>
+                        <Input
+                          id="conversation-subject"
+                          placeholder="Subject (e.g. Interest in your deal)"
+                          value={subjectText}
+                          onChange={(e) => setSubjectText(e.target.value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Message</Label>

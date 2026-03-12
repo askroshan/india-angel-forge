@@ -168,7 +168,7 @@ export default function AdminEvents() {
 
                     <div className="flex flex-col gap-2">
                       <Button
-                        onClick={() => navigate(`/moderator/events/${event.id}/attendance`)}
+                        onClick={() => navigate(`/admin/events/${event.id}/attendance`)}
                         data-testid="manage-attendance"
                         variant="default"
                         className="whitespace-nowrap"

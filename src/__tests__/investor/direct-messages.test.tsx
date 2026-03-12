@@ -366,6 +366,93 @@ describe('US-INVESTOR-014: Send Direct Messages', () => {
         expect(screen.getByText(/Start New Conversation/i)).toBeInTheDocument();
       });
     });
+
+    // M4 RED: new conversation dialog MUST include a Subject field
+    it('should show a subject input field in new conversation dialog', async () => {
+      const user = userEvent.setup();
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/messages/threads') return Promise.resolve(mockThreads);
+        if (url.includes('/users')) return Promise.resolve(mockUsers);
+        return Promise.resolve([]);
+      });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'thread-new' }, error: null });
+
+      renderWithProviders(<DirectMessages />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/New Message/i)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText(/New Message/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Start New Conversation/i)).toBeInTheDocument();
+      });
+
+      // Subject field MUST be present
+      expect(
+        screen.getByPlaceholderText(/subject/i) ||
+        screen.getByLabelText(/subject/i)
+      ).toBeInTheDocument();
+    });
+
+    // M4 RED: subject must be sent to API when starting a conversation
+    it('should include subject in POST /api/messages/threads payload', async () => {
+      const user = userEvent.setup();
+      let capturedPayload: Record<string, unknown> = {};
+
+      vi.mocked(apiClient.get).mockImplementation((url) => {
+        if (url === '/api/messages/threads') return Promise.resolve(mockThreads);
+        if (url.includes('/users')) return Promise.resolve(mockUsers);
+        return Promise.resolve([]);
+      });
+      vi.mocked(apiClient.post).mockImplementation((_url, body) => {
+        capturedPayload = body as Record<string, unknown>;
+        return Promise.resolve({ data: { id: 'thread-new' }, error: null });
+      });
+
+      renderWithProviders(<DirectMessages />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/New Message/i)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText(/New Message/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Start New Conversation/i)).toBeInTheDocument();
+      });
+
+      // Fill in subject
+      const subjectInput = screen.getByPlaceholderText(/subject/i) ||
+        screen.getByLabelText(/subject/i);
+      await user.type(subjectInput, 'Test Subject M4');
+
+      // Fill in message (enough to trigger send)
+      const messageInputs = screen.getAllByRole('textbox');
+      const msgInput = messageInputs.find(el => el !== subjectInput);
+      if (msgInput) await user.type(msgInput, 'Hello there');
+
+      // Select a recipient (first available)
+      const recipientsTrigger = screen.queryByRole('combobox');
+      if (recipientsTrigger) {
+        await user.click(recipientsTrigger);
+        const options = screen.queryAllByRole('option');
+        if (options[0]) await user.click(options[0]);
+      }
+
+      // Submit the form
+      const sendBtn = screen.getByRole('button', { name: /send|start/i });
+      await user.click(sendBtn);
+
+      await waitFor(() => {
+        expect(apiClient.post).toHaveBeenCalled();
+      });
+
+      // subject must be included in the payload
+      expect(capturedPayload).toHaveProperty('subject');
+      expect(capturedPayload.subject).toBe('Test Subject M4');
+    });
   });
 
   describe('Error Handling', () => {

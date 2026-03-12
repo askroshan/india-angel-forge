@@ -2067,7 +2067,16 @@ app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async
           some: { role: 'investor' },
         },
       },
-      include: { roles: true },
+      include: {
+        roles: true,
+        investorProfile: {
+          select: {
+            accreditationStatus: true,
+            investmentPreferences: true,
+            totalInvested: true,
+          },
+        },
+      },
     });
     res.json(investors.map(u => ({
       id: u.id,
@@ -2075,6 +2084,13 @@ app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async
       fullName: u.fullName,
       roles: u.roles.map(r => r.role),
       createdAt: u.createdAt,
+      investorProfile: u.investorProfile
+        ? {
+            accreditationStatus: u.investorProfile.accreditationStatus || 'PENDING',
+            investmentPreferences: u.investorProfile.investmentPreferences as string[] ?? [],
+            totalInvested: Number(u.investorProfile.totalInvested || 0),
+          }
+        : undefined,
     })));
   } catch (error) {
     console.error('Get investors error:', error);
@@ -3722,10 +3738,10 @@ app.get('/api/admin/statistics', authenticateToken, requireRole(['admin']), asyn
     const totalUsers = await prisma.user.count();
     const userRoles = await prisma.userRole.groupBy({
       by: ['role'],
-      _count: true,
+      _count: { _all: true },
     });
     const byRole: Record<string, number> = {};
-    userRoles.forEach(r => { byRole[r.role] = r._count; });
+    userRoles.forEach(r => { byRole[r.role] = r._count._all; });
 
     // Deals
     const totalDeals = await prisma.deal.count();
@@ -4008,7 +4024,7 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 // POST /api/messages/threads - Start new conversation
 app.post('/api/messages/threads', authenticateToken, async (req, res) => {
   try {
-    const { recipient_id, initial_message } = req.body;
+    const { recipient_id, initial_message, subject } = req.body;
     const senderId = getUserId(req);
 
     if (senderId === recipient_id) {
@@ -4030,6 +4046,7 @@ app.post('/api/messages/threads', authenticateToken, async (req, res) => {
         data: {
           participant1Id: senderId,
           participant2Id: recipient_id,
+          subject: subject?.trim() || null,
           lastMessagePreview: initial_message?.substring(0, 100) || '',
         },
       });
@@ -4310,6 +4327,7 @@ app.post('/api/test/seed-messages', authenticateToken, async (req, res) => {
         data: {
           participant1Id: investorUser.id,
           participant2Id: adminUser.id,
+          subject: 'Welcome & Platform Introduction',
           lastMessagePreview: 'Welcome to the platform!',
         },
       });

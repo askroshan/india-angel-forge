@@ -324,7 +324,7 @@ const AdminDashboard = () => {
               </Card>
             </Link>
 
-            <Link to="/financial-statements" className="group">
+            <Link to="/admin/financial-statements" className="group">
               <Card className="h-full transition-colors hover:border-accent">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900">

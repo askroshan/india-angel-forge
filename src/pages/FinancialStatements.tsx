@@ -309,12 +309,24 @@ export default function FinancialStatements() {
   };
 
   const downloadPDF = (statement: FinancialStatement) => {
-    const link = document.createElement('a');
-    link.href = statement.pdfUrl;
-    link.download = `${statement.statementNumber}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const link = document.createElement('a');
+      link.href = statement.pdfUrl;
+      link.download = `${statement.statementNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({
+        title: 'Download started',
+        description: `${statement.statementNumber}.pdf is downloading.`,
+      });
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Download failed',
+        description: 'Unable to download the PDF. Please try again.',
+      });
+    }
   };
 
   if (isLoading) {

@@ -188,7 +188,7 @@ describe('AdminDashboard – Management Hub', () => {
       renderDashboard();
       await waitFor(() => {
         const link = screen.getByRole('link', { name: /financial.*statement/i });
-        expect(link).toHaveAttribute('href', '/financial-statements');
+        expect(link).toHaveAttribute('href', '/admin/financial-statements');
       });
     });
 

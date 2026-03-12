@@ -223,6 +223,31 @@ describe('US-ADMIN-001: User Role Management', () => {
         expect(screen.queryByText('John Investor')).not.toBeInTheDocument();
       });
     });
+
+    // M2 RED: filter dropdown must include investor-type and founder roles
+    it('should include investor, operator_angel, family_office, and founder roles in filter dropdown', async () => {
+      server.use(
+        http.get('/api/admin/users', () => HttpResponse.json(mockUsers))
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('John Investor')).toBeInTheDocument();
+      });
+
+      const roleFilter = screen.getByRole('combobox');
+      await userEvent.click(roleFilter);
+
+      // All investor-type and platform-specific roles must be visible as options
+      const options = screen.getAllByRole('option');
+      const optionLabels = options.map(o => o.textContent?.toLowerCase() ?? '');
+
+      expect(optionLabels.some(l => l.includes('investor'))).toBe(true);
+      expect(optionLabels.some(l => l.includes('founder'))).toBe(true);
+      expect(optionLabels.some(l => l.includes('operator') || l.includes('angel'))).toBe(true);
+      expect(optionLabels.some(l => l.includes('family'))).toBe(true);
+    });
   });
 
   describe('Role Assignment', () => {
