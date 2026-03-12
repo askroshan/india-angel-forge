@@ -181,8 +181,8 @@ function PlansManager() {
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<Plan[]>("/api/admin/membership/plans");
-      setPlans(data || []);
+      const data = await apiClient.get<{ success: boolean; plans: Plan[] }>("/api/admin/membership/plans");
+      setPlans(data?.plans || []);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
@@ -340,8 +340,8 @@ function DiscountCodesManager() {
   const fetchCodes = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<DiscountCodeT[]>("/api/admin/membership/discount-codes");
-      setCodes(data || []);
+      const data = await apiClient.get<{ success: boolean; discountCodes: DiscountCodeT[] }>("/api/admin/membership/discount-codes");
+      setCodes(data?.discountCodes || []);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
@@ -494,11 +494,11 @@ function SubscribersManager() {
       const data = await apiClient.get<{
         success: boolean;
         memberships: MembershipRow[];
-        total: number;
+        pagination: { page: number; limit: number; total: number; totalPages: number };
       }>(`/api/admin/membership/memberships?page=${page}&limit=20`);
       if (data?.success) {
         setMemberships(data.memberships);
-        setTotal(data.total);
+        setTotal(data?.pagination?.total || 0);
       }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [page]);
@@ -566,11 +566,11 @@ function ChangelogViewer() {
       const data = await apiClient.get<{
         success: boolean;
         changelog: ChangelogEntry[];
-        total: number;
+        pagination: { page: number; limit: number; total: number; totalPages: number };
       }>(`/api/admin/membership/changelog?page=${page}&limit=20`);
       if (data?.success) {
         setEntries(data.changelog);
-        setTotal(data.total);
+        setTotal(data?.pagination?.total || 0);
       }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [page]);

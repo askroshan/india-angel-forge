@@ -2037,10 +2037,14 @@ app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) 
 
 app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
+    const limitParam = parseInt(req.query.limit as string) || 100;
+    const pageParam = parseInt(req.query.page as string) || 1;
+    const skip = (pageParam - 1) * limitParam;
     const logs = await prisma.auditLog.findMany({
       include: { user: true },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limitParam,
+      skip,
     });
     res.json(logs.map(l => ({
       id: l.id,
@@ -2067,14 +2071,25 @@ app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async
           some: { role: 'investor' },
         },
       },
-      include: { roles: true },
+      include: {
+        roles: true,
+        accreditations: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
     });
     res.json(investors.map(u => ({
       id: u.id,
       email: u.email,
       fullName: u.fullName,
-      roles: u.roles.map(r => r.role),
+      roles: u.roles.map((r: { role: string }) => r.role),
       createdAt: u.createdAt,
+      investorProfile: {
+        accreditationStatus: u.accreditations[0]?.status || 'PENDING',
+        investmentPreferences: [] as string[],
+        totalInvested: 0,
+      },
     })));
   } catch (error) {
     console.error('Get investors error:', error);
@@ -2117,6 +2132,55 @@ app.post('/api/auth/update-password', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update password error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== COMPANY ADMIN ROUTES ====================
+
+// Get all companies (admin)
+app.get('/api/admin/companies', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const companies = await prisma.company.findMany({
+      include: {
+        founder: {
+          select: { email: true, fullName: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(companies.map(c => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      sector: c.sector,
+      stage: c.stage,
+      website: c.website,
+      location: c.location,
+      founder: c.founder ? { email: c.founder.email, fullName: c.founder.fullName } : null,
+      createdAt: c.createdAt,
+    })));
+  } catch (error) {
+    console.error('Get admin companies error:', error);
+    res.status(500).json({ error: { message: 'Failed to fetch companies', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Delete company (admin)
+app.delete('/api/admin/companies/:id', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params as Record<string, string>;
+
+    const company = await prisma.company.findUnique({ where: { id } });
+    if (!company) {
+      return res.status(404).json({ error: { message: 'Company not found', code: 'NOT_FOUND' } });
+    }
+
+    await prisma.company.delete({ where: { id } });
+    res.json({ success: true, message: 'Company deleted successfully' });
+  } catch (error) {
+    console.error('Delete company error:', error);
+    res.status(500).json({ error: { message: 'Failed to delete company', code: 'SERVER_ERROR' } });
   }
 });
 
@@ -3076,20 +3140,27 @@ app.get('/api/admin/invoices/failed', authenticateToken, requireRole(['admin']),
         });
 
         return {
-          jobId: job.id?.toString(),
+          id: job.id?.toString(),
           paymentId: job.data.paymentId,
           userId: job.data.userId,
-          userEmail: user?.email || 'unknown',
-          userName: user?.fullName || 'Unknown User',
-          amount: job.data.totalAmount,
+          error: job.failedReason || 'Unknown error',
           attempts: job.attemptsMade,
-          lastError: job.failedReason,
-          failedAt: job.processedOn ? new Date(job.processedOn) : new Date(job.timestamp),
+          lastAttemptAt: job.processedOn ? new Date(job.processedOn).toISOString() : new Date(job.timestamp).toISOString(),
+          payment: {
+            id: job.data.paymentId,
+            amount: job.data.totalAmount || 0,
+            currency: 'INR',
+            status: 'completed',
+            user: {
+              email: user?.email || 'unknown',
+              fullName: user?.fullName || 'Unknown User',
+            },
+          },
         };
       })
     );
 
-    res.json({ failedInvoices });
+    res.json(failedInvoices);
   } catch (error) {
     console.error('Get failed invoices error:', error);
     res.status(500).json({ error: 'Failed to retrieve failed invoices' });
@@ -3666,10 +3737,10 @@ app.get('/api/admin/statistics', authenticateToken, requireRole(['admin']), asyn
     const totalUsers = await prisma.user.count();
     const userRoles = await prisma.userRole.groupBy({
       by: ['role'],
-      _count: true,
+      _count: { _all: true },
     });
     const byRole: Record<string, number> = {};
-    userRoles.forEach(r => { byRole[r.role] = r._count; });
+    userRoles.forEach(r => { byRole[r.role] = r._count._all; });
 
     // Deals
     const totalDeals = await prisma.deal.count();
@@ -3952,7 +4023,7 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 // POST /api/messages/threads - Start new conversation
 app.post('/api/messages/threads', authenticateToken, async (req, res) => {
   try {
-    const { recipient_id, initial_message } = req.body;
+    const { recipient_id, initial_message, subject } = req.body;
     const senderId = getUserId(req);
 
     if (senderId === recipient_id) {
@@ -3974,6 +4045,7 @@ app.post('/api/messages/threads', authenticateToken, async (req, res) => {
         data: {
           participant1Id: senderId,
           participant2Id: recipient_id,
+          subject: subject?.trim() || null,
           lastMessagePreview: initial_message?.substring(0, 100) || '',
         },
       });
@@ -4254,6 +4326,7 @@ app.post('/api/test/seed-messages', authenticateToken, async (req, res) => {
         data: {
           participant1Id: investorUser.id,
           participant2Id: adminUser.id,
+          subject: 'Welcome & Platform Introduction',
           lastMessagePreview: 'Welcome to the platform!',
         },
       });

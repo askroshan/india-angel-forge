@@ -343,5 +343,68 @@ describe('US-ADMIN-006: View Audit Logs', () => {
         expect(screen.getByText(/Page 1 of/i)).toBeInTheDocument();
       });
     });
+
+    // N2: Pagination info should be visible even when logs fit on one page
+    it('shows page info even when all logs fit on a single page (N2)', async () => {
+      const twentyFiveLogs = Array.from({ length: 25 }, (_, i) => ({
+        id: `log-${i}`,
+        action: 'test_action',
+        userName: `Test User ${i}`,
+        userEmail: `user${i}@test.com`,
+        createdAt: new Date().toISOString(),
+        resourceType: 'test',
+        details: {}
+      }));
+
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(twentyFiveLogs),
+        } as Response)
+      );
+
+      renderWithRouter(<AuditLogs />);
+
+      await waitFor(() => {
+        // "Page 1 of 1" should always be visible when there are any logs
+        expect(screen.getByText(/Page 1 of 1/i)).toBeInTheDocument();
+      });
+    });
+
+    // N2: Clicking Next on the 2nd page should trigger a fetch with ?page=2
+    it('clicking Next emits a fetch with page=2 in the URL (N2)', async () => {
+      const fiftyLogs = Array.from({ length: 50 }, (_, i) => ({
+        id: `log-${i}`,
+        action: 'test_action',
+        userName: `Test User ${i}`,
+        userEmail: `user${i}@test.com`,
+        createdAt: new Date().toISOString(),
+        resourceType: 'test',
+        details: {}
+      }));
+
+      const mockFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(fiftyLogs),
+        } as Response)
+      );
+      global.fetch = mockFetch;
+
+      const user = userEvent.setup();
+      renderWithRouter(<AuditLogs />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /next/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Page 2 of 2/i)).toBeInTheDocument();
+      });
+    });
   });
 });

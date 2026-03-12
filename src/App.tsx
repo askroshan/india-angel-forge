@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -313,6 +313,11 @@ const App = () => (
                 <AdminEvents />
               </ProtectedRoute>
             } />
+            <Route path="/admin/events/:eventId/attendance" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <EventAttendance />
+              </ProtectedRoute>
+            } />
             <Route path="/admin/events/statistics" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <AttendanceStatistics />
@@ -363,11 +368,15 @@ const App = () => (
                 <SeedDataManagement />
               </ProtectedRoute>
             } />
+            {/* N6: alias redirect */}
+            <Route path="/admin/seed" element={<Navigate to="/admin/seed-data" replace />} />
             <Route path="/admin/communications" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <CommunicationAuditLog />
               </ProtectedRoute>
             } />
+            {/* N7: alias redirect */}
+            <Route path="/admin/communication-audit" element={<Navigate to="/admin/communications" replace />} />
             {/* Moderator Routes */}
             <Route path="/moderator/applications" element={
               <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
@@ -404,6 +413,11 @@ const App = () => (
             <Route path="/transaction-history" element={
               <ProtectedRoute>
                 <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/financial-statements" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <FinancialStatements />
               </ProtectedRoute>
             } />
             <Route path="/financial-statements" element={

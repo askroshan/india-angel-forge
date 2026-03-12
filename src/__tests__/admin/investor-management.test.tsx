@@ -211,4 +211,67 @@ describe('US-ADMIN-CRUD-005: Investor Management Page', () => {
       });
     });
   });
+
+  // M3 RED: KYC verification status counts must reflect investorProfile data
+  describe('KYC Verification Status Counts', () => {
+    it('should show correct Verified count based on investorProfile.accreditationStatus', async () => {
+      // 2 VERIFIED, 1 PENDING in mock data
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Rajesh Sharma')).toBeInTheDocument();
+      });
+
+      // The "Verified" stat card should show 2 (not 0)
+      const verifiedHeading = screen.getByText(/^Verified$/i);
+      const verifiedCard = verifiedHeading.closest('[class*="card"], .rounded-xl') ??
+        verifiedHeading.parentElement?.parentElement;
+      const verifiedCount = verifiedCard?.querySelector('.text-2xl');
+      expect(verifiedCount?.textContent).toBe('2');
+    });
+
+    it('should show correct Pending count based on investorProfile.accreditationStatus', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Priya Patel')).toBeInTheDocument();
+      });
+
+      // The "Pending" stat card should show 1 (not 0)
+      // Use getAllByText and find the one in the stats section (text-2xl sibling)
+      const allText = document.body.textContent || '';
+      // Check that count of PENDING investors (1) is displayed somewhere near 'Pending'
+      // The stat card has the count as a text-2xl element
+      const statCards = document.querySelectorAll('.text-2xl');
+      const statValues = Array.from(statCards).map(el => el.textContent);
+      // There should be a stat card showing '1' for pending (2 VERIFIED, 1 PENDING, 3 total)
+      expect(statValues).toContain('1');
+      // The 'Verified' stat should show '2'
+      expect(statValues).toContain('2');
+      expect(allText).toMatch(/Pending/i);
+    });
+
+    it('should show 0 Verified and 0 Pending when API returns investors without investorProfile', async () => {
+      // M3 contract test: API MUST return investorProfile or counts will be 0
+      server.use(
+        http.get('/api/admin/investors', () =>
+          HttpResponse.json([
+            { id: 'inv-no-profile', email: 'noProfile@test.com', fullName: 'No Profile', createdAt: new Date().toISOString() },
+          ])
+        )
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('No Profile')).toBeInTheDocument();
+      });
+
+      const verifiedHeading = screen.getByText(/^Verified$/i);
+      const verifiedCard = verifiedHeading.closest('[class*="card"], .rounded-xl') ??
+        verifiedHeading.parentElement?.parentElement;
+      const verifiedCount = verifiedCard?.querySelector('.text-2xl');
+      expect(verifiedCount?.textContent).toBe('0');
+    });
+  });
 });

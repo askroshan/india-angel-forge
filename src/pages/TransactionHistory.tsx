@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Download, Search, Filter, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface Transaction {
   id: string;
@@ -65,6 +66,7 @@ interface Filters {
 
 export default function TransactionHistory() {
   const { token } = useAuth();
+  const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,8 +166,10 @@ export default function TransactionHistory() {
       a.href = url;
       a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
+      toast({ title: 'Export Complete', description: 'CSV file downloaded successfully.' });
     } catch (error) {
       console.error('Error exporting CSV:', error);
+      toast({ title: 'Export Failed', description: 'Could not export CSV. Please try again.', variant: 'destructive' });
     } finally {
       setExporting(false);
     }
@@ -194,8 +198,10 @@ export default function TransactionHistory() {
       a.href = url;
       a.download = `transactions-${new Date().toISOString().split('T')[0]}.pdf`;
       a.click();
+      toast({ title: 'Export Complete', description: 'PDF file downloaded successfully.' });
     } catch (error) {
       console.error('Error exporting PDF:', error);
+      toast({ title: 'Export Failed', description: 'Could not export PDF. Please try again.', variant: 'destructive' });
     } finally {
       setExporting(false);
     }

@@ -33,6 +33,15 @@ const TYPE_LABELS: Record<string, string> = {
   DOCUMENT: 'Document', PROFILE: 'Profile',
 };
 
+// Maps UI category names to the activityType prefixes the backend should search with startsWith
+const CATEGORY_PREFIXES: Record<string, string[]> = {
+  PAYMENT: ['PAYMENT', 'REFUND', 'INVEST', 'DEAL'],
+  EVENT: ['EVENT', 'RSVP', 'ATTENDANCE'],
+  MESSAGE: ['MESSAGE', 'EMAIL', 'NOTIFICATION'],
+  DOCUMENT: ['DOCUMENT', 'STATEMENT', 'CERTIFICATE'],
+  PROFILE: ['PROFILE', 'UPDATE', 'CHANGE'],
+};
+
 function getTypeCategory(activityType: string): string {
   if (!activityType) return 'PAYMENT';
   if (activityType.startsWith('PAYMENT') || activityType.includes('REFUND') || activityType.includes('INVEST')) return 'PAYMENT';
@@ -92,7 +101,10 @@ export default function ActivityTimeline() {
       const token = localStorage.getItem('auth_token');
       let url = `/api/activity?limit=${ACTIVITIES_PER_PAGE}`;
       if (cursorId) url += `&cursor=${cursorId}`;
-      if (activeTypeFilter.length > 0) url += `&activityType=${activeTypeFilter.join(',')}`;
+      if (activeTypeFilter.length > 0) {
+        const prefixes = activeTypeFilter.flatMap((cat) => CATEGORY_PREFIXES[cat] ?? [cat]);
+        url += `&activityType=${prefixes.join(',')}`;
+      }
       if (activeDateFilter === 'last-7-days') {
         const d = new Date(); d.setDate(d.getDate() - 7);
         url += `&dateFrom=${d.toISOString()}`;

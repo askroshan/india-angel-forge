@@ -69,7 +69,7 @@ export default function DealsPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const SECTORS = ['SaaS', 'AI & Deep Tech', 'Fintech', 'Healthcare', 'Consumer', 'Climate Tech', 'D2C', 'B2B'];
   const STAGES = ['Pre-seed', 'Seed', 'Series A', 'Series B+'];
@@ -87,6 +87,15 @@ export default function DealsPage() {
   const checkAccessAndLoadDeals = async () => {
     if (!token) {
       navigate('/auth');
+      return;
+    }
+
+    // Admins can view deals without an investor application
+    if (user?.role?.toLowerCase() === 'admin') {
+      await fetchDeals();
+      await checkAccreditation();
+      await fetchExpressedInterests();
+      await fetchIndustries();
       return;
     }
 
