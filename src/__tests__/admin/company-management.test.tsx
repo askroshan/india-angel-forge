@@ -261,4 +261,55 @@ describe('US-ADMIN-CRUD-004: Company Management Page', () => {
       });
     });
   });
+
+  // B4 RED: Verify the component correctly handles backend data including founder info
+  describe('Company API data contract', () => {
+    it('should display founder email and name from nested founder object', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('TechCorp')).toBeInTheDocument();
+      });
+
+      // Founder info should be rendered
+      expect(screen.getByText(/Alice Founder/i)).toBeInTheDocument();
+      expect(screen.getByText(/founder1@example.com/i)).toBeInTheDocument();
+    });
+
+    it('should display company sector, stage and location badges', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('TechCorp')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Technology')).toBeInTheDocument();
+      expect(screen.getByText('Series A')).toBeInTheDocument();
+      expect(screen.getByText('Mumbai')).toBeInTheDocument();
+    });
+
+    it('should return company list including founder details when token provided', async () => {
+      // This test verifies the API contract shape that the endpoint must satisfy
+      // The endpoint GET /api/admin/companies must return an array of Company objects
+      // with nested founder { email, fullName } matching the CompanyManagement component interface
+      let requestReceived = false;
+      let requestHadAuth = false;
+
+      server.use(
+        http.get('/api/admin/companies', ({ request }) => {
+          requestReceived = true;
+          requestHadAuth = request.headers.has('authorization');
+          return HttpResponse.json(mockCompanies);
+        })
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(requestReceived).toBe(true);
+        expect(requestHadAuth).toBe(true);
+        expect(screen.getByText('TechCorp')).toBeInTheDocument();
+      });
+    });
+  });
 });

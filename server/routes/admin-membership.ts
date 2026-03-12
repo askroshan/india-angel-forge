@@ -531,13 +531,12 @@ router.get('/system-config', async (_req, res) => {
 
     return res.json({
       success: true,
-      config: [...configs, ...personaConfigs].reduce(
-        (acc, c) => {
-          acc[c.key] = c.value;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ),
+      configs: [...configs, ...personaConfigs].map((c) => ({
+        id: c.id,
+        key: c.key,
+        value: c.value,
+        description: c.description,
+      })),
     });
   } catch (error) {
     console.error('Error fetching config:', error);

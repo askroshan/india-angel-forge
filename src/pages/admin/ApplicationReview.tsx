@@ -461,6 +461,32 @@ export default function ApplicationReview() {
               </div>
             </div>
           )}
+          {selectedApplication?.status === 'pending' && (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  setDetailsDialogOpen(false);
+                  handleRejectClick(selectedApplication);
+                }}
+                disabled={rejectApplication.isPending}
+                aria-label="Reject application"
+              >
+                Reject
+              </Button>
+              <Button
+                onClick={() => {
+                  handleApprove(selectedApplication);
+                  setDetailsDialogOpen(false);
+                }}
+                disabled={approveApplication.isPending}
+                aria-label="Approve application"
+              >
+                Approve
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

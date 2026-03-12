@@ -2120,6 +2120,55 @@ app.post('/api/auth/update-password', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== COMPANY ADMIN ROUTES ====================
+
+// Get all companies (admin)
+app.get('/api/admin/companies', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const companies = await prisma.company.findMany({
+      include: {
+        founder: {
+          select: { email: true, fullName: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(companies.map(c => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      sector: c.sector,
+      stage: c.stage,
+      website: c.website,
+      location: c.location,
+      founder: c.founder ? { email: c.founder.email, fullName: c.founder.fullName } : null,
+      createdAt: c.createdAt,
+    })));
+  } catch (error) {
+    console.error('Get admin companies error:', error);
+    res.status(500).json({ error: { message: 'Failed to fetch companies', code: 'SERVER_ERROR' } });
+  }
+});
+
+// Delete company (admin)
+app.delete('/api/admin/companies/:id', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const company = await prisma.company.findUnique({ where: { id } });
+    if (!company) {
+      return res.status(404).json({ error: { message: 'Company not found', code: 'NOT_FOUND' } });
+    }
+
+    await prisma.company.delete({ where: { id } });
+    res.json({ success: true, message: 'Company deleted successfully' });
+  } catch (error) {
+    console.error('Delete company error:', error);
+    res.status(500).json({ error: { message: 'Failed to delete company', code: 'SERVER_ERROR' } });
+  }
+});
+
 // ==================== EVENT CRUD ROUTES (ADMIN) ====================
 
 // Get all events (admin)
@@ -3076,20 +3125,27 @@ app.get('/api/admin/invoices/failed', authenticateToken, requireRole(['admin']),
         });
 
         return {
-          jobId: job.id?.toString(),
+          id: job.id?.toString(),
           paymentId: job.data.paymentId,
           userId: job.data.userId,
-          userEmail: user?.email || 'unknown',
-          userName: user?.fullName || 'Unknown User',
-          amount: job.data.totalAmount,
+          error: job.failedReason || 'Unknown error',
           attempts: job.attemptsMade,
-          lastError: job.failedReason,
-          failedAt: job.processedOn ? new Date(job.processedOn) : new Date(job.timestamp),
+          lastAttemptAt: job.processedOn ? new Date(job.processedOn).toISOString() : new Date(job.timestamp).toISOString(),
+          payment: {
+            id: job.data.paymentId,
+            amount: job.data.totalAmount || 0,
+            currency: 'INR',
+            status: 'completed',
+            user: {
+              email: user?.email || 'unknown',
+              fullName: user?.fullName || 'Unknown User',
+            },
+          },
         };
       })
     );
 
-    res.json({ failedInvoices });
+    res.json(failedInvoices);
   } catch (error) {
     console.error('Get failed invoices error:', error);
     res.status(500).json({ error: 'Failed to retrieve failed invoices' });

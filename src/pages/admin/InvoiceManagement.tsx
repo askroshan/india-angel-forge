@@ -8,6 +8,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +68,8 @@ export default function InvoiceManagement() {
       if (!failedRes.ok) throw new Error('Failed to load invoices');
 
       const failedData = await failedRes.json();
-      setFailedInvoices(failedData || []);
+      // Handle both direct array and wrapped { failedInvoices: [...] } responses
+      setFailedInvoices(Array.isArray(failedData) ? failedData : (failedData?.failedInvoices || []));
 
       if (metricsRes.ok) {
         const metricsData = await metricsRes.json();
@@ -155,7 +158,9 @@ export default function InvoiceManagement() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Invoice Management</h1>
         <p className="text-muted-foreground">
@@ -270,6 +275,8 @@ export default function InvoiceManagement() {
           ))}
         </div>
       )}
+      </div>
+      <Footer />
     </div>
   );
 }

@@ -212,12 +212,57 @@ Additionally, many E2E test files (e.g. `payment-razorpay`, `email-notifications
 
 ---
 
+## Automation / Agent Login (Playwright)
+
+> **Important for agents and automated testing:** Do NOT use `page.type()` or keyboard simulation to fill the login form. The login form uses React Hook Form which only responds to proper browser input events. Password manager auto-fill can also overwrite typed values.
+
+### Recommended: Inject token via localStorage (most reliable)
+
+Get a JWT token from the API, then inject it directly into the browser — this completely bypasses the login form:
+
+```typescript
+// Step 1: get token from API
+const response = await fetch(`${BASE_URL}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'admin@indiaangelforum.test', password: 'Admin@12345' }),
+});
+const { token, user } = await response.json();
+
+// Step 2: navigate to the app and inject into localStorage
+await page.goto('/');
+await page.evaluate(({ token, user }) => {
+  localStorage.setItem('auth_token', token);
+  localStorage.setItem('auth_user', JSON.stringify(user));
+}, { token, user });
+
+// Step 3: reload so the app picks up the stored session
+await page.reload();
+await page.waitForURL((url) => !url.pathname.includes('/auth'));
+```
+
+### Alternative: Use page.fill() via the UI form
+
+If you must use the login form, use `page.fill()` or `locator.fill()` (not `page.type()`). These trigger the proper synthetic input events that React Hook Form requires:
+
+```typescript
+await page.goto('/login');                          // or '/auth'
+await page.getByLabel(/email/i).fill(email);        // .fill() not .type()
+await page.getByLabel(/password/i).fill(password);  // .fill() not .type()
+await page.getByRole('button', { name: /sign in|log in/i }).click();
+await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 10000 });
+```
+
+---
+
 ## API Testing with cURL
+
+> Set `API_URL` to your backend base URL before running these commands (e.g. `export API_URL=http://your-server`).
 
 ### Login (any user)
 
 ```bash
-curl -s -X POST http://localhost:3001/api/auth/login \
+curl -s -X POST $API_URL/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@indiaangelforum.test", "password": "Admin@12345"}' | jq .
 ```
@@ -225,20 +270,20 @@ curl -s -X POST http://localhost:3001/api/auth/login \
 ### Use the token
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
+TOKEN=$(curl -s -X POST $API_URL/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@indiaangelforum.test", "password": "Admin@12345"}' | jq -r '.token')
 
 # Example: Get events
-curl -s http://localhost:3001/api/events \
+curl -s $API_URL/api/events \
   -H "Authorization: Bearer $TOKEN" | jq .
 
 # Example: Get payment history
-curl -s http://localhost:3001/api/payments/history \
+curl -s $API_URL/api/payments/history \
   -H "Authorization: Bearer $TOKEN" | jq .
 
 # Example: Get admin statistics
-curl -s http://localhost:3001/api/admin/statistics \
+curl -s $API_URL/api/admin/statistics \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
@@ -246,37 +291,39 @@ curl -s http://localhost:3001/api/admin/statistics \
 
 ## Frontend URLs
 
-| Page | URL | Required Role |
-|------|-----|---------------|
-| Home | `http://localhost:8080/` | Public |
-| Login | `http://localhost:8080/login` | Public |
-| Events | `http://localhost:8080/events` | Public |
-| Admin Dashboard | `http://localhost:8080/admin` | `admin` |
-| Deals | `http://localhost:8080/deals` | `investor` |
-| Investor Deals | `http://localhost:8080/investor/deals` | `investor` |
-| Deal Pipeline | `http://localhost:8080/investor/pipeline` | `investor` |
-| Portfolio | `http://localhost:8080/investor/portfolio` | `investor` |
-| Portfolio Performance | `http://localhost:8080/investor/portfolio/performance` | `investor` |
-| KYC Upload | `http://localhost:8080/investor/kyc` | `investor` |
-| Messages | `http://localhost:8080/investor/messages` | `investor` |
-| Transaction History | `http://localhost:8080/transaction-history` | Authenticated |
-| Financial Statements | `http://localhost:8080/financial-statements` | Authenticated |
-| Certificates | `http://localhost:8080/certificates` | Authenticated |
-| Activity Timeline | `http://localhost:8080/activity` | Authenticated |
-| Compliance — KYC Review | `http://localhost:8080/compliance/kyc-review` | `compliance_officer` |
-| Compliance — AML | `http://localhost:8080/compliance/aml-screening` | `compliance_officer` |
-| Compliance — Accreditation | `http://localhost:8080/compliance/accreditation` | `compliance_officer` |
-| Moderator — Applications | `http://localhost:8080/moderator/applications` | `moderator` |
-| Moderator — Content | `http://localhost:8080/moderator/content` | `moderator` |
-| Founder — Application Status | `http://localhost:8080/founder/application-status` | `founder` |
-| Founder — Pitch Sessions | `http://localhost:8080/founder/pitch-sessions` | `founder` |
-| Founder — Pitch Materials | `http://localhost:8080/founder/pitch-materials` | `founder` |
-| Founder — Company Profile | `http://localhost:8080/founder/company-profile` | `founder` |
-| Founder — Investor Updates | `http://localhost:8080/founder/investor-updates` | `founder` |
-| Apply as Investor | `http://localhost:8080/apply/investor` | Public |
-| Apply as Founder | `http://localhost:8080/apply/founder` | Public |
-| Membership | `http://localhost:8080/membership` | Authenticated |
-| Certificate Verification | `http://localhost:8080/verify-certificate` | Public |
+> Vite defaults to port **8080** but will auto-increment (8081, 8082, …) if already in use. Check your terminal for the actual URL when running `npm run dev` or `npm run dev:all`.
+
+| Page | Path | Required Role |
+|------|------|---------------|
+| Home | `/` | Public |
+| Login | `/login` | Public |
+| Events | `/events` | Public |
+| Admin Dashboard | `/admin` | `admin` |
+| Deals | `/deals` | `investor` |
+| Investor Deals | `/investor/deals` | `investor` |
+| Deal Pipeline | `/investor/pipeline` | `investor` |
+| Portfolio | `/investor/portfolio` | `investor` |
+| Portfolio Performance | `/investor/portfolio/performance` | `investor` |
+| KYC Upload | `/investor/kyc` | `investor` |
+| Messages | `/investor/messages` | `investor` |
+| Transaction History | `/transaction-history` | Authenticated |
+| Financial Statements | `/financial-statements` | Authenticated |
+| Certificates | `/certificates` | Authenticated |
+| Activity Timeline | `/activity` | Authenticated |
+| Compliance — KYC Review | `/compliance/kyc-review` | `compliance_officer` |
+| Compliance — AML | `/compliance/aml-screening` | `compliance_officer` |
+| Compliance — Accreditation | `/compliance/accreditation` | `compliance_officer` |
+| Moderator — Applications | `/moderator/applications` | `moderator` |
+| Moderator — Content | `/moderator/content` | `moderator` |
+| Founder — Application Status | `/founder/application-status` | `founder` |
+| Founder — Pitch Sessions | `/founder/pitch-sessions` | `founder` |
+| Founder — Pitch Materials | `/founder/pitch-materials` | `founder` |
+| Founder — Company Profile | `/founder/company-profile` | `founder` |
+| Founder — Investor Updates | `/founder/investor-updates` | `founder` |
+| Apply as Investor | `/apply/investor` | Public |
+| Apply as Founder | `/apply/founder` | Public |
+| Membership | `/membership` | Authenticated |
+| Certificate Verification | `/verify-certificate` | Public |
 
 ---
 
@@ -322,15 +369,15 @@ Requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special characte
 
 ---
 
-## Ports
+## Service URLs
 
-| Service | Port |
-|---------|------|
-| **Backend API** | `http://localhost:3001` |
-| **Frontend (Vite)** | `http://localhost:8080` |
-| **PostgreSQL** | `localhost:5432` |
+| Service | How to find it |
+|---------|----------------|
+| **Backend API** | Check `PORT` in your `.env`, or the startup log: `🚀 API Server running on ...` |
+| **Frontend (Vite)** | Check the terminal output when running `npm run dev` — Vite prints the actual URL |
+| **PostgreSQL** | Defined in `DATABASE_URL` in your `.env` |
 
-⚠️ The cURL examples use port **3001** (direct API). The frontend proxies `/api/*` requests to port 3001 automatically.
+Set `API_URL` to the backend base URL before running cURL commands. For browser testing, use the frontend URL printed by Vite — it proxies `/api/*` to the backend automatically.
 
 ---
 

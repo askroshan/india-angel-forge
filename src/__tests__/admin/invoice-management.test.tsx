@@ -120,6 +120,15 @@ describe('US-ADMIN-CRUD-002: Invoice Management Page', () => {
         expect(screen.getByText('150')).toBeInTheDocument();
       });
     });
+
+    // B3 RED: The page must include the standard Navigation component
+    it('should render a navigation element for consistent admin layout', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByRole('navigation')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Failed Invoices List', () => {

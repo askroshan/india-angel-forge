@@ -338,4 +338,24 @@ export async function verifyCertificate(certificateId: string) {
 export const certificateService = {
   generateCertificate,
   verifyCertificate,
+  /**
+   * Regenerate a PDF for an existing certificate record (used by download route
+   * when the PDF file is no longer on disk).
+   */
+  generateCertificatePdf: (certificate: {
+    certificateId: string;
+    attendeeName: string;
+    eventName: string;
+    eventDate: Date;
+    duration: number;
+    verificationUrl: string;
+  }): Promise<Buffer> =>
+    generateCertificatePDF(
+      certificate.certificateId,
+      certificate.attendeeName,
+      certificate.eventName,
+      certificate.eventDate,
+      certificate.duration,
+      certificate.verificationUrl,
+    ),
 };

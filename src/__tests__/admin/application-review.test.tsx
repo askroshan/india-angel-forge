@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -267,6 +267,52 @@ describe('US-ADMIN-004: Application Review', () => {
         // Stage is shown in dialog (component uses STAGE_LABELS which converts 'seed' to 'Seed')
         expect(screen.getAllByText(/Seed/i).length).toBeGreaterThan(0);
       });
+    });
+
+    // B5 RED: Approve and Reject buttons must be visible inside the details dialog
+    it('should show Approve and Reject buttons inside details dialog for pending applications', async () => {
+      const user = userEvent.setup();
+      vi.mocked(apiClient.get).mockResolvedValue(mockInvestorApplications);
+
+      renderWithProviders(<ApplicationReview />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Amit Verma')).toBeInTheDocument();
+      });
+
+      const viewButtons = screen.getAllByText(/View Details/i);
+      await user.click(viewButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /Application Details/i })).toBeInTheDocument();
+      });
+
+      const dialog = screen.getByRole('dialog', { name: /Application Details/i });
+      expect(within(dialog).getByRole('button', { name: /Approve/i })).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /Reject/i })).toBeInTheDocument();
+    });
+
+    it('should not show action buttons in details dialog for non-pending applications', async () => {
+      const user = userEvent.setup();
+      const approvedApp = [{ ...mockInvestorApplications[0], status: 'approved' }];
+      vi.mocked(apiClient.get).mockResolvedValue(approvedApp);
+
+      renderWithProviders(<ApplicationReview />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Amit Verma')).toBeInTheDocument();
+      });
+
+      const viewButtons = screen.getAllByText(/View Details/i);
+      await user.click(viewButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /Application Details/i })).toBeInTheDocument();
+      });
+
+      const dialog = screen.getByRole('dialog', { name: /Application Details/i });
+      expect(within(dialog).queryByRole('button', { name: /^Approve$/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /^Reject$/i })).not.toBeInTheDocument();
     });
   });
 
