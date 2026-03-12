@@ -427,7 +427,7 @@ const AuditLogs = () => {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredLogs.length > 0 && (
         <div className="flex items-center justify-center gap-2 mt-6">
           <Button
             variant="outline"
@@ -438,12 +438,12 @@ const AuditLogs = () => {
             Previous
           </Button>
           <span className="text-sm">
-            Page {page} of {totalPages}
+            Page {page} of {totalPages || 1}
           </span>
           <Button
             variant="outline"
             size="sm"
-            disabled={page === totalPages}
+            disabled={page === totalPages || totalPages <= 1}
             onClick={() => setPage(page + 1)}
           >
             Next

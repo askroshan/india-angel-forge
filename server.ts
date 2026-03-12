@@ -2037,10 +2037,14 @@ app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) 
 
 app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
+    const limitParam = parseInt(req.query.limit as string) || 100;
+    const pageParam = parseInt(req.query.page as string) || 1;
+    const skip = (pageParam - 1) * limitParam;
     const logs = await prisma.auditLog.findMany({
       include: { user: true },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limitParam,
+      skip,
     });
     res.json(logs.map(l => ({
       id: l.id,

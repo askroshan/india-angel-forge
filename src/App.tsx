@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -368,11 +368,15 @@ const App = () => (
                 <SeedDataManagement />
               </ProtectedRoute>
             } />
+            {/* N6: alias redirect */}
+            <Route path="/admin/seed" element={<Navigate to="/admin/seed-data" replace />} />
             <Route path="/admin/communications" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <CommunicationAuditLog />
               </ProtectedRoute>
             } />
+            {/* N7: alias redirect */}
+            <Route path="/admin/communication-audit" element={<Navigate to="/admin/communications" replace />} />
             {/* Moderator Routes */}
             <Route path="/moderator/applications" element={
               <ProtectedRoute allowedRoles={MODERATOR_ROLES}>

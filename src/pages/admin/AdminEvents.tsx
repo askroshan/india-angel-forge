@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +43,7 @@ interface Event {
 export default function AdminEvents() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const [hideTestEvents, setHideTestEvents] = React.useState(false);
 
   // Fetch all events
   const { data: events, isLoading, error } = useQuery<Event[]>({
@@ -73,6 +76,10 @@ export default function AdminEvents() {
     }
   };
 
+  const displayedEvents = hideTestEvents
+    ? (events ?? []).filter(e => !/test/i.test(e.title))
+    : (events ?? []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -83,6 +90,18 @@ export default function AdminEvents() {
           <p className="text-muted-foreground">
             Manage event attendance, check-ins, and certificates
           </p>
+        </div>
+
+        {/* N3: Hide test event artifacts created by E2E runs */}
+        <div className="flex items-center gap-2 mb-4">
+          <Checkbox
+            id="hide-test-events"
+            checked={hideTestEvents}
+            onCheckedChange={(checked) => setHideTestEvents(checked === true)}
+          />
+          <Label htmlFor="hide-test-events" className="cursor-pointer text-sm text-muted-foreground">
+            Hide test events
+          </Label>
         </div>
 
         {isLoading ? (
@@ -111,7 +130,7 @@ export default function AdminEvents() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {events.map((event) => (
+            {displayedEvents.map((event) => (
               <Card 
                 key={event.id} 
                 data-testid="admin-event-row"
