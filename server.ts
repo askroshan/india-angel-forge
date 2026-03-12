@@ -2069,12 +2069,9 @@ app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async
       },
       include: {
         roles: true,
-        investorProfile: {
-          select: {
-            accreditationStatus: true,
-            investmentPreferences: true,
-            totalInvested: true,
-          },
+        accreditations: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
         },
       },
     });
@@ -2082,15 +2079,13 @@ app.get('/api/admin/investors', authenticateToken, requireRole(['admin']), async
       id: u.id,
       email: u.email,
       fullName: u.fullName,
-      roles: u.roles.map(r => r.role),
+      roles: u.roles.map((r: { role: string }) => r.role),
       createdAt: u.createdAt,
-      investorProfile: u.investorProfile
-        ? {
-            accreditationStatus: u.investorProfile.accreditationStatus || 'PENDING',
-            investmentPreferences: u.investorProfile.investmentPreferences as string[] ?? [],
-            totalInvested: Number(u.investorProfile.totalInvested || 0),
-          }
-        : undefined,
+      investorProfile: {
+        accreditationStatus: u.accreditations[0]?.status || 'PENDING',
+        investmentPreferences: [] as string[],
+        totalInvested: 0,
+      },
     })));
   } catch (error) {
     console.error('Get investors error:', error);
@@ -2170,7 +2165,7 @@ app.get('/api/admin/companies', authenticateToken, requireRole(['admin']), async
 // Delete company (admin)
 app.delete('/api/admin/companies/:id', authenticateToken, requireRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as Record<string, string>;
 
     const company = await prisma.company.findUnique({ where: { id } });
     if (!company) {
