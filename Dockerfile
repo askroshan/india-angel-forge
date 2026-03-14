@@ -3,7 +3,7 @@
 # Single-stage build with tsx for TypeScript ESM
 # ============================================
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

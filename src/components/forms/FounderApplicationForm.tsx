@@ -28,7 +28,7 @@ const founderApplicationSchema = z.object({
   
   // Business Details
   founding_date: z.string().optional(),
-  team_size: z.string().transform(Number).pipe(z.number().int().positive()).optional().or(z.literal("")),
+  team_size: z.string().optional(),
   location: z.string().min(2, "Location is required"),
   business_model: z.string().min(50, "Please provide at least 50 characters").max(500),
   problem_statement: z.string().min(50, "Please provide at least 50 characters").max(1000),
