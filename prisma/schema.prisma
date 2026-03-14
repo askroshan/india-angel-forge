@@ -1399,22 +1399,22 @@ enum ContentFlagResolution {
 }
 
 model ContentFlag {
-  id            String                 @id @default(cuid())
-  contentType   ContentFlagType        @map("content_type")
-  contentId     String                 @map("content_id")
-  contentText   String?                @map("content_text")
-  flaggedBy     String                 @map("flagged_by")
-  reason        ContentFlagReason
-  description   String?
-  status        ContentFlagStatus      @default(PENDING)
-  resolution    ContentFlagResolution? 
-  reviewedBy    String?                @map("reviewed_by")
-  resolvedAt    DateTime?              @map("resolved_at")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  id          String                 @id @default(cuid())
+  contentType ContentFlagType        @map("content_type")
+  contentId   String                 @map("content_id")
+  contentText String?                @map("content_text")
+  flaggedBy   String                 @map("flagged_by")
+  reason      ContentFlagReason
+  description String?
+  status      ContentFlagStatus      @default(PENDING)
+  resolution  ContentFlagResolution?
+  reviewedBy  String?                @map("reviewed_by")
+  resolvedAt  DateTime?              @map("resolved_at")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
 
-  flagger    User  @relation("FlaggedBy", fields: [flaggedBy], references: [id], onDelete: Cascade)
-  reviewer   User? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+  flagger  User  @relation("FlaggedBy", fields: [flaggedBy], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
 
   @@index([status])
   @@index([flaggedBy])
@@ -1439,16 +1439,16 @@ enum FdiFlagStatus {
 }
 
 model SebiComplianceCheck {
-  id                    String           @id @default(cuid())
-  applicationId         String           @map("application_id")
-  applicationType       String           @map("application_type")
-  aifCategory           SebiAifCategory? @map("aif_category")
-  minTicketSizeVerified Boolean          @default(false) @map("min_ticket_size_verified")
-  accreditedInvestorVerified Boolean     @default(false) @map("accredited_investor_verified")
-  checkedBy             String?          @map("checked_by")
-  notes                 String?
-  createdAt             DateTime         @default(now()) @map("created_at")
-  updatedAt             DateTime         @updatedAt @map("updated_at")
+  id                         String           @id @default(cuid())
+  applicationId              String           @map("application_id")
+  applicationType            String           @map("application_type")
+  aifCategory                SebiAifCategory? @map("aif_category")
+  minTicketSizeVerified      Boolean          @default(false) @map("min_ticket_size_verified")
+  accreditedInvestorVerified Boolean          @default(false) @map("accredited_investor_verified")
+  checkedBy                  String?          @map("checked_by")
+  notes                      String?
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
 
   checker User? @relation("SebiCheckedBy", fields: [checkedBy], references: [id])
 
@@ -1478,16 +1478,16 @@ model FemaFdiScreening {
 }
 
 model DpiitVerification {
-  id                   String    @id @default(cuid())
-  applicationId        String    @map("application_id")
-  dpiitCertificateNo   String?   @map("dpiit_certificate_no")
-  verified             Boolean   @default(false)
-  verifiedBy           String?   @map("verified_by")
-  verifiedAt           DateTime? @map("verified_at")
-  taxBenefitEligible   Boolean   @default(false) @map("tax_benefit_eligible")
-  notes                String?
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(cuid())
+  applicationId      String    @map("application_id")
+  dpiitCertificateNo String?   @map("dpiit_certificate_no")
+  verified           Boolean   @default(false)
+  verifiedBy         String?   @map("verified_by")
+  verifiedAt         DateTime? @map("verified_at")
+  taxBenefitEligible Boolean   @default(false) @map("tax_benefit_eligible")
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   verifier User? @relation("DpiitVerifiedBy", fields: [verifiedBy], references: [id])
 

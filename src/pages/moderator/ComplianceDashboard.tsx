@@ -58,7 +58,7 @@ interface AmlSummary {
 function SebiTab() {
   const queryClient = useQueryClient();
   const [userId, setUserId] = useState('');
-  const [aifCategory, setAifCategory] = useState('CAT_I');
+  const [aifCategory, setAifCategory] = useState('CATEGORY_I');
 
   const { data: checks = [], isLoading } = useQuery<SebiCheck[]>({
     queryKey: ['sebi-checks'],
@@ -107,9 +107,9 @@ function SebiTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CAT_I">Category I</SelectItem>
-                  <SelectItem value="CAT_II">Category II</SelectItem>
-                  <SelectItem value="CAT_III">Category III</SelectItem>
+                  <SelectItem value="CATEGORY_I">Category I</SelectItem>
+                  <SelectItem value="CATEGORY_II">Category II</SelectItem>
+                  <SelectItem value="CATEGORY_III">Category III</SelectItem>
                 </SelectContent>
               </Select>
             </div>

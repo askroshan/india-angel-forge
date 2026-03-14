@@ -1858,8 +1858,11 @@ app.post('/api/moderator/users/:id/suspend', authenticateToken, requireRole(['mo
 
 app.get('/api/moderator/reports', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
-    const [flagStats, appStats, recentActivity] = await Promise.all([
-      prisma.contentFlag.groupBy({ by: ['status', 'reason'], _count: { id: true } }),
+    const [pendingCount, reviewedCount, flagsByReason, resolutionStats, appStats, recentActivity] = await Promise.all([
+      prisma.contentFlag.count({ where: { status: 'PENDING' } }),
+      prisma.contentFlag.count({ where: { status: 'REVIEWED' } }),
+      prisma.contentFlag.groupBy({ by: ['reason'], _count: { id: true } }),
+      prisma.contentFlag.groupBy({ by: ['resolution'], _count: { id: true }, where: { status: 'REVIEWED' } }),
       prisma.founderApplication.groupBy({ by: ['status'], _count: { id: true } }),
       prisma.auditLog.findMany({
         where: { action: { in: ['warn_user', 'suspend_user', 'delete_user', 'review_content'] } },
@@ -1868,21 +1871,27 @@ app.get('/api/moderator/reports', authenticateToken, requireRole(['moderator', '
         include: { user: { select: { email: true, fullName: true } } },
       }),
     ]);
+    const totalApps = appStats.reduce((s: number, x: { _count: { id: number } }) => s + x._count.id, 0);
+    const approvedApps = appStats.find((x: { status: string }) => x.status === 'approved')?._count.id ?? 0;
+    const rejectedApps = appStats.find((x: { status: string }) => x.status === 'declined')?._count.id ?? 0;
     res.json({
-      success: true,
-      report: {
-        contentFlags: flagStats,
-        applications: appStats,
-        recentModerationActions: recentActivity.map((a) => ({
-          id: a.id,
-          action: a.action,
-          entityType: a.entityType,
-          entityId: a.entityId,
-          details: a.details,
-          moderator: a.user ? (a.user.fullName || a.user.email) : 'System',
-          createdAt: a.createdAt.toISOString(),
-        })),
-      },
+      totalFlags: pendingCount + reviewedCount,
+      pendingFlags: pendingCount,
+      resolvedFlags: reviewedCount,
+      flagStats: flagsByReason.map((x: { reason: string; _count: { id: number } }) => ({ reason: x.reason, count: x._count.id })),
+      resolutionStats: resolutionStats.map((x: { resolution: string | null; _count: { id: number } }) => ({ resolution: x.resolution ?? 'UNRESOLVED', count: x._count.id })),
+      applicationStats: appStats.map((x: { status: string; _count: { id: number } }) => ({ status: x.status, count: x._count.id })),
+      recentActions: recentActivity.map((a) => ({
+        id: a.id,
+        action: a.action,
+        targetType: a.entityType || 'unknown',
+        targetId: a.entityId || '',
+        performedBy: a.user ? (a.user.fullName || a.user.email || 'System') : 'System',
+        createdAt: a.createdAt.toISOString(),
+      })),
+      totalApplications: totalApps,
+      approvedApplications: approvedApps,
+      rejectedApplications: rejectedApps,
     });
   } catch (error) {
     console.error('Moderator reports error:', error);
@@ -1914,16 +1923,17 @@ app.get('/api/moderator/attendance', authenticateToken, requireRole(['moderator'
     const normalized = records.map((r) => ({
       id: r.id,
       userId: r.userId,
+      userName: r.user?.fullName || r.user?.email || '',
+      userEmail: r.user?.email || '',
       eventId: r.eventId,
+      eventTitle: r.event?.title || '',
+      eventDate: r.event?.eventDate.toISOString() || '',
       rsvpStatus: r.rsvpStatus,
-      attendanceStatus: r.attendanceStatus || null,
+      checkedIn: !!r.checkInTime,
       checkInTime: r.checkInTime?.toISOString() || null,
       checkOutTime: r.checkOutTime?.toISOString() || null,
-      user: r.user,
-      event: r.event ? { ...r.event, eventDate: r.event.eventDate.toISOString() } : null,
-      createdAt: r.createdAt.toISOString(),
     }));
-    res.json({ success: true, records: normalized, total, page: parseInt(String(page)), limit: parseInt(String(limit)) });
+    res.json({ records: normalized, total, page: parseInt(String(page)), pageSize: parseInt(String(limit)) });
   } catch (error) {
     console.error('Moderator attendance error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -1943,18 +1953,15 @@ app.get('/api/moderator/events', authenticateToken, requireRole(['moderator', 'a
         _count: { select: { attendance: true, registrations: true } },
       },
     });
-    res.json({
-      success: true,
-      events: events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        eventDate: e.eventDate.toISOString(),
-        location: e.location || '',
-        status: e.status,
-        attendanceCount: e._count.attendance,
-        registrationCount: e._count.registrations,
-      })),
-    });
+    res.json(events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      eventDate: e.eventDate.toISOString(),
+      location: e.location || '',
+      status: e.status,
+      attendanceCount: e._count.attendance,
+      registrationCount: e._count.registrations,
+    })));
   } catch (error) {
     console.error('Moderator events error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -1970,7 +1977,19 @@ app.get('/api/moderator/compliance/sebi', authenticateToken, requireRole(['moder
       include: { checker: { select: { id: true, email: true, fullName: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ success: true, checks });
+    // Resolve user names: when applicationType = 'USER_DIRECT', look up user by applicationId
+    const userIds = checks.filter((c) => c.applicationType === 'USER_DIRECT').map((c) => c.applicationId);
+    const users = userIds.length > 0 ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true } }) : [];
+    const userMap = new Map(users.map((u) => [u.id, u.fullName || u.email || u.id]));
+    res.json(checks.map((c) => ({
+      id: c.id,
+      userId: c.applicationId,
+      userName: c.applicationType === 'USER_DIRECT' ? (userMap.get(c.applicationId) ?? c.applicationId) : c.applicationId,
+      aifCategory: c.aifCategory ?? '',
+      minTicketSizeVerified: c.minTicketSizeVerified,
+      accreditedInvestorVerified: c.accreditedInvestorVerified,
+      createdAt: c.createdAt.toISOString(),
+    })));
   } catch (error) {
     console.error('SEBI compliance list error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -1979,14 +1998,15 @@ app.get('/api/moderator/compliance/sebi', authenticateToken, requireRole(['moder
 
 app.post('/api/moderator/compliance/sebi', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
-    const { applicationId, applicationType, aifCategory, minTicketSizeVerified, accreditedInvestorVerified, notes } = req.body;
-    if (!applicationId || !applicationType) {
-      return res.status(400).json({ success: false, error: 'applicationId and applicationType are required' });
+    const { userId, applicationId, applicationType, aifCategory, minTicketSizeVerified, accreditedInvestorVerified, notes } = req.body;
+    const effectiveAppId = applicationId || userId;
+    if (!effectiveAppId) {
+      return res.status(400).json({ success: false, error: 'userId or applicationId is required' });
     }
     const check = await prisma.sebiComplianceCheck.create({
       data: {
-        applicationId,
-        applicationType,
+        applicationId: effectiveAppId,
+        applicationType: applicationType || (userId ? 'USER_DIRECT' : 'UNKNOWN'),
         aifCategory: aifCategory || null,
         minTicketSizeVerified: Boolean(minTicketSizeVerified),
         accreditedInvestorVerified: Boolean(accreditedInvestorVerified),
@@ -2008,7 +2028,19 @@ app.get('/api/moderator/compliance/fema', authenticateToken, requireRole(['moder
       include: { screener: { select: { id: true, email: true, fullName: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ success: true, screenings });
+    const userIds = screenings.filter((s) => s.applicationType === 'USER_DIRECT').map((s) => s.applicationId);
+    const users = userIds.length > 0 ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true } }) : [];
+    const userMap = new Map(users.map((u) => [u.id, u.fullName || u.email || u.id]));
+    res.json(screenings.map((s) => ({
+      id: s.id,
+      userId: s.applicationId,
+      userName: s.applicationType === 'USER_DIRECT' ? (userMap.get(s.applicationId) ?? s.applicationId) : s.applicationId,
+      sector: s.sector ?? '',
+      fdiCap: s.fdiCap !== null ? Number(s.fdiCap) : null,
+      status: s.status,
+      rbiApprovalReq: s.rbiApprovalReq,
+      createdAt: s.createdAt.toISOString(),
+    })));
   } catch (error) {
     console.error('FEMA screening list error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -2017,14 +2049,15 @@ app.get('/api/moderator/compliance/fema', authenticateToken, requireRole(['moder
 
 app.post('/api/moderator/compliance/fema', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
-    const { applicationId, applicationType, sector, fdiCap, status, rbiApprovalReq, notes } = req.body;
-    if (!applicationId || !applicationType) {
-      return res.status(400).json({ success: false, error: 'applicationId and applicationType are required' });
+    const { userId, applicationId, applicationType, sector, fdiCap, status, rbiApprovalReq, notes } = req.body;
+    const effectiveAppId = applicationId || userId;
+    if (!effectiveAppId) {
+      return res.status(400).json({ success: false, error: 'userId or applicationId is required' });
     }
     const screening = await prisma.femaFdiScreening.create({
       data: {
-        applicationId,
-        applicationType,
+        applicationId: effectiveAppId,
+        applicationType: applicationType || (userId ? 'USER_DIRECT' : 'UNKNOWN'),
         sector: sector || null,
         fdiCap: fdiCap != null ? fdiCap : null,
         status: status || 'NOT_SCREENED',
@@ -2047,7 +2080,18 @@ app.get('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['mode
       include: { verifier: { select: { id: true, email: true, fullName: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ success: true, verifications });
+    const userIds = verifications.map((v) => v.applicationId);
+    const users = userIds.length > 0 ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, email: true } }) : [];
+    const userMap = new Map(users.map((u) => [u.id, u.fullName || u.email || u.id]));
+    res.json(verifications.map((v) => ({
+      id: v.id,
+      userId: v.applicationId,
+      userName: userMap.get(v.applicationId) ?? v.applicationId,
+      dpiitCertificateNo: v.dpiitCertificateNo ?? '',
+      verified: v.verified,
+      taxBenefitEligible: v.taxBenefitEligible,
+      createdAt: v.createdAt.toISOString(),
+    })));
   } catch (error) {
     console.error('DPIIT verification list error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
@@ -2056,13 +2100,14 @@ app.get('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['mode
 
 app.post('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
-    const { applicationId, dpiitCertificateNo, verified, taxBenefitEligible, notes } = req.body;
-    if (!applicationId) {
-      return res.status(400).json({ success: false, error: 'applicationId is required' });
+    const { userId, applicationId, dpiitCertificateNo, verified, taxBenefitEligible, notes } = req.body;
+    const effectiveAppId = applicationId || userId;
+    if (!effectiveAppId) {
+      return res.status(400).json({ success: false, error: 'userId or applicationId is required' });
     }
     const verification = await prisma.dpiitVerification.create({
       data: {
-        applicationId,
+        applicationId: effectiveAppId,
         dpiitCertificateNo: dpiitCertificateNo || null,
         verified: Boolean(verified),
         verifiedBy: Boolean(verified) ? getUserId(req) : null,
@@ -2081,12 +2126,29 @@ app.post('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['mod
 // US-REG-005: AML screening summary for moderator (reads from existing AMLScreening table)
 app.get('/api/moderator/compliance/aml-summary', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
-    const [pending, verified, flagged] = await Promise.all([
-      prisma.aMLScreening.count({ where: { status: 'PENDING' } }),
-      prisma.aMLScreening.count({ where: { status: { in: ['LOW', 'MEDIUM', 'HIGH'] } } }),
+    const [pendingCount, clearedCount, flaggedCount, recentFlaggedRaw] = await Promise.all([
+      prisma.aMLScreening.count({ where: { status: 'pending' } }),
+      prisma.aMLScreening.count({ where: { status: 'cleared' } }),
       prisma.aMLScreening.count({ where: { riskLevel: 'HIGH' } }),
+      prisma.aMLScreening.findMany({
+        where: { riskLevel: 'HIGH' },
+        include: { user: { select: { id: true, fullName: true, email: true } } },
+        orderBy: { screenedAt: 'desc' },
+        take: 10,
+      }),
     ]);
-    res.json({ success: true, summary: { pending, verified, flagged, total: pending + verified } });
+    res.json({
+      totalScreened: pendingCount + clearedCount + flaggedCount,
+      flaggedCount,
+      clearedCount,
+      pendingCount,
+      recentFlags: recentFlaggedRaw.map((s) => ({
+        userId: s.userId,
+        userName: s.user?.fullName || s.user?.email || s.userId,
+        reason: s.reviewNotes || 'High risk level',
+        createdAt: s.screenedAt.toISOString(),
+      })),
+    });
   } catch (error) {
     console.error('AML summary error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
