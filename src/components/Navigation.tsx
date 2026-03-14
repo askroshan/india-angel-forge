@@ -88,7 +88,7 @@ const Navigation = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2">
+                  <Button variant="ghost" className="flex items-center gap-2" data-testid="user-menu-button">
                     <User className="h-4 w-4" />
                     <span className="max-w-[120px] truncate">
                       {user.email?.split('@')[0]}
