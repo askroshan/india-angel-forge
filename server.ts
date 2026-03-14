@@ -441,9 +441,9 @@ app.get('/api/events/my-registrations', authenticateToken, async (req, res) => {
     // Normalize registrations: add `events` alias (component expects plural)
     const normalizedRegistrations = registrations.map(normalizeRegistration);
 
-    // Also get RSVP-based attendance records
+    // Also get RSVP-based attendance records — include all non-cancelled (BUG-MOD-04 / US-MOD-104)
     const attendanceRecords = await prisma.eventAttendance.findMany({
-      where: { userId, rsvpStatus: { in: ['CONFIRMED', 'WAITLIST'] } },
+      where: { userId, rsvpStatus: { not: 'CANCELLED' } },
       include: { event: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -1651,6 +1651,444 @@ app.post('/api/moderator/applications/:id/request-info', authenticateToken, requ
     });
   } catch (error) {
     console.error('Request info error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== MODERATOR CONTENT FLAGS (BUG-MOD-01, US-MOD-102, US-REG-004) ====================
+
+app.get('/api/moderator/flags', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { status } = req.query;
+    const where: Record<string, unknown> = {};
+    if (status && status !== 'ALL') {
+      where.status = String(status);
+    }
+    const flags = await prisma.contentFlag.findMany({
+      where,
+      include: {
+        flagger: { select: { id: true, fullName: true, email: true } },
+        reviewer: { select: { id: true, fullName: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const normalized = flags.map((f) => ({
+      id: f.id,
+      content_type: f.contentType,
+      content_id: f.contentId,
+      content_text: f.contentText || '',
+      content_author: { id: f.contentId, name: 'Unknown', email: '' },
+      reported_by: { id: f.flagger.id, name: f.flagger.fullName || f.flagger.email, email: f.flagger.email },
+      reason: f.reason,
+      description: f.description || '',
+      status: f.status,
+      resolution: f.resolution || null,
+      resolved_at: f.resolvedAt?.toISOString() || null,
+      resolved_by: f.reviewer ? (f.reviewer.fullName || f.reviewer.email) : null,
+      created_at: f.createdAt.toISOString(),
+    }));
+    res.json(normalized);
+  } catch (error) {
+    console.error('Get content flags error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/flags', authenticateToken, async (req, res) => {
+  try {
+    const { contentType, contentId, contentText, reason, description } = req.body;
+    if (!contentType || !contentId || !reason) {
+      return res.status(400).json({ success: false, error: 'contentType, contentId, and reason are required' });
+    }
+    const flag = await prisma.contentFlag.create({
+      data: {
+        contentType,
+        contentId,
+        contentText: contentText || null,
+        flaggedBy: getUserId(req),
+        reason,
+        description: description || null,
+        status: 'PENDING',
+      },
+    });
+    res.status(201).json({ success: true, flag });
+  } catch (error) {
+    console.error('Create content flag error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.patch('/api/moderator/flags/:id', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { status, resolution } = req.body;
+    const updated = await prisma.contentFlag.update({
+      where: { id: String(req.params.id) },
+      data: {
+        status: status || 'REVIEWED',
+        resolution: resolution || null,
+        reviewedBy: getUserId(req),
+        resolvedAt: new Date(),
+      },
+    });
+    res.json({ success: true, flag: updated });
+  } catch (error) {
+    console.error('Update content flag error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.get('/api/moderator/flags/stats', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const [pending, reviewed, byReason] = await Promise.all([
+      prisma.contentFlag.count({ where: { status: 'PENDING' } }),
+      prisma.contentFlag.count({ where: { status: 'REVIEWED' } }),
+      prisma.contentFlag.groupBy({ by: ['reason'], _count: { id: true } }),
+    ]);
+    const resolutionCounts = await prisma.contentFlag.groupBy({
+      by: ['resolution'],
+      where: { status: 'REVIEWED', resolution: { not: null } },
+      _count: { id: true },
+    });
+    res.json({
+      success: true,
+      stats: {
+        pending,
+        reviewed,
+        total: pending + reviewed,
+        byReason: byReason.map((r) => ({ reason: r.reason, count: r._count.id })),
+        byResolution: resolutionCounts.map((r) => ({ resolution: r.resolution, count: r._count.id })),
+      },
+    });
+  } catch (error) {
+    console.error('Content flag stats error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== MODERATOR USER MANAGEMENT (US-MOD-103) ====================
+
+app.get('/api/moderator/users', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { page = '1', limit = '50', search } = req.query;
+    const skip = (parseInt(String(page)) - 1) * parseInt(String(limit));
+    const where: Record<string, unknown> = {};
+    if (search) {
+      where.OR = [
+        { email: { contains: String(search), mode: 'insensitive' } },
+        { fullName: { contains: String(search), mode: 'insensitive' } },
+      ];
+    }
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          createdAt: true,
+          roles: { select: { role: true } },
+          contentFlagsRaised: { select: { id: true }, take: 1 },
+        },
+        skip,
+        take: parseInt(String(limit)),
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({ where }),
+    ]);
+    const normalized = users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName || '',
+      roles: u.roles.map((r) => r.role),
+      flagCount: u.contentFlagsRaised.length,
+      createdAt: u.createdAt.toISOString(),
+    }));
+    res.json({ success: true, users: normalized, total, page: parseInt(String(page)), limit: parseInt(String(limit)) });
+  } catch (error) {
+    console.error('Moderator get users error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/users/:id/warn', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ success: false, error: 'reason is required' });
+    // Create an audit log entry for the warning
+    await prisma.auditLog.create({
+      data: {
+        userId: getUserId(req),
+        action: 'warn_user',
+        entityType: 'user',
+        entityId: String(req.params.id),
+        details: `Moderator warning: ${reason}`,
+        ipAddress: req.ip || 'unknown',
+      },
+    });
+    res.json({ success: true, message: 'Warning issued' });
+  } catch (error) {
+    console.error('Warn user error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/users/:id/suspend', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ success: false, error: 'reason is required' });
+    // Log the suspension action
+    await prisma.auditLog.create({
+      data: {
+        userId: getUserId(req),
+        action: 'suspend_user',
+        entityType: 'user',
+        entityId: String(req.params.id),
+        details: `User suspended: ${reason}`,
+        ipAddress: req.ip || 'unknown',
+      },
+    });
+    res.json({ success: true, message: 'User suspended' });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== MODERATOR REPORTS (US-MOD-105) ====================
+
+app.get('/api/moderator/reports', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const [flagStats, appStats, recentActivity] = await Promise.all([
+      prisma.contentFlag.groupBy({ by: ['status', 'reason'], _count: { id: true } }),
+      prisma.founderApplication.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.auditLog.findMany({
+        where: { action: { in: ['warn_user', 'suspend_user', 'delete_user', 'review_content'] } },
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { email: true, fullName: true } } },
+      }),
+    ]);
+    res.json({
+      success: true,
+      report: {
+        contentFlags: flagStats,
+        applications: appStats,
+        recentModerationActions: recentActivity.map((a) => ({
+          id: a.id,
+          action: a.action,
+          entityType: a.entityType,
+          entityId: a.entityId,
+          details: a.details,
+          moderator: a.user ? (a.user.fullName || a.user.email) : 'System',
+          createdAt: a.createdAt.toISOString(),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Moderator reports error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== MODERATOR ATTENDANCE OVERSIGHT (US-MOD-108) ====================
+
+app.get('/api/moderator/attendance', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { eventId, page = '1', limit = '50' } = req.query;
+    const skip = (parseInt(String(page)) - 1) * parseInt(String(limit));
+    const where: Record<string, unknown> = {};
+    if (eventId) where.eventId = String(eventId);
+    const [records, total] = await Promise.all([
+      prisma.eventAttendance.findMany({
+        where,
+        include: {
+          user: { select: { id: true, email: true, fullName: true } },
+          event: { select: { id: true, title: true, eventDate: true } },
+        },
+        skip,
+        take: parseInt(String(limit)),
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.eventAttendance.count({ where }),
+    ]);
+    const normalized = records.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      eventId: r.eventId,
+      rsvpStatus: r.rsvpStatus,
+      attendanceStatus: r.attendanceStatus || null,
+      checkInTime: r.checkInTime?.toISOString() || null,
+      checkOutTime: r.checkOutTime?.toISOString() || null,
+      user: r.user,
+      event: r.event ? { ...r.event, eventDate: r.event.eventDate.toISOString() } : null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    res.json({ success: true, records: normalized, total, page: parseInt(String(page)), limit: parseInt(String(limit)) });
+  } catch (error) {
+    console.error('Moderator attendance error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.get('/api/moderator/events', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const events = await prisma.event.findMany({
+      orderBy: { eventDate: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        eventDate: true,
+        location: true,
+        status: true,
+        _count: { select: { attendance: true, registrations: true } },
+      },
+    });
+    res.json({
+      success: true,
+      events: events.map((e) => ({
+        id: e.id,
+        title: e.title,
+        eventDate: e.eventDate.toISOString(),
+        location: e.location || '',
+        status: e.status,
+        attendanceCount: e._count.attendance,
+        registrationCount: e._count.registrations,
+      })),
+    });
+  } catch (error) {
+    console.error('Moderator events error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== INDIA REGULATORY COMPLIANCE API (US-REG-001..005) ====================
+
+// US-REG-001: SEBI AIF Compliance
+app.get('/api/moderator/compliance/sebi', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const checks = await prisma.sebiComplianceCheck.findMany({
+      include: { checker: { select: { id: true, email: true, fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, checks });
+  } catch (error) {
+    console.error('SEBI compliance list error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/compliance/sebi', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { applicationId, applicationType, aifCategory, minTicketSizeVerified, accreditedInvestorVerified, notes } = req.body;
+    if (!applicationId || !applicationType) {
+      return res.status(400).json({ success: false, error: 'applicationId and applicationType are required' });
+    }
+    const check = await prisma.sebiComplianceCheck.create({
+      data: {
+        applicationId,
+        applicationType,
+        aifCategory: aifCategory || null,
+        minTicketSizeVerified: Boolean(minTicketSizeVerified),
+        accreditedInvestorVerified: Boolean(accreditedInvestorVerified),
+        checkedBy: getUserId(req),
+        notes: notes || null,
+      },
+    });
+    res.status(201).json({ success: true, check });
+  } catch (error) {
+    console.error('SEBI compliance create error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// US-REG-002: FEMA/FDI Compliance
+app.get('/api/moderator/compliance/fema', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const screenings = await prisma.femaFdiScreening.findMany({
+      include: { screener: { select: { id: true, email: true, fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, screenings });
+  } catch (error) {
+    console.error('FEMA screening list error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/compliance/fema', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { applicationId, applicationType, sector, fdiCap, status, rbiApprovalReq, notes } = req.body;
+    if (!applicationId || !applicationType) {
+      return res.status(400).json({ success: false, error: 'applicationId and applicationType are required' });
+    }
+    const screening = await prisma.femaFdiScreening.create({
+      data: {
+        applicationId,
+        applicationType,
+        sector: sector || null,
+        fdiCap: fdiCap != null ? fdiCap : null,
+        status: status || 'NOT_SCREENED',
+        rbiApprovalReq: Boolean(rbiApprovalReq),
+        screenedBy: getUserId(req),
+        notes: notes || null,
+      },
+    });
+    res.status(201).json({ success: true, screening });
+  } catch (error) {
+    console.error('FEMA screening create error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// US-REG-003: DPIIT Startup Recognition
+app.get('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const verifications = await prisma.dpiitVerification.findMany({
+      include: { verifier: { select: { id: true, email: true, fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, verifications });
+  } catch (error) {
+    console.error('DPIIT verification list error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.post('/api/moderator/compliance/dpiit', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const { applicationId, dpiitCertificateNo, verified, taxBenefitEligible, notes } = req.body;
+    if (!applicationId) {
+      return res.status(400).json({ success: false, error: 'applicationId is required' });
+    }
+    const verification = await prisma.dpiitVerification.create({
+      data: {
+        applicationId,
+        dpiitCertificateNo: dpiitCertificateNo || null,
+        verified: Boolean(verified),
+        verifiedBy: Boolean(verified) ? getUserId(req) : null,
+        verifiedAt: Boolean(verified) ? new Date() : null,
+        taxBenefitEligible: Boolean(taxBenefitEligible),
+        notes: notes || null,
+      },
+    });
+    res.status(201).json({ success: true, verification });
+  } catch (error) {
+    console.error('DPIIT verification create error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// US-REG-005: AML screening summary for moderator (reads from existing AMLScreening table)
+app.get('/api/moderator/compliance/aml-summary', authenticateToken, requireRole(['moderator', 'admin']), async (req, res) => {
+  try {
+    const [pending, verified, flagged] = await Promise.all([
+      prisma.aMLScreening.count({ where: { status: 'PENDING' } }),
+      prisma.aMLScreening.count({ where: { status: { in: ['LOW', 'MEDIUM', 'HIGH'] } } }),
+      prisma.aMLScreening.count({ where: { riskLevel: 'HIGH' } }),
+    ]);
+    res.json({ success: true, summary: { pending, verified, flagged, total: pending + verified } });
+  } catch (error) {
+    console.error('AML summary error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });

@@ -1512,6 +1512,33 @@ All user stories must meet these requirements:
 - ✅ US-OPERATOR-003: Mentor Startups (13/13 tests - 100%)
 - ✅ US-INVESTOR-016: Set Communication Preferences (13/13 tests - 100%)
 
+### Phase 7: Moderator Panel & India Compliance (2026-03-13-Moderator) ✅ COMPLETE
+
+#### Bug Fixes
+- ✅ BUG-MOD-01: Content flags table missing — Added ContentFlag Prisma model, migration, and `/api/moderator/flags` API routes
+- ✅ BUG-MOD-02: Discount code crash (`undefined.toLocaleString()`) — Flattened discount API response to root-level fields (`discountedPrice`, `discountAmount`, `originalPrice`)
+- ✅ BUG-MOD-03: Persona redirect to wrong port (8080→3002) — Fixed `APP_BASE_URL` default in `server/routes/identity-verification.ts`
+- ✅ BUG-MOD-04: Event attendance shows only 3 of 5 records — Changed RSVP filter from `{ in: ['CONFIRMED', 'WAITLIST'] }` to `{ not: 'CANCELLED' }`
+- ✅ BUG-MOD-05: No moderator panel link in navigation — Added `data-testid="nav-moderator-panel"` link in `Navigation.tsx` for moderator role
+- ✅ BUG-MOD-06: Moderator sub-routes returning 404 — Added `/moderator/users`, `/moderator/reports`, `/moderator/attendance`, `/moderator/compliance` routes (both API and frontend)
+
+#### Moderator User Stories
+- ✅ US-MOD-101: Moderator panel accessible from navigation (21 E2E tests)
+- ✅ US-MOD-102: Manage content flags — create, review, resolve flags with reason categories (SPAM, HARASSMENT, INAPPROPRIATE, MISINFORMATION, OTHER)
+- ✅ US-MOD-103: User management — paginated user list with search, warn/suspend dialogs (`/moderator/users`)
+- ✅ US-MOD-104: Moderator can issue warnings logged in audit trail (API: `POST /api/moderator/users/:id/warn`)
+- ✅ US-MOD-105: Moderation reports — flag stats by reason, resolution breakdown, application stats, CSV export (`/moderator/reports`)
+- ✅ US-MOD-106: Content flag lifecycle — pending → reviewed with resolution (REMOVED, WARNING_ISSUED, USER_SUSPENDED, FALSE_POSITIVE)
+- ✅ US-MOD-107: Moderator flag statistics — counts by reason via `GET /api/moderator/flags/stats`
+- ✅ US-MOD-108: All-events attendance view — paginated across all events with per-event CSV download (`/moderator/attendance`)
+
+#### India Regulatory Compliance User Stories
+- ✅ US-REG-001: SEBI AIF Compliance Check — verify AIF category (Cat I/II/III), minimum ticket size, accredited investor status (`/moderator/compliance` → SEBI tab)
+- ✅ US-REG-002: FEMA/FDI Screening — screen foreign investment by sector, determine FDI cap, RBI approval requirement, automatic/approval-required/prohibited status
+- ✅ US-REG-003: DPIIT Startup Verification — record DPIIT certificate number, verify startup recognition, flag 80-IAC tax benefit eligibility
+- ✅ US-REG-004: Compliance dashboard with tabbed UI — unified `/moderator/compliance` page with SEBI, FEMA, DPIIT, AML tabs
+- ✅ US-REG-005: AML Screening Summary — total screened, flagged, cleared, pending counts with recent flag details
+
 ---
 
 ## Success Metrics
@@ -1556,7 +1583,7 @@ All user stories must meet these requirements:
 
 ---
 
-**Document Status:** ✅ ALL USER STORIES COMPLETE - 699 tests passing (100%)  
-**Last Updated:** February 3, 2026  
-**Implementation Complete:** February 3, 2026  
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 7 moderator panel + India compliance added  
+**Last Updated:** March 14, 2026  
+**Implementation Complete:** March 14, 2026 (branch: 2026-03-13-Moderator)  
 **Owner:** Product Management Team
