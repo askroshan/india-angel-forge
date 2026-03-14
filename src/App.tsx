@@ -92,6 +92,7 @@ import InvestorManagement from "./pages/admin/InvestorManagement";
 import SeedDataManagement from "./pages/admin/SeedDataManagement";
 import CommunicationAuditLog from "./pages/admin/CommunicationAuditLog";
 import AdminDeals from "./pages/admin/AdminDeals";
+import FamilyOfficeMembers from "./pages/investor/FamilyOfficeMembers";
 
 /**
  * Role definitions for route protection
@@ -252,6 +253,18 @@ const App = () => (
             <Route path="/investor/spv/:spvId" element={
               <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <SPVDashboard />
+              </ProtectedRoute>
+            } />
+            {/* B4 FIX: /investor/spvs (plural) → redirect to singular */}
+            <Route path="/investor/spvs" element={<Navigate to="/investor/spv" replace />} />
+            {/* B3 FIX: /investor/membership → redirect to /membership */}
+            <Route path="/investor/membership" element={<Navigate to="/membership" replace />} />
+            {/* B3 FIX / US-FO-02: /investor/financial-statements → redirect to /financial-statements */}
+            <Route path="/investor/financial-statements" element={<Navigate to="/financial-statements" replace />} />
+            {/* US-FO-05: Family Office Members management */}
+            <Route path="/investor/family-office/members" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <FamilyOfficeMembers />
               </ProtectedRoute>
             } />
             <Route path="/investor/portfolio/performance" element={

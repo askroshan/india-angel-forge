@@ -2058,3 +2058,172 @@ All user stories must meet these requirements:
 **Last Updated:** March 14, 2026  
 **Implementation Complete:** March 14, 2026 (branch: 2026-03-14-InvestorSec)  
 **Owner:** Product Management Team
+
+---
+
+## Phase 10: Family Office Role — Bug Fixes & New Features
+
+> Branch: `2026-03-14-FamilyOffice` | Test user: `family.office@test.com` / `FamilyOffice@12345` (Rajesh Mehta)
+
+### Bug Fixes
+
+#### B1: Event RSVP Persists to DB
+**Reported:** RSVP UI showed success but no DB record created for FO user  
+**Root Cause:** Pre-existing fix from PR #12 (US-INV-204/205) — endpoints were already correct  
+**Implementation Status:** ✅ Verified via E2E test `FO-B1-001` — RSVP confirmed in DB
+
+#### B2: "In Progress" Status Without Application Record
+**Reported:** Deals page displayed "In Progress" badge on Step 1 of onboarding when no application existed  
+**Root Cause:** `OnboardingBanner.tsx` showed "In Progress" for `step.status === "current"` even when `!isSubmitted`  
+**Fix:** Added conditional: `step.id === 1 && !isSubmitted ? "Not Started" : "In Progress"`  
+**File:** `src/components/investor/OnboardingBanner.tsx`  
+**Implementation Status:** ✅ Complete
+
+#### B3: `/investor/financial-statements` and `/investor/membership` Return 404
+**Reported:** Routes `/investor/financial-statements` and `/investor/membership` were not registered  
+**Fix:** Added redirect routes in `App.tsx`:  
+- `/investor/financial-statements` → redirects to `/financial-statements`  
+- `/investor/membership` → redirects to `/membership`  
+**File:** `src/App.tsx`  
+**Implementation Status:** ✅ Complete
+
+#### B4: `/investor/spvs` (Plural) Returns 404
+**Reported:** `/investor/spvs` (plural) returned 404 while only `/investor/spv` (singular) existed  
+**Fix:** Added `<Navigate to="/investor/spv" replace />` for `/investor/spvs`  
+**File:** `src/App.tsx`  
+**Implementation Status:** ✅ Complete
+
+---
+
+### New User Stories
+
+### US-FO-01: Family Office Application Form — Entity & Investment Details
+**As a** Family Office investor  
+**I want to** provide entity-specific details (trust name, entity type, AUM, beneficiaries, investment mandate) during my membership application  
+**So that** the forum can properly onboard and categorize my family office structure  
+**Acceptance Criteria:**
+- Family Office section appears conditionally when "Family Office" is selected as membership type
+- Entity Name, Entity Type (TRUST/HUF/LLP/INDIVIDUAL), AUM Managed (₹ Crores), Number of Beneficiaries, Trustee Names, Investment Mandate (GROWTH_EQUITY/SEED/DEBT/MIXED) fields collected
+- Fields persisted to `investor_applications` DB table via `POST /api/applications/investor`
+- E2E: `FO-FO01-001`, `FO-FO01-002`, `FO-FO01-API-001`  
+**Implementation Status:** ✅ Complete
+- Schema: New columns on `InvestorApplication` model
+- Migration: `20260314182559_add_family_office_fields_and_members`
+- API: `POST /api/applications/investor` (also fixes form 404 bug)
+- UI: `InvestorApplicationForm.tsx` — conditional FO section
+
+---
+
+### US-FO-02: Family Office Financial Statements View
+**As a** Family Office investor  
+**I want to** access financial statements at `/investor/financial-statements`  
+**So that** I have a dedicated path that matches my navigation expectations  
+**Acceptance Criteria:**
+- `/investor/financial-statements` route resolves without 404
+- Redirects to `/financial-statements` content
+- E2E: `FO-B3-001`  
+**Implementation Status:** ✅ Complete (redirect route added in `App.tsx`)
+
+---
+
+### US-FO-03: Family Office Deals Access
+**As a** Family Office investor  
+**I want to** browse investment deals with contextual FO-specific deal view  
+**So that** I can assess opportunities appropriate for a family office mandate  
+**Implementation Status:** ✅ Inherited from investor role — Deals page accessible with investor+family_office roles
+
+---
+
+### US-FO-04: Onboarding Checklist — Correct Step Status
+**As a** Family Office investor who has not yet submitted an application  
+**I want to** see "Not Started" (not "In Progress") on Step 1 of the onboarding banner  
+**So that** I get an accurate status indicator that encourages me to start, not believe something is in progress  
+**Acceptance Criteria:**
+- Step 1 badge shows "Not Started" when `applicationStatus` is null
+- Step 1 badge shows "In Progress" only when a later step is current (e.g. KYC)
+- E2E: `FO-B2-001`  
+**Implementation Status:** ✅ Complete (`OnboardingBanner.tsx` bug fix)
+
+---
+
+### US-FO-05: Family Office Multi-Seat Member Management
+**As a** Family Office primary investor  
+**I want to** invite family members or trustees as co-investors under my umbrella account with VIEWER or MANAGER roles  
+**So that** multiple family members can access deal information without separate paid memberships  
+**Acceptance Criteria:**
+- `GET /api/family-office/members` — list active co-investors  
+- `POST /api/family-office/members` — add co-investor by email with role VIEWER/MANAGER  
+- `DELETE /api/family-office/members/:id` — soft-delete (sets `isActive = false`)  
+- UI page at `/investor/family-office/members`  
+- VIEWER: read-only access; MANAGER: can commit to deals  
+- E2E: `FO-FO05-001` through `FO-FO05-004`  
+**Implementation Status:** ✅ Complete
+- Schema: New `FamilyOfficeMember` model in `prisma/schema.prisma`
+- Migration: `20260314182559_add_family_office_fields_and_members`
+- API: 3 new endpoints in `server.ts`
+- UI: `src/pages/investor/FamilyOfficeMembers.tsx`
+- Route: `/investor/family-office/members` in `App.tsx`
+
+---
+
+### US-FO-06: Family Office SPV Participation
+**As a** Family Office investor  
+**I want to** participate in SPV structures alongside other angel investors  
+**So that** I can co-invest with structured legal backing  
+**Implementation Status:** ✅ Inherited from investor SPV features — `/investor/spv` accessible
+
+---
+
+### US-FO-07: KYC Expiry Alert Banner
+**As a** Family Office investor  
+**I want to** see a prominent amber alert banner on my dashboard when my KYC is expiring within 30 days  
+**So that** I can renew before losing access to deals  
+**Acceptance Criteria:**
+- `GET /api/family-office/kyc-status` returns `kycStatus`, `kycExpiresAt`, `daysUntilExpiry`, `requiresRefresh`
+- `requiresRefresh = true` when KYC expiry ≤ 30 days  
+- Amber banner with renewal link shown when `requiresRefresh = true`  
+- Banner auto-hides when not expiring soon  
+- E2E: `FO-FO07-001`, `FO-FO07-002`  
+**Implementation Status:** ✅ Complete
+- Schema: `kycExpiresAt`, `kycReminderSentAt` columns on `InvestorApplication`
+- API: `GET /api/family-office/kyc-status` in `server.ts`
+- UI: `src/components/investor/KYCExpiryBanner.tsx`
+- Integration: Imported in `InvestorDashboard.tsx`
+
+---
+
+### US-FO-08: Investment Committee Report
+**As a** Family Office primary investor  
+**I want to** generate and print an Investment Committee Report summarising my portfolio, commitments, and SPV memberships  
+**So that** I can present a comprehensive overview to my trustees and investment committee  
+**Acceptance Criteria:**
+- `GET /api/family-office/committee-report` returns report data (summary, portfolioCompanies, commitments, spvMemberships)
+- Report includes: portfolio companies, deployed capital, commitment statuses, active SPVs  
+- Printable via `window.print()` button  
+- E2E: `FO-FO08-001`  
+**Implementation Status:** ✅ Complete
+- API: `GET /api/family-office/committee-report` in `server.ts`
+- UI: `src/components/investor/InvestmentCommitteeReport.tsx`
+
+---
+
+### US-FO-09: NRI Compliance Fields
+**As an** NRI investor with Family Office status  
+**I want to** declare my NRI status and provide FCRA/RBI compliance details during application  
+**So that** my investments are processed in compliance with FEMA and RBI guidelines  
+**Acceptance Criteria:**
+- NRI section shown conditionally when `is_nri` checkbox is checked  
+- FCRN Number, Bank Account Type (NRE/NRO/RESIDENT), RBI compliance declaration collected  
+- Fields persisted to `investor_applications` DB table  
+- E2E: `FO-FO09-001`, `FO-FO09-002`, `FO-FO09-003`  
+**Implementation Status:** ✅ Complete
+- Schema: `isNri`, `fcrnNumber`, `bankAccountType`, `rbiComplianceFlag` columns on `InvestorApplication`
+- API: Fields accepted by `POST /api/applications/investor`
+- UI: NRI section in `InvestorApplicationForm.tsx`
+
+---
+
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 10 Family Office features added  
+**Last Updated:** March 14, 2026  
+**Implementation Complete:** March 14, 2026 (branch: `2026-03-14-FamilyOffice`)  
+**Owner:** Product Management Team

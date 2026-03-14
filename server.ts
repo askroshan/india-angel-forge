@@ -566,6 +566,257 @@ app.get('/api/applications/investor-application', authenticateToken, async (req,
   }
 });
 
+// POST /api/applications/investor — InvestorApplicationForm submission
+// US-FO-01: Accepts all standard + Family Office specific fields
+app.post('/api/applications/investor', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+
+    // Prevent duplicate applications
+    const existing = await prisma.investorApplication.findFirst({ where: { userId } });
+    if (existing) {
+      return res.status(409).json({ error: 'Application already exists for this account' });
+    }
+
+    const {
+      full_name, email, phone, linkedin_profile, professional_role, company_organization,
+      years_of_experience, membership_type, investment_thesis, preferred_sectors,
+      typical_check_size, investment_experience, net_worth_range, annual_income_range,
+      previous_angel_investments, portfolio_examples, reference_name_1, reference_email_1,
+      reference_name_2, reference_email_2, how_did_you_hear, motivation,
+      pan_number, sebi_declaration,
+      // Family Office specific (US-FO-01)
+      entity_name, entity_type, aum_managed, num_beneficiaries, trustee_names, investment_mandate,
+      // NRI fields (US-FO-09)
+      is_nri, fcrn_number, bank_account_type,
+    } = req.body;
+
+    if (!full_name || !email || !phone) {
+      return res.status(400).json({ error: 'Missing required fields: full_name, email, phone' });
+    }
+
+    const application = await prisma.investorApplication.create({
+      data: {
+        userId,
+        fullName: full_name,
+        email,
+        phone,
+        investorType: membership_type || 'Standard Member',
+        linkedinUrl: linkedin_profile || null,
+        organization: company_organization || null,
+        industriesOfInterest: preferred_sectors ? JSON.stringify(preferred_sectors) : null,
+        investmentRange: typical_check_size || null,
+        accreditationStatus: net_worth_range || null,
+        panNumber: pan_number || null,
+        sebiDeclaration: !!sebi_declaration,
+        status: 'pending',
+        // Family Office specific (US-FO-01)
+        entityName: entity_name || null,
+        entityType: entity_type || null,
+        aumManaged: aum_managed ? parseFloat(String(aum_managed)) : null,
+        numBeneficiaries: num_beneficiaries ? parseInt(String(num_beneficiaries), 10) : null,
+        trusteeNames: trustee_names || null,
+        investmentMandate: investment_mandate || null,
+        // NRI fields (US-FO-09)
+        isNri: !!is_nri,
+        fcrnNumber: fcrn_number || null,
+        bankAccountType: bank_account_type || null,
+        metadata: {
+          professional_role, years_of_experience, investment_thesis, investment_experience,
+          annual_income_range, previous_angel_investments, portfolio_examples,
+          reference_name_1, reference_email_1, reference_name_2, reference_email_2,
+          how_did_you_hear, motivation,
+        },
+      },
+    });
+
+    res.status(201).json(application);
+  } catch (error) {
+    console.error('Submit investor application error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ==================== FAMILY OFFICE ENDPOINTS ====================
+
+// US-FO-05: GET /api/family-office/members — List co-investors in my FO seat
+app.get('/api/family-office/members', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const members = await prisma.familyOfficeMember.findMany({
+      where: { primaryUserId: userId, isActive: true },
+      include: { memberUser: { select: { id: true, email: true, fullName: true } } },
+      orderBy: { addedAt: 'desc' },
+    });
+    res.json(members.map(m => ({
+      id: m.id,
+      role: m.role,
+      addedAt: m.addedAt,
+      member: { id: m.memberUser.id, email: m.memberUser.email, fullName: m.memberUser.fullName },
+    })));
+  } catch (error) {
+    console.error('Get FO members error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// US-FO-05: POST /api/family-office/members — Add a co-investor by email
+app.post('/api/family-office/members', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const { email, role } = req.body;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    if (role && !['VIEWER', 'MANAGER'].includes(role)) {
+      return res.status(400).json({ error: 'role must be VIEWER or MANAGER' });
+    }
+
+    const memberUser = await prisma.user.findUnique({ where: { email } });
+    if (!memberUser) return res.status(404).json({ error: 'User not found with that email' });
+    if (memberUser.id === userId) return res.status(400).json({ error: 'Cannot add yourself' });
+
+    const member = await prisma.familyOfficeMember.upsert({
+      where: { primaryUserId_memberUserId: { primaryUserId: userId, memberUserId: memberUser.id } },
+      create: { primaryUserId: userId, memberUserId: memberUser.id, role: role || 'VIEWER', isActive: true },
+      update: { isActive: true, role: role || 'VIEWER' },
+      include: { memberUser: { select: { id: true, email: true, fullName: true } } },
+    });
+
+    res.status(201).json({
+      id: member.id,
+      role: member.role,
+      addedAt: member.addedAt,
+      member: { id: member.memberUser.id, email: member.memberUser.email, fullName: member.memberUser.fullName },
+    });
+  } catch (error) {
+    console.error('Add FO member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// US-FO-05: DELETE /api/family-office/members/:id — Remove a co-investor
+app.delete('/api/family-office/members/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const member = await prisma.familyOfficeMember.findUnique({ where: { id: req.params.id as string } });
+    if (!member || member.primaryUserId !== userId) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    await prisma.familyOfficeMember.update({ where: { id: req.params.id as string }, data: { isActive: false } });
+    res.status(204).send();
+  } catch (error) {
+    console.error('Remove FO member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// US-FO-07: GET /api/family-office/kyc-status — Check KYC expiry status
+app.get('/api/family-office/kyc-status', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const application = await prisma.investorApplication.findFirst({
+      where: { userId },
+      orderBy: { submittedAt: 'desc' },
+      select: { id: true, status: true, kycExpiresAt: true, kycReminderSentAt: true, panNumber: true },
+    });
+
+    if (!application) {
+      return res.json({ kycStatus: 'NO_APPLICATION', kycExpiresAt: null, daysUntilExpiry: null, requiresRefresh: false });
+    }
+
+    const now = new Date();
+    const expiresAt = application.kycExpiresAt;
+    let daysUntilExpiry: number | null = null;
+    let requiresRefresh = false;
+
+    if (expiresAt) {
+      const diffMs = expiresAt.getTime() - now.getTime();
+      daysUntilExpiry = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      requiresRefresh = daysUntilExpiry <= 30; // Warn 30 days before expiry (PMLA requirement)
+    }
+
+    res.json({
+      kycStatus: application.status,
+      kycExpiresAt: expiresAt?.toISOString() || null,
+      daysUntilExpiry,
+      requiresRefresh,
+      panNumber: application.panNumber,
+    });
+  } catch (error) {
+    console.error('KYC status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// US-FO-08: GET /api/family-office/committee-report — Investment Committee Report data
+app.get('/api/family-office/committee-report', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+
+    // Gather portfolio data
+    const [portfolioCompanies, commitments, spvMemberships] = await Promise.all([
+      prisma.portfolioCompany.findMany({
+        where: { investorId: userId },
+        include: {
+          company: { select: { companyName: true, industry: true, stage: true } },
+          portfolioUpdates: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.investmentCommitment.findMany({
+        where: { investorId: userId },
+        include: {
+          interest: { include: { deal: { select: { companyName: true, sector: true, stage: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.spvMember.findMany({
+        where: { investorId: userId },
+        include: { spv: { select: { name: true, status: true, targetAmount: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const totalDeployed = commitments.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+    const totalCommitted = commitments.filter(c => c.status === 'committed').length;
+
+    res.json({
+      reportDate: new Date().toISOString(),
+      summary: {
+        totalPortfolioCompanies: portfolioCompanies.length,
+        totalDeployed,
+        totalCommitted,
+        activeSpvs: spvMemberships.filter(s => s.spv.status === 'active').length,
+      },
+      portfolioCompanies: portfolioCompanies.map(pc => ({
+        id: pc.id,
+        companyName: pc.company?.companyName || 'Unknown',
+        sector: pc.company?.industry || null,
+        stage: pc.company?.stage || null,
+        investmentAmount: Number(pc.investmentAmount || 0),
+        currentValuation: Number(pc.currentValuation || 0),
+        latestUpdate: pc.portfolioUpdates[0]?.content?.slice(0, 200) || null,
+      })),
+      commitments: commitments.map(c => ({
+        dealTitle: c.interest?.deal?.companyName || 'Unknown',
+        sector: c.interest?.deal?.sector || null,
+        stage: c.interest?.deal?.stage || null,
+        amount: Number(c.amount || 0),
+        status: c.status,
+        committedAt: c.createdAt,
+      })),
+      spvMemberships: spvMemberships.map(s => ({
+        spvName: s.spv.name,
+        status: s.spv.status,
+        targetAmount: Number(s.spv.targetAmount || 0),
+        commitmentAmount: Number(s.commitmentAmount || 0),
+      })),
+    });
+  } catch (error) {
+    console.error('Committee report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ==================== APPLICATION CRUD ROUTES (Investor & Founder) ====================
 
 // Helper: Transform InvestorApplication DB record to test-expected field names
