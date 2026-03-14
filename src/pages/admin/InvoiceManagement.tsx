@@ -168,51 +168,49 @@ export default function InvoiceManagement() {
         </p>
       </div>
 
-      {/* Queue Metrics */}
-      {queueMetrics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
+      {/* Queue Metrics — always rendered; defaults 0 when unavailable (B4) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" data-testid="invoice-stats-grid">
+          <Card data-testid="invoice-stat-pending">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Clock className="h-4 w-4" /> Pending
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{queueMetrics.pendingJobs}</div>
+              <div className="text-2xl font-bold" data-testid="pending-count">{queueMetrics?.pendingJobs ?? 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card data-testid="invoice-stat-active">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Activity className="h-4 w-4" /> Active
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{queueMetrics.activeJobs}</div>
+              <div className="text-2xl font-bold" data-testid="active-count">{queueMetrics?.activeJobs ?? 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card data-testid="invoice-stat-failed">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" /> Failed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{queueMetrics.failedJobs}</div>
+              <div className="text-2xl font-bold text-destructive" data-testid="failed-count">{queueMetrics?.failedJobs ?? 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card data-testid="invoice-stat-completed">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" /> Completed
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{queueMetrics.completedJobs}</div>
+              <div className="text-2xl font-bold text-green-600" data-testid="completed-count">{queueMetrics?.completedJobs ?? 0}</div>
             </CardContent>
           </Card>
         </div>
-      )}
 
       {/* Failed Invoices Section */}
       <div className="flex items-center justify-between mb-4">

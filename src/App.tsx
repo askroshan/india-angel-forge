@@ -79,6 +79,7 @@ import CompanyManagement from "./pages/admin/CompanyManagement";
 import InvestorManagement from "./pages/admin/InvestorManagement";
 import SeedDataManagement from "./pages/admin/SeedDataManagement";
 import CommunicationAuditLog from "./pages/admin/CommunicationAuditLog";
+import AdminDeals from "./pages/admin/AdminDeals";
 
 /**
  * Role definitions for route protection
@@ -356,6 +357,11 @@ const App = () => (
             <Route path="/admin/companies" element={
               <ProtectedRoute allowedRoles={ADMIN_ROLES}>
                 <CompanyManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/deals" element={
+              <ProtectedRoute allowedRoles={ADMIN_ROLES}>
+                <AdminDeals />
               </ProtectedRoute>
             } />
             <Route path="/admin/investors" element={

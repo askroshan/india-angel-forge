@@ -188,6 +188,8 @@ AND clicking Approve sends approval email and changes status
 
 AND clicking Reject opens a reason input and sends rejection email
 
+**Implementation Status:** ✅ Complete  
+
 US-ADMIN-008 — Fix Membership Management Page
 
 As an Admin, I want the Membership Management page to display membership plans, subscriber counts, and revenue so that I can manage platform subscriptions.
@@ -199,6 +201,8 @@ THEN I see a list of membership tiers (Associate, Full Member, Lead Angel)
 AND I see active subscriber count, revenue per tier
 
 AND I can create, edit, or deactivate membership plans
+
+**Implementation Status:** ✅ Complete — B5 fix: seed plan names updated to `Associate`, `Full Member`, `Lead Angel`  
 
 US-ADMIN-009 — Fix Invoice Management Page
 
@@ -213,6 +217,8 @@ AND I can retry failed invoices
 AND I can download individual invoice PDFs
 
 AND I can filter by date, status, user
+
+**Implementation Status:** ✅ Complete — B4 fix: status counts always render (removed conditional wrapper, added `?? 0` fallbacks)  
 
 US-ADMIN-010 — INR Currency Consistency in System Statistics
 
@@ -231,6 +237,8 @@ As an Admin, I want to filter users by Investor, Operator Angel, Family Office, 
 GIVEN I use Filter by Role on /admin/users
 
 THEN the dropdown includes: Investor, Operator Angel, Family Office, Founder (in addition to existing options)
+
+**Implementation Status:** ✅ Complete — B1 fix: `User.roles: string[]` array, filter/counts use `.includes()`, all role badges rendered  
 
 US-ADMIN-012 — Investor KYC Verification Status Counts
 
@@ -310,9 +318,47 @@ AND I can view deal details, data room access logs
 
 AND I cannot commit to deals (read-only)
 
-**Implementation Status:** Pending
+**Implementation Status:** ✅ Complete — B3 fix: created `AdminDeals.tsx` page + `GET /api/admin/deals` endpoint + route registered in `App.tsx`  
 **Test Coverage:** 12 test cases  
-**Database Tables:** `audit_logs`
+**Database Tables:** `deals`, `deal_interests`, `investment_commitments`
+
+---
+
+### US-ADMIN-018: View and Edit Any User Profile
+**As an** Admin  
+**I want to** view and edit any user's profile details  
+**So that** I can correct user information and manage account details
+
+**Acceptance Criteria:**
+- GIVEN I am on /admin/users
+- WHEN I click "View/Edit" on any user card
+- THEN a dialog opens showing the user's full name, email, and assigned roles
+- AND I can edit full name and email
+- AND clicking Save updates the profile via PATCH /api/admin/users/:id
+- AND roles are shown read-only (use Change Role for role changes)
+- AND a success toast is shown after saving
+
+**Implementation Status:** ✅ Complete  
+**API Endpoints:** `GET /api/admin/users/:id`, `PATCH /api/admin/users/:id`  
+**Frontend:** View/Edit button + edit dialog in `UserRoleManagement.tsx`  
+**Database Tables:** `users`
+
+---
+
+### US-INFRA-001: Dynamic Port Configuration
+**As a** Developer  
+**I want** the Vite dev server port and Playwright base URL to be driven by environment variables  
+**So that** the platform can run on any port without code changes
+
+**Acceptance Criteria:**
+- GIVEN `VITE_PORT` and `API_PORT` env vars are set
+- THEN Vite dev server starts on `VITE_PORT` (default 8082)
+- AND the API proxy targets `API_PORT` (default 3001)
+- AND Playwright uses `BASE_URL` / `API_URL` env vars for baseURL and webServer health checks
+- AND all e2e spec files read URLs from env vars with localhost fallbacks
+
+**Implementation Status:** ✅ Complete  
+**Files changed:** `vite.config.ts`, `playwright.config.ts`, `e2e/test-debug.spec.ts`, `e2e/event-crud-full.spec.ts`, `e2e/admin-operations.spec.ts`
 
 ---
 
@@ -395,9 +441,9 @@ AND I cannot commit to deals (read-only)
 - AND I can generate compliance reports
 - AND I can export to CSV/PDF for regulatory submission
 
-**Implementation Status:** ✅ Complete  
-**Test Coverage:** 9 test cases (9/9 passing - 100%)  
-**Database Tables:** `audit_logs`
+**Implementation Status:** ✅ Complete — B6 fix: `/api/admin/audit-logs` now merges `auditLog` + `activityLog` tables  
+**Test Coverage:** 9 test cases  
+**Database Tables:** `audit_logs`, `activity_logs`
 
 ---
 

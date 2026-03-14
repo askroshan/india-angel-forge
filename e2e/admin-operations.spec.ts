@@ -41,7 +41,7 @@ const INVESTOR_USER = {
   password: 'Investor@12345',
 };
 
-const API_BASE = 'http://127.0.0.1:3001';
+const API_BASE = process.env.API_URL ?? 'http://localhost:3001';
 
 // ==================== HELPERS ====================
 
