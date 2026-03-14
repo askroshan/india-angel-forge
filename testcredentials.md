@@ -2,7 +2,7 @@
 
 Complete test user credentials for the India Angel Forum platform.
 
-**Last Updated:** February 9, 2026
+**Last Updated:** July 2025
 **Source of Truth:** `prisma/seed/index.ts` (database seed script)
 **E2E Test Suite:** 1233/1233 passing across 5 browser projects
 
@@ -214,15 +214,15 @@ Additionally, many E2E test files (e.g. `payment-razorpay`, `email-notifications
 
 ## Automation / Agent Login (Playwright)
 
-> **Important for agents and automated testing:** Do NOT use `page.type()` or keyboard simulation to fill the login form. The login form uses React Hook Form which only responds to proper browser input events. Password manager auto-fill can also overwrite typed values.
+> **Important for agents and automated testing:** Do NOT use `page.type()` or keyboard simulation to fill the login form. The login form uses controlled React state — use `page.fill()` / `locator.fill()` so proper synthetic input events are fired. Password manager auto-fill can also overwrite typed values.
 
 ### Recommended: Inject token via localStorage (most reliable)
 
 Get a JWT token from the API, then inject it directly into the browser — this completely bypasses the login form:
 
 ```typescript
-// Step 1: get token from API
-const response = await fetch(`${BASE_URL}/api/auth/login`, {
+// Step 1: get token from API  (API_BASE = 'http://localhost:3001')
+const response = await fetch(`${API_BASE}/api/auth/login`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ email: 'admin@indiaangelforum.test', password: 'Admin@12345' }),
@@ -257,7 +257,7 @@ await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 10000
 
 ## API Testing with cURL
 
-> Set `API_URL` to your backend base URL before running these commands (e.g. `export API_URL=http://your-server`).
+> Set `API_URL` to the backend base URL. Default local dev: `export API_URL=http://localhost:3001`.
 
 ### Login (any user)
 
@@ -291,7 +291,7 @@ curl -s $API_URL/api/admin/statistics \
 
 ## Frontend URLs
 
-> Vite defaults to port **8080** but will auto-increment (8081, 8082, …) if already in use. Check your terminal for the actual URL when running `npm run dev` or `npm run dev:all`.
+> Vite is configured to run on port **8082** (see `vite.config.ts`). The URL is `http://localhost:8082`.
 
 | Page | Path | Required Role |
 |------|------|---------------|
@@ -371,13 +371,14 @@ Requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special characte
 
 ## Service URLs
 
-| Service | How to find it |
-|---------|----------------|
-| **Backend API** | Check `PORT` in your `.env`, or the startup log: `🚀 API Server running on ...` |
-| **Frontend (Vite)** | Check the terminal output when running `npm run dev` — Vite prints the actual URL |
-| **PostgreSQL** | Defined in `DATABASE_URL` in your `.env` |
+| Service | Local Dev URL | Notes |
+|---------|---------------|-------|
+| **Backend API** | `http://localhost:3001` | `npm run dev:server` (Express / `server.ts`) |
+| **Frontend (Vite)** | `http://localhost:8082` | `npm run dev` — proxies `/api/*` → `localhost:3001` |
+| **PostgreSQL** | `postgresql://…@localhost:5432/…` | Defined in `DATABASE_URL` in your `.env` |
+| **Docker stack app** | `http://localhost:3002` | `docker-compose.local.yml` — serves built frontend + API together |
 
-Set `API_URL` to the backend base URL before running cURL commands. For browser testing, use the frontend URL printed by Vite — it proxies `/api/*` to the backend automatically.
+Run `export API_URL=http://localhost:3001` before using the cURL examples below. For Playwright / browser testing, the baseURL is `http://localhost:8082` (matches `playwright.config.ts`).
 
 ---
 

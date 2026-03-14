@@ -22,7 +22,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: "http://localhost:8080",
+    baseURL: "http://localhost:8082",
     /* Collect trace when retrying the failed test */
     trace: "on-first-retry",
     /* Screenshot on failure */
@@ -78,7 +78,7 @@ export default defineConfig({
     },
     {
       command: "npm run dev",
-      url: "http://localhost:8080",
+      url: "http://localhost:8082",
       reuseExistingServer: true,  // Always reuse to avoid startup issues
       timeout: 120 * 1000,
     },

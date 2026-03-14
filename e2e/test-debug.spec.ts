@@ -12,13 +12,13 @@ test('debug page load', async ({ page }) => {
     errors.push(`Page error: ${error.message}`);
   });
   
-  await page.goto('http://localhost:8080/login');
+  await page.goto('http://localhost:8082/login');
   await page.fill('input[type="email"]', 'admin@indiaangelforum.test');
   await page.fill('input[type="password"]', 'Admin@12345');
   await page.click('button[type="submit"]');
-  await page.waitForURL('http://localhost:8080/');
+  await page.waitForURL('http://localhost:8082/');
   
-  await page.goto('http://localhost:8080/transaction-history');
+  await page.goto('http://localhost:8082/transaction-history');
   await page.waitForTimeout(500);
   const urlAfterNav = page.url();
   console.log('URL after navigation:', urlAfterNav);
