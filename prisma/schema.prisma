@@ -494,18 +494,18 @@ model KYCDocument {
 }
 
 model AMLScreening {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id")
-  status          String    @default("pending")
-  riskLevel       String?   @map("risk_level")
-  provider        String?
-  matchScore      Decimal?  @map("match_score") @db.Decimal(5, 2)
-  flaggedReasons  String?   @map("flagged_reasons")
-  screeningResults Json?    @map("screening_results")
-  screenedAt      DateTime  @default(now()) @map("screened_at")
-  reviewNotes     String?   @map("review_notes")
-  reviewedBy      String?   @map("reviewed_by")
-  reviewedAt      DateTime? @map("reviewed_at")
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  status           String    @default("pending")
+  riskLevel        String?   @map("risk_level")
+  provider         String?
+  matchScore       Decimal?  @map("match_score") @db.Decimal(5, 2)
+  flaggedReasons   String?   @map("flagged_reasons")
+  screeningResults Json?     @map("screening_results")
+  screenedAt       DateTime  @default(now()) @map("screened_at")
+  reviewNotes      String?   @map("review_notes")
+  reviewedBy       String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1507,7 +1507,7 @@ model InvestorProfile {
   id                  String   @id @default(uuid())
   userId              String   @unique @map("user_id")
   // SEBI accreditation
-  sebiCategory        String?  @map("sebi_category")          // Cat I / Cat II / Cat III AIF
+  sebiCategory        String?  @map("sebi_category") // Cat I / Cat II / Cat III AIF
   accreditationStatus String   @default("PENDING") @map("accreditation_status") // PENDING / VERIFIED / REJECTED
   kycStatus           String   @default("PENDING") @map("kyc_status")
   // India-specific tax / identity fields (US-INV-113..118)
