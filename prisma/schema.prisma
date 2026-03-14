@@ -203,6 +203,8 @@ model InvestorApplication {
   industriesOfInterest String?   @map("industries_of_interest")
   linkedinUrl          String?   @map("linkedin_url")
   accreditationStatus  String?   @map("accreditation_status")
+  panNumber            String?   @map("pan_number")
+  sebiDeclaration      Boolean   @default(false) @map("sebi_declaration")
   status               String    @default("pending")
   reviewedAt           DateTime? @map("reviewed_at")
   reviewedBy           String?   @map("reviewed_by")
@@ -1064,18 +1066,19 @@ enum ActivityType {
 // ==================== EVENT ATTENDANCE ====================
 
 model EventAttendance {
-  id               String            @id @default(cuid())
-  userId           String            @map("user_id")
-  eventId          String            @map("event_id")
-  rsvpStatus       RsvpStatus        @default(CONFIRMED) @map("rsvp_status")
-  attendanceStatus AttendanceStatus? @map("attendance_status")
-  checkInTime      DateTime?         @map("check_in_time")
-  checkOutTime     DateTime?         @map("check_out_time")
-  certificateId    String?           @unique @map("certificate_id")
-  certificateUrl   String?           @map("certificate_url")
-  notes            String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
+  id                  String            @id @default(cuid())
+  userId              String            @map("user_id")
+  eventId             String            @map("event_id")
+  rsvpStatus          RsvpStatus        @default(CONFIRMED) @map("rsvp_status")
+  attendanceStatus    AttendanceStatus? @map("attendance_status")
+  checkInTime         DateTime?         @map("check_in_time")
+  checkOutTime        DateTime?         @map("check_out_time")
+  certificateId       String?           @unique @map("certificate_id")
+  certificateUrl      String?           @map("certificate_url")
+  notes               String?
+  dietaryRequirements String?           @map("dietary_requirements")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)

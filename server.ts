@@ -953,6 +953,29 @@ app.get('/api/admin/deals', authenticateToken, requireRole(['admin']), async (re
   }
 });
 
+// GET /api/deals/public — limited deal preview for unapproved/guest users (US-INV-207)
+app.get('/api/deals/public', async (_req, res) => {
+  try {
+    const deals = await prisma.deal.findMany({
+      where: { status: 'open' },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { id: true, companyName: true, sector: true, stage: true, createdAt: true },
+    });
+    const preview = deals.map(d => ({
+      id: d.id,
+      companyName: d.companyName || 'Undisclosed Company',
+      sector: d.sector || 'General',
+      stage: d.stage || 'Seed',
+      postedAt: d.createdAt.toISOString(),
+    }));
+    res.json({ success: true, data: preview });
+  } catch (error) {
+    console.error('Public deals error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 app.get('/api/deals', authenticateToken, async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -3410,6 +3433,104 @@ app.get('/api/events/:id/registration-count', async (req, res) => {
     res.json({ count });
   } catch (error) {
     console.error('Get registration count error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== EVENT RSVP ROUTES (US-INV-204 / B8 FIX) ====================
+
+// GET /api/events/:id/my-rsvp — check current user's RSVP for an event
+app.get('/api/events/:id/my-rsvp', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const attendance = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId: req.params.id as string } },
+      include: { event: { select: { id: true, title: true, eventDate: true, location: true } } },
+    });
+    res.json({ success: true, data: { attendance: attendance || null } });
+  } catch (error) {
+    console.error('Get my RSVP error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/events/:id/rsvp — RSVP to an event (US-INV-204 / US-INV-205)
+app.post('/api/events/:id/rsvp', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const eventId = req.params.id as string;
+    const { dietaryRequirements } = req.body as { dietaryRequirements?: string };
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { _count: { select: { attendance: { where: { rsvpStatus: 'CONFIRMED' } } } } },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: { message: 'Event not found', code: 'NOT_FOUND' } });
+    }
+
+    if (event.registrationDeadline && new Date() > event.registrationDeadline) {
+      return res.status(400).json({ error: { message: 'Registration deadline has passed', code: 'DEADLINE_PASSED' } });
+    }
+
+    if (event.capacity && event._count.attendance >= event.capacity) {
+      return res.status(400).json({ error: { message: 'Event is at full capacity', code: 'CAPACITY_FULL' } });
+    }
+
+    const existing = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId } },
+    });
+
+    if (existing) {
+      if (existing.rsvpStatus === 'CONFIRMED') {
+        return res.status(400).json({ error: { message: 'You are already RSVPed to this event', code: 'ALREADY_RSVPED' } });
+      }
+      // Re-activate a cancelled RSVP
+      const updated = await prisma.eventAttendance.update({
+        where: { userId_eventId: { userId, eventId } },
+        data: { rsvpStatus: 'CONFIRMED', dietaryRequirements: dietaryRequirements || null },
+      });
+      return res.status(200).json({ success: true, data: { attendance: updated } });
+    }
+
+    const attendance = await prisma.eventAttendance.create({
+      data: { userId, eventId, rsvpStatus: 'CONFIRMED', dietaryRequirements: dietaryRequirements || null },
+    });
+
+    res.status(201).json({ success: true, data: { attendance } });
+  } catch (error) {
+    console.error('RSVP error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// DELETE /api/events/:id/rsvp — cancel RSVP
+app.delete('/api/events/:id/rsvp', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const eventId = req.params.id as string;
+
+    const existing = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId } },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'RSVP not found', code: 'NOT_FOUND' } });
+    }
+
+    if (existing.userId !== userId) {
+      return res.status(403).json({ error: { message: 'Not authorized', code: 'FORBIDDEN' } });
+    }
+
+    await prisma.eventAttendance.update({
+      where: { userId_eventId: { userId, eventId } },
+      data: { rsvpStatus: 'CANCELLED' },
+    });
+
+    res.json({ success: true, message: 'RSVP cancelled successfully' });
+  } catch (error) {
+    console.error('Cancel RSVP error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });

@@ -49,6 +49,7 @@ import InvestorCommitments from "./pages/investor/InvestorCommitments";
 import InvestorDashboard from "./pages/investor/InvestorDashboard";
 import InvestorProfilePage from "./pages/investor/InvestorProfilePage";
 import ApplicationStatus from "./pages/founder/ApplicationStatus";
+import InvestorApplicationStatus from "./pages/investor/ApplicationStatus";
 import InvestorDirectory from "./pages/founder/InvestorDirectory";
 import PitchSessions from "./pages/founder/PitchSessions";
 import PitchMaterials from "./pages/founder/PitchMaterials";
@@ -160,6 +161,7 @@ const App = () => (
             } />
             <Route path="/apply/founder" element={<ApplyFounder />} />
             <Route path="/apply/investor" element={<ApplyInvestor />} />
+            <Route path="/apply/investor/status" element={<InvestorApplicationStatus />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />

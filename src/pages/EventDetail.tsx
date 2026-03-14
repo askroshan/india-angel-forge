@@ -54,6 +54,7 @@ export default function EventDetail() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [dietaryRequirements, setDietaryRequirements] = useState("");
 
   const isRegistered = myRegistrations?.some(
     r => r.event_id === event?.id && r.status === 'registered'
@@ -67,7 +68,7 @@ export default function EventDetail() {
       return;
     }
     if (event?.id) {
-      rsvpMutation.mutate(event.id);
+      rsvpMutation.mutate({ eventId: event.id, dietaryRequirements: dietaryRequirements || undefined });
     }
   };
 
@@ -484,16 +485,32 @@ export default function EventDetail() {
                         </Button>
                       </div>
                     ) : isRegistrationOpen ? (
-                      <Button 
-                        variant="accent" 
-                        size="lg" 
-                        className="w-full"
-                        onClick={handleRSVP}
-                        data-testid="rsvp-button"
-                        disabled={rsvpMutation.isPending}
-                      >
-                        Register Now
-                      </Button>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium" htmlFor="dietary-requirements">
+                            Dietary Requirements <span className="text-muted-foreground font-normal">(optional)</span>
+                          </label>
+                          <input
+                            id="dietary-requirements"
+                            type="text"
+                            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            placeholder="e.g. vegetarian, gluten-free, nut allergy"
+                            value={dietaryRequirements}
+                            onChange={e => setDietaryRequirements(e.target.value)}
+                            data-testid="dietary-requirements-input"
+                          />
+                        </div>
+                        <Button 
+                          variant="accent" 
+                          size="lg" 
+                          className="w-full"
+                          onClick={handleRSVP}
+                          data-testid="rsvp-button"
+                          disabled={rsvpMutation.isPending}
+                        >
+                          Register Now
+                        </Button>
+                      </div>
                     ) : spotsLeft === 0 ? (
                       <Button 
                         variant="secondary" 
