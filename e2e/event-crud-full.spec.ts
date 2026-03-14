@@ -14,8 +14,8 @@ import { test, expect, Page } from '@playwright/test';
 
 test.use({ browserName: 'chromium' });
 
-const BASE_URL = 'http://localhost:3001';
-const FRONTEND_URL = 'http://localhost:8082';
+const BASE_URL = process.env.API_URL ?? 'http://localhost:3001';
+const FRONTEND_URL = process.env.BASE_URL ?? 'http://localhost:8082';
 
 const TEST_USERS = {
   admin: { email: 'admin@indiaangelforum.test', password: 'Admin@12345' },

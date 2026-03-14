@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const VITE_PORT = process.env.VITE_PORT ?? '8082';
+const API_PORT = process.env.API_PORT ?? '3001';
+const BASE_URL = process.env.BASE_URL ?? `http://localhost:${VITE_PORT}`;
+const API_URL = process.env.API_URL ?? `http://localhost:${API_PORT}`;
+
 /**
  * Playwright E2E Test Configuration for India Angel Forum
  * @see https://playwright.dev/docs/test-configuration
@@ -22,7 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: "http://localhost:8082",
+    baseURL: BASE_URL,
     /* Collect trace when retrying the failed test */
     trace: "on-first-retry",
     /* Screenshot on failure */
@@ -72,13 +77,13 @@ export default defineConfig({
   webServer: [
     {
       command: "npm run dev:server",
-      url: "http://localhost:3001/api/health",
+      url: `${API_URL}/api/health`,
       reuseExistingServer: true,  // Always reuse to avoid startup issues
       timeout: 120 * 1000,
     },
     {
       command: "npm run dev",
-      url: "http://localhost:8082",
+      url: BASE_URL,
       reuseExistingServer: true,  // Always reuse to avoid startup issues
       timeout: 120 * 1000,
     },

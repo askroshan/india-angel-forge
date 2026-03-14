@@ -283,6 +283,70 @@ app.get('/api/admin/users', authenticateToken, requireRole(['admin']), async (re
   }
 });
 
+// GET /api/admin/users/:id — fetch single user profile (US-ADMIN-018)
+app.get('/api/admin/users/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { roles: true },
+    });
+    if (!user) {
+      return res.status(404).json({ error: { message: 'User not found', code: 'NOT_FOUND' } });
+    }
+    res.json({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      roles: user.roles.map(r => r.role),
+      role: user.roles.length > 0 ? user.roles[0].role : 'user',
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/users/:id — update user profile fields (US-ADMIN-018)
+app.patch('/api/admin/users/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, email } = req.body;
+
+    // Validate at least one updatable field is provided
+    if (fullName === undefined && email === undefined) {
+      return res.status(400).json({ error: { message: 'No updatable fields provided', code: 'BAD_REQUEST' } });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: { message: 'User not found', code: 'NOT_FOUND' } });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(fullName !== undefined && { fullName }),
+        ...(email !== undefined && { email }),
+      },
+      include: { roles: true },
+    });
+
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      fullName: updated.fullName,
+      roles: updated.roles.map(r => r.role),
+      role: updated.roles.length > 0 ? updated.roles[0].role : 'user',
+      createdAt: updated.createdAt,
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 // ==================== EVENTS ROUTES (PUBLIC) ====================
 
 app.get('/api/events', async (req, res) => {
@@ -842,6 +906,52 @@ app.patch('/api/admin/applications/founders/:id', authenticateToken, requireRole
 });
 
 // ==================== DEALS ROUTES ====================
+
+// Admin Deal Oversight — US-ADMIN-017
+app.get('/api/admin/deals', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { status, stage, industry } = req.query as Record<string, string>;
+    const where: Record<string, unknown> = {};
+    if (status) where.status = status;
+    if (stage) where.stage = { contains: stage, mode: 'insensitive' };
+    if (industry) where.industry = { contains: industry, mode: 'insensitive' };
+
+    const deals = await prisma.deal.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        dealInterests: {
+          select: { id: true, status: true, commitmentAmount: true, investorId: true },
+        },
+      },
+    });
+
+    const enriched = deals.map(d => {
+      const interests = d.dealInterests;
+      const committed = interests.filter(i => i.status === 'committed' || i.status === 'accepted');
+      const totalCommitted = committed.reduce((sum, i) => sum + Number(i.commitmentAmount), 0);
+      return {
+        id: d.id,
+        title: d.companyName || 'Untitled Deal',
+        companyName: d.companyName || '',
+        description: `Investment opportunity in ${d.companyName || 'a company'}`,
+        industrySector: d.sector || d.industry || 'General',
+        stage: d.stage || 'Seed',
+        dealSize: Number(d.amount) || 0,
+        dealStatus: d.status || 'open',
+        createdAt: d.createdAt.toISOString(),
+        interestCount: interests.length,
+        commitmentCount: committed.length,
+        totalCommitted,
+      };
+    });
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('Get admin deals error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
 
 app.get('/api/deals', authenticateToken, async (req, res) => {
   try {
@@ -2040,23 +2150,55 @@ app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), asyn
     const limitParam = parseInt(req.query.limit as string) || 100;
     const pageParam = parseInt(req.query.page as string) || 1;
     const skip = (pageParam - 1) * limitParam;
-    const logs = await prisma.auditLog.findMany({
+
+    // Fetch structured admin audit_logs (compliance/role actions)
+    const auditEntries = await prisma.auditLog.findMany({
       include: { user: true },
       orderBy: { createdAt: 'desc' },
       take: limitParam,
       skip,
     });
-    res.json(logs.map(l => ({
+
+    // Also surface activity_logs (seeded user activity) — B6 fix
+    const activityEntries = await prisma.activityLog.findMany({
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+      take: limitParam,
+      skip,
+    });
+
+    const auditMapped = auditEntries.map(l => ({
       id: l.id,
       userId: l.userId,
       action: l.action,
-      resourceType: l.entity,
+      resourceType: l.entity || 'system',
       resourceId: l.entityId,
       details: l.details ? { message: l.details } : {},
       createdAt: l.createdAt,
       userName: l.user?.fullName || null,
       userEmail: l.user?.email || null,
-    })));
+      source: 'audit_log' as const,
+    }));
+
+    const activityMapped = activityEntries.map(a => ({
+      id: a.id,
+      userId: a.userId,
+      action: a.activityType.toLowerCase(),
+      resourceType: a.entityType,
+      resourceId: a.entityId,
+      details: { message: a.description, ...(a.metadata as object || {}) },
+      createdAt: a.createdAt,
+      userName: a.user?.fullName || null,
+      userEmail: a.user?.email || null,
+      source: 'activity_log' as const,
+    }));
+
+    // Merge & sort by descending createdAt; slice to requested page
+    const combined = [...auditMapped, ...activityMapped]
+      .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())
+      .slice(skip, skip + limitParam);
+
+    res.json(combined);
   } catch (error) {
     console.error('Get audit logs error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });

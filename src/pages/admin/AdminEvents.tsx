@@ -196,7 +196,8 @@ export default function AdminEvents() {
                         Manage Attendance
                       </Button>
                       <Button
-                        onClick={() => navigate(`/events/${event.slug}`)}
+                        onClick={() => navigate(`/events/${event.id}`)}
+                        data-testid="view-event-details"
                         variant="outline"
                         size="sm"
                       >

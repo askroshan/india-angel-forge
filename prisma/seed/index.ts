@@ -588,11 +588,11 @@ async function main() {
   await prisma.identityVerification.deleteMany({});
   await prisma.systemConfig.deleteMany({});
 
-  // Create Membership Plans
+  // Create Membership Plans — names per US-ADMIN-008 spec: Associate / Full Member / Lead Angel
   const standardPlan = await prisma.membershipPlan.create({
     data: {
-      name: 'Standard Member',
-      slug: 'standard-annual',
+      name: 'Full Member',
+      slug: 'full-member-annual',
       price: 60000,
       billingCycle: 'ANNUAL',
       features: [
@@ -610,12 +610,12 @@ async function main() {
 
   const premiumPlan = await prisma.membershipPlan.create({
     data: {
-      name: 'Premium Member',
-      slug: 'premium-annual',
+      name: 'Lead Angel',
+      slug: 'lead-angel-annual',
       price: 120000,
       billingCycle: 'ANNUAL',
       features: [
-        'All Standard features',
+        'All Full Member features',
         'Unlimited deal flow access',
         'Priority event seating',
         'Monthly 1-on-1 advisory sessions',
@@ -631,8 +631,8 @@ async function main() {
 
   const introductoryPlan = await prisma.membershipPlan.create({
     data: {
-      name: 'Introductory',
-      slug: 'introductory-free',
+      name: 'Associate',
+      slug: 'associate-free',
       price: 0,
       billingCycle: 'ANNUAL',
       features: [

@@ -19,14 +19,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, Edit, Search, Trash2, UserPlus } from 'lucide-react';
+import { Users, Shield, Edit, Search, Trash2, UserPlus, Eye } from 'lucide-react';
 
 interface User {
   id: string;
   email: string;
   fullName?: string;
   createdAt: string;
-  role?: 'admin' | 'moderator' | 'compliance_officer' | 'user';
+  /** Primary role (first in list) — kept for backward-compat */
+  role?: string;
+  /** All assigned roles — API always returns this array */
+  roles: string[];
 }
 
 const AVAILABLE_ROLES = [
@@ -53,6 +56,9 @@ export default function UserRoleManagement() {
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createForm, setCreateForm] = useState({ email: '', fullName: '', password: '', role: 'user' });
+  const [editProfileUser, setEditProfileUser] = useState<User | null>(null);
+  const [editProfileForm, setEditProfileForm] = useState({ email: '', fullName: '' });
+  const [editProfileLoading, setEditProfileLoading] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -129,7 +135,9 @@ export default function UserRoleManagement() {
     let filtered = [...users];
 
     if (filterRole !== 'all') {
-      filtered = filtered.filter(u => u.role === filterRole);
+      filtered = filtered.filter(u =>
+        (u.roles?.length ? u.roles : u.role ? [u.role] : ['user']).includes(filterRole)
+      );
     }
 
     if (searchQuery) {
@@ -145,7 +153,8 @@ export default function UserRoleManagement() {
 
   const handleOpenRoleDialog = (user: User) => {
     setSelectedUser(user);
-    setNewRole(user.role || 'user');
+    // Pre-select primary role
+    setNewRole(user.roles?.[0] || user.role || 'user');
   };
 
   const handleCloseDialog = () => {
@@ -227,6 +236,49 @@ export default function UserRoleManagement() {
         description: error.message || 'Failed to delete user',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleOpenEditProfile = (user: User) => {
+    setEditProfileUser(user);
+    setEditProfileForm({ email: user.email, fullName: user.fullName || '' });
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!editProfileUser) return;
+    try {
+      setEditProfileLoading(true);
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/admin/users/${editProfileUser.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editProfileForm),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update profile');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Profile for ${editProfileUser.email} has been updated`,
+      });
+
+      setEditProfileUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditProfileLoading(false);
     }
   };
 
@@ -350,7 +402,9 @@ export default function UserRoleManagement() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {AVAILABLE_ROLES.map(role => {
-          const count = users.filter(u => u.role === role.value).length;
+          const count = users.filter(u =>
+            (u.roles?.length ? u.roles : u.role ? [u.role] : ['user']).includes(role.value)
+          ).length;
           return (
             <Card key={role.value}>
               <CardHeader className="pb-3">
@@ -384,11 +438,13 @@ export default function UserRoleManagement() {
                     <div>
                       <h3 className="font-semibold">{user.fullName || user.email}</h3>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                          <Shield className="h-3 w-3 mr-1" />
-                          {AVAILABLE_ROLES.find(r => r.value === user.role)?.label || 'User'}
-                        </Badge>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {(user.roles?.length ? user.roles : user.role ? [user.role] : ['user']).map(r => (
+                          <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} data-testid="role-badge">
+                            <Shield className="h-3 w-3 mr-1" />
+                            {AVAILABLE_ROLES.find(av => av.value === r)?.label || r}
+                          </Badge>
+                        ))}
                         <span className="text-xs text-muted-foreground">
                           Joined {new Date(user.createdAt).toLocaleDateString()}
                         </span>
@@ -397,6 +453,16 @@ export default function UserRoleManagement() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenEditProfile(user)}
+                      data-testid="view-profile-btn"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View/Edit
+                    </Button>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -488,6 +554,59 @@ export default function UserRoleManagement() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteUser}>
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editProfileUser !== null} onOpenChange={(open) => !open && setEditProfileUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update profile details for {editProfileUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-fullname">Full Name</Label>
+              <Input
+                id="edit-fullname"
+                value={editProfileForm.fullName}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, fullName: e.target.value })}
+                placeholder="Full name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editProfileForm.email}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, email: e.target.value })}
+                placeholder="Email address"
+              />
+            </div>
+            <div>
+              <Label>Roles</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {(editProfileUser?.roles?.length ? editProfileUser.roles : editProfileUser?.role ? [editProfileUser.role] : ['user']).map(r => (
+                  <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'}>
+                    <Shield className="h-3 w-3 mr-1" />
+                    {AVAILABLE_ROLES.find(av => av.value === r)?.label || r}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Use Change Role to modify roles</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProfileUser(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateProfile} disabled={editProfileLoading}>
+              {editProfileLoading ? 'Saving…' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
