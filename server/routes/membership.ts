@@ -192,6 +192,12 @@ router.post('/apply-discount', authenticateUser, async (req, res) => {
 
     return res.json({
       success: true,
+      originalPrice: effectivePrice,
+      discountedPrice: Math.round(finalPrice * 100) / 100,
+      discountAmount: Math.round(discountAmount * 100) / 100,
+      discountType: discount.discountType,
+      discountValue: Number(discount.discountValue),
+      // Legacy nested shape kept for backwards compat
       discount: {
         code: discount.code,
         discountType: discount.discountType,

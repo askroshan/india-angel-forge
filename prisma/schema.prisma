@@ -60,6 +60,12 @@ model User {
   // Phase 3 relations - Membership
   memberships            UserMembership[]
   identityVerifications  IdentityVerification[]
+  // Moderator / compliance relations
+  contentFlagsRaised     ContentFlag[]           @relation("FlaggedBy")
+  contentFlagsReviewed   ContentFlag[]           @relation("ReviewedBy")
+  sebiChecks             SebiComplianceCheck[]   @relation("SebiCheckedBy")
+  femaScreenings         FemaFdiScreening[]      @relation("FemaScreenedBy")
+  dpiitVerifications     DpiitVerification[]     @relation("DpiitVerifiedBy")
 
   @@map("users")
 }
@@ -1358,4 +1364,134 @@ model SystemConfig {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("system_config")
+}
+
+// ==================== CONTENT MODERATION (US-MOD-102, US-REG-004) ====================
+
+enum ContentFlagType {
+  MESSAGE
+  DISCUSSION
+  REPLY
+  DEAL_COMMUNICATION
+}
+
+enum ContentFlagReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE
+  MISINFORMATION
+  FORWARD_LOOKING_STATEMENT
+  GUARANTEED_RETURNS_CLAIM
+  UNREGISTERED_INVESTMENT_ADVICE
+  OTHER
+}
+
+enum ContentFlagStatus {
+  PENDING
+  REVIEWED
+}
+
+enum ContentFlagResolution {
+  REMOVED
+  WARNING_ISSUED
+  USER_SUSPENDED
+  FALSE_POSITIVE
+}
+
+model ContentFlag {
+  id            String                 @id @default(cuid())
+  contentType   ContentFlagType        @map("content_type")
+  contentId     String                 @map("content_id")
+  contentText   String?                @map("content_text")
+  flaggedBy     String                 @map("flagged_by")
+  reason        ContentFlagReason
+  description   String?
+  status        ContentFlagStatus      @default(PENDING)
+  resolution    ContentFlagResolution? 
+  reviewedBy    String?                @map("reviewed_by")
+  resolvedAt    DateTime?              @map("resolved_at")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  flagger    User  @relation("FlaggedBy", fields: [flaggedBy], references: [id], onDelete: Cascade)
+  reviewer   User? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([status])
+  @@index([flaggedBy])
+  @@index([contentType])
+  @@index([createdAt])
+  @@map("content_flags")
+}
+
+// ==================== INDIA REGULATORY COMPLIANCE (US-REG-001..005) ====================
+
+enum SebiAifCategory {
+  CATEGORY_I
+  CATEGORY_II
+  CATEGORY_III
+}
+
+enum FdiFlagStatus {
+  NOT_SCREENED
+  CLEARED
+  FLAGGED
+  UNDER_REVIEW
+}
+
+model SebiComplianceCheck {
+  id                    String           @id @default(cuid())
+  applicationId         String           @map("application_id")
+  applicationType       String           @map("application_type")
+  aifCategory           SebiAifCategory? @map("aif_category")
+  minTicketSizeVerified Boolean          @default(false) @map("min_ticket_size_verified")
+  accreditedInvestorVerified Boolean     @default(false) @map("accredited_investor_verified")
+  checkedBy             String?          @map("checked_by")
+  notes                 String?
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  checker User? @relation("SebiCheckedBy", fields: [checkedBy], references: [id])
+
+  @@index([applicationId])
+  @@index([applicationType])
+  @@map("sebi_compliance_checks")
+}
+
+model FemaFdiScreening {
+  id              String        @id @default(cuid())
+  applicationId   String        @map("application_id")
+  applicationType String        @map("application_type")
+  sector          String?
+  fdiCap          Decimal?      @map("fdi_cap") @db.Decimal(5, 2)
+  status          FdiFlagStatus @default(NOT_SCREENED)
+  rbiApprovalReq  Boolean       @default(false) @map("rbi_approval_required")
+  screenedBy      String?       @map("screened_by")
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  screener User? @relation("FemaScreenedBy", fields: [screenedBy], references: [id])
+
+  @@index([applicationId])
+  @@index([status])
+  @@map("fema_fdi_screenings")
+}
+
+model DpiitVerification {
+  id                   String    @id @default(cuid())
+  applicationId        String    @map("application_id")
+  dpiitCertificateNo   String?   @map("dpiit_certificate_no")
+  verified             Boolean   @default(false)
+  verifiedBy           String?   @map("verified_by")
+  verifiedAt           DateTime? @map("verified_at")
+  taxBenefitEligible   Boolean   @default(false) @map("tax_benefit_eligible")
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  verifier User? @relation("DpiitVerifiedBy", fields: [verifiedBy], references: [id])
+
+  @@index([applicationId])
+  @@index([dpiitCertificateNo])
+  @@map("dpiit_verifications")
 }

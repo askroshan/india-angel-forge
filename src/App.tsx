@@ -64,6 +64,10 @@ import DirectMessages from "./pages/investor/DirectMessages";
 import ApplicationScreening from "./pages/moderator/ApplicationScreening";
 import ContentModeration from "./pages/moderator/ContentModeration";
 import EventAttendance from "./pages/moderator/EventAttendance";
+import ModeratorUsers from "./pages/moderator/ModeratorUsers";
+import ModeratorReports from "./pages/moderator/ModeratorReports";
+import ModeratorAttendance from "./pages/moderator/ModeratorAttendance";
+import ComplianceDashboard from "./pages/moderator/ComplianceDashboard";
 import AdvisoryHours from "./pages/operator/AdvisoryHours";
 import AdvisoryProfile from "./pages/operator/AdvisoryProfile";
 import MentorshipHub from "./pages/operator/MentorshipHub";
@@ -397,6 +401,26 @@ const App = () => (
             <Route path="/moderator/events/:eventId/attendance" element={
               <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
                 <EventAttendance />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/users" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ModeratorUsers />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/reports" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ModeratorReports />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/attendance" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ModeratorAttendance />
+              </ProtectedRoute>
+            } />
+            <Route path="/moderator/compliance" element={
+              <ProtectedRoute allowedRoles={MODERATOR_ROLES}>
+                <ComplianceDashboard />
               </ProtectedRoute>
             } />
             {/* Operator/Advisory Routes */}

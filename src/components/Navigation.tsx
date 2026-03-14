@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -108,6 +108,14 @@ const Navigation = () => {
                       Membership
                     </Link>
                   </DropdownMenuItem>
+                  {user.roles?.includes('moderator') && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/moderator/applications" className="flex items-center gap-2 cursor-pointer" data-testid="nav-moderator-panel">
+                        <Users className="h-4 w-4" />
+                        Moderator Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {user.roles?.includes('admin') && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
@@ -178,6 +186,14 @@ const Navigation = () => {
                       Membership
                     </Link>
                   </Button>
+                  {user.roles?.includes('moderator') && (
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/moderator/applications" onClick={() => setIsOpen(false)} data-testid="nav-moderator-panel-mobile">
+                        <Users className="h-4 w-4 mr-2" />
+                        Moderator Panel
+                      </Link>
+                    </Button>
+                  )}
                   {user.roles?.includes('admin') && (
                     <Button variant="outline" className="w-full" asChild>
                       <Link to="/admin" onClick={() => setIsOpen(false)}>
