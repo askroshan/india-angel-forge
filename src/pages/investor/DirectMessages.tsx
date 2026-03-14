@@ -265,8 +265,7 @@ const DirectMessages = () => {
                           <SelectContent>
                             {users.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
-                                {user.full_name} ({user.role})
-                                {user.company && ` - ${user.company}`}
+                                {user.full_name} ({user.role}) — {user.email}
                               </SelectItem>
                             ))}
                           </SelectContent>

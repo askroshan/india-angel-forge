@@ -21,7 +21,8 @@ import {
   XCircle, 
   Clock,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Trash2,
 } from 'lucide-react';
 
 interface DealInterest {
@@ -151,6 +152,23 @@ const DealPipeline = () => {
     }
 
     setFilteredInterests(filtered);
+  };
+
+  // US-INV-111: Withdraw / cancel deal interest
+  const withdrawInterest = async (interestId: string) => {
+    if (!token) return;
+    if (!window.confirm('Are you sure you want to withdraw your interest in this deal?')) return;
+    try {
+      const response = await fetch(`/api/deals/interests/${interestId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to withdraw');
+      setInterests(prev => prev.filter(i => i.id !== interestId));
+      toast({ title: 'Interest Withdrawn', description: 'Your interest in this deal has been withdrawn.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to withdraw interest. Please try again.', variant: 'destructive' });
+    }
   };
 
   const formatAmount = (amount: number) => {
@@ -432,7 +450,7 @@ const DealPipeline = () => {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button onClick={() => navigate(`/deals/${deal.slug}`)}>
                       View Deal Details
                       <ArrowRight className="h-4 w-4 ml-2" />
@@ -440,6 +458,19 @@ const DealPipeline = () => {
                     {interest.status === 'accepted' && deal.dealStatus !== 'closed' && (
                       <Button variant="outline" onClick={() => navigate(`/investor/commitments/${interest.id}`)}>
                         Complete Commitment
+                      </Button>
+                    )}
+                    {/* US-INV-111: Withdraw interest button for pending interests */}
+                    {interest.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => withdrawInterest(interest.id)}
+                        data-testid={`withdraw-interest-${interest.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Withdraw Interest
                       </Button>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket, Users, FileText } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket, Users, FileText, TrendingUp, Briefcase, MessageSquare, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -150,6 +150,41 @@ const Navigation = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {/* B6 FIX: Investor-specific navigation links */}
+                  {(user.roles?.includes('investor') || user.roles?.includes('angel_investor') || user.roles?.includes('vc_partner') || user.roles?.includes('family_office')) && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/investor/dashboard" className="flex items-center gap-2 cursor-pointer" data-testid="nav-investor-dashboard">
+                          <BarChart2 className="h-4 w-4" />
+                          Investor Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/investor/portfolio" className="flex items-center gap-2 cursor-pointer" data-testid="nav-portfolio">
+                          <TrendingUp className="h-4 w-4" />
+                          Portfolio
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/investor/pipeline" className="flex items-center gap-2 cursor-pointer" data-testid="nav-deal-pipeline">
+                          <Briefcase className="h-4 w-4" />
+                          Deal Pipeline
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/investor/kyc" className="flex items-center gap-2 cursor-pointer" data-testid="nav-kyc">
+                          <FileText className="h-4 w-4" />
+                          KYC / Accreditation
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/investor/messages" className="flex items-center gap-2 cursor-pointer" data-testid="nav-messages">
+                          <MessageSquare className="h-4 w-4" />
+                          Messages
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   {user.roles?.includes('admin') && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
@@ -235,6 +270,23 @@ const Navigation = () => {
                         Compliance Dashboard
                       </Link>
                     </Button>
+                  )}
+                  {/* B6 FIX: Mobile investor links */}
+                  {(user.roles?.includes('investor') || user.roles?.includes('angel_investor') || user.roles?.includes('vc_partner') || user.roles?.includes('family_office')) && (
+                    <>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to="/investor/dashboard" onClick={() => setIsOpen(false)} data-testid="nav-investor-dashboard-mobile">
+                          <BarChart2 className="h-4 w-4 mr-2" />
+                          Investor Dashboard
+                        </Link>
+                      </Button>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to="/investor/portfolio" onClick={() => setIsOpen(false)}>
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Portfolio
+                        </Link>
+                      </Button>
+                    </>
                   )}
                   {user.roles?.includes('admin') && (
                     <Button variant="outline" className="w-full" asChild>

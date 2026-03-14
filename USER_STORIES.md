@@ -1762,7 +1762,205 @@ All user stories must meet these requirements:
 
 ---
 
-**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 7 moderator panel + India compliance added  
+## Investor (Primary) — Phase 8 User Stories (US-INV-101 to US-INV-118)
+
+> Branch: `2026-03-14-Investor` · Migration: `20260314152013_add_investor_profile`
+
+### US-INV-101: View Deal Detail Page
+**As an** investor  
+**I want to** click a deal and see its full details  
+**So that** I can make an informed investment decision
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/deals/:dealId`
+- THEN I see company name, sector, stage, deal size, min investment, valuation, status
+- AND I see a SEBI regulatory disclosure (US-INV-113)
+- AND I see an "Express Interest" button if I haven't already
+
+**Implementation Status:** ✅ Complete (`src/pages/investor/DealDetail.tsx`, slug-lookup in `GET /api/deals/:id`)  
+**Bug Fixed:** B1 — No DealDetail component / no `/deals/:dealId` route
+
+---
+
+### US-INV-102: View SPV List
+**As an** investor  
+**I want to** browse all SPVs I'm eligible to join  
+**So that** I can evaluate co-investment opportunities
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/investor/spv`
+- THEN I see a list of SPVs with target/committed/members/carry
+
+**Implementation Status:** ✅ Complete (`src/pages/investor/InvestorSPVList.tsx`)  
+**Bug Fixed:** B2 — Route `/investor/spv` was missing from App.tsx
+
+---
+
+### US-INV-103: View My Commitments
+**As an** investor  
+**I want to** see all my investment commitments  
+**So that** I can track what I've committed
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/investor/commitments`
+- THEN I see a list of my commitments with totals
+
+**Implementation Status:** ✅ Complete (`src/pages/investor/InvestorCommitments.tsx`)  
+**Bug Fixed:** B2 — Route `/investor/commitments` was missing from App.tsx
+
+---
+
+### US-INV-104: Portfolio Performance Charts
+**As an** investor  
+**I want to** see performance metrics for my portfolio  
+**So that** I can measure IRR, sector/stage breakdown, and time-series returns
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/investor/portfolio/performance`
+- THEN the page loads without an error (returns data or empty state)
+- AND `GET /api/portfolio/performance` returns `{ overview, by_sector, by_stage, performance_over_time }`
+
+**Implementation Status:** ✅ Complete (110-line endpoint added to `server.ts`)  
+**Bug Fixed:** B3 — `GET /api/portfolio/performance` endpoint was missing
+
+---
+
+### US-INV-105 / US-INV-106: Transaction History, Certificates, Activity
+**As an** investor  
+**I want to** access `/investor/transactions`, `/investor/certificates`, `/investor/activity`  
+**So that** all my financial history routes work
+
+**Implementation Status:** ✅ Complete (3 alias routes added to `App.tsx`)  
+**Bug Fixed:** B2 — Routes were undeclared
+
+---
+
+### US-INV-107: Investor Dashboard KPIs
+**As an** investor  
+**I want to** see a summary dashboard  
+**So that** I can see key metrics at a glance
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/investor/dashboard`
+- THEN I see KPI cards: Portfolio Value, Total Committed, Portfolio Companies, Active Deals, My Interests, Active SPVs, Unread Messages, Pending KYC
+
+**Implementation Status:** ✅ Complete (`src/pages/investor/InvestorDashboard.tsx`, `GET /api/investor/dashboard`)
+
+---
+
+### US-INV-108: Real User Roles in Messaging Recipient Dropdown
+**As an** investor  
+**I want to** see real user roles and emails in the message recipient dropdown  
+**So that** I can find the right person to contact
+
+**Acceptance Criteria:**
+- GIVEN I open the new message form
+- THEN each user displays as `Full Name (role) — email@example.com`
+- AND `/api/users` returns real roles (not hardcoded 'user'), sorted by name
+
+**Implementation Status:** ✅ Complete (fixed `GET /api/users` in `server.ts` + `DirectMessages.tsx`)  
+**Bug Fixed:** B4/B5 — `GET /api/users` used hardcoded `role: 'user'` and newest-first sort
+
+---
+
+### US-INV-109: Email in Messaging Recipients
+**As an** investor  
+**I want to** see the email address next to each user's name/role when composing a message  
+**So that** I'm certain I'm contacting the right person
+
+**Implementation Status:** ✅ Complete (`DirectMessages.tsx` display updated)
+
+---
+
+### US-INV-110: Investor Navigation Links
+**As an** investor  
+**I want to** see investor-specific navigation items in my account menu  
+**So that** I can navigate my features quickly
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as an investor
+- THEN the navigation dropdown includes: Dashboard, Portfolio, Deal Pipeline, KYC, Messages
+
+**Implementation Status:** ✅ Complete (`src/components/Navigation.tsx` updated with investor nav links)  
+**Bug Fixed:** B6 — Navigation had no investor-specific links
+
+---
+
+### US-INV-111: Withdraw Deal Interest
+**As an** investor  
+**I want to** cancel a deal interest I expressed  
+**So that** I can remove it from my pipeline
+
+**Acceptance Criteria:**
+- GIVEN I have a `pending` deal interest in `/investor/pipeline`
+- THEN I see a "Withdraw Interest" button
+- WHEN I click it, the interest is deleted via `DELETE /api/deals/interests/:id`
+
+**Implementation Status:** ✅ Complete (`DealPipeline.tsx` updated with `withdrawInterest()` + button)
+
+---
+
+### US-INV-112: Investor Profile (InvestorProfile Model)
+**As an** investor  
+**I want to** have a dedicated profile with India-specific regulatory fields  
+**So that** the platform can manage my accreditation status, KYC, and tax details
+
+**Acceptance Criteria:**
+- GIVEN the `investor_profiles` table exists
+- THEN `GET /api/investor/profile` returns my profile (auto-created on first fetch)
+- AND `PATCH /api/investor/profile` persists updates
+
+**Implementation Status:** ✅ Complete (Prisma model `InvestorProfile`, migration `20260314152013_add_investor_profile`, GET/PATCH endpoints)  
+**Bug Fixed:** B7 — No `investor_profiles` table existed
+
+---
+
+### US-INV-113: SEBI Disclosure on Deal Detail
+**As an** investor  
+**I want to** see a SEBI regulatory disclosure on every deal page  
+**So that** I'm informed of my legal rights and the platform's compliance obligations
+
+**Implementation Status:** ✅ Complete (`[data-testid="sebi-disclosure"]` in `DealDetail.tsx`)
+
+---
+
+### US-INV-114 / US-INV-115: PAN, Demat, NRI / FEMA Status
+**As an** investor  
+**I want to** record my PAN number, demat account, NRI status, and FEMA applicability  
+**So that** the platform complies with SEBI / RBI regulations
+
+**Implementation Status:** ✅ Complete (`InvestorProfilePage.tsx` — Identity & Regulatory section)
+
+---
+
+### US-INV-116: TDS Information
+**As an** investor  
+**I want to** see my year-to-date TDS deducted  
+**So that** I can reconcile tax records
+
+**Implementation Status:** ✅ Complete (`InvestorProfilePage.tsx` — TDS section, `tdsDeductedYtd` field in `InvestorProfile`)
+
+---
+
+### US-INV-117: eSign Reference
+**As an** investor  
+**I want to** record and view my eSign reference  
+**So that** I can track my electronically signed documents
+
+**Implementation Status:** ✅ Complete (`InvestorProfilePage.tsx` — eSign section, `eSignReference` field)
+
+---
+
+### US-INV-118: Nominee Details
+**As an** investor  
+**I want to** record my investment nominee name and relation  
+**So that** my investments are transferable in case of death
+
+**Implementation Status:** ✅ Complete (`InvestorProfilePage.tsx` — Nominee section, `nomineeName` + `nomineeRelation` fields)
+
+---
+
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 8 investor primary features + India compliance added  
 **Last Updated:** March 14, 2026  
-**Implementation Complete:** March 14, 2026 (branch: 2026-03-13-Moderator)  
+**Implementation Complete:** March 14, 2026 (branch: 2026-03-14-Investor)  
 **Owner:** Product Management Team
