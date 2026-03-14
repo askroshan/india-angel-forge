@@ -46,6 +46,12 @@ interface AMLScreening {
   notes?: string;
 }
 
+interface UnscreenedInvestor {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export default function AMLScreeningDashboard() {
   const [screenings, setScreenings] = useState<AMLScreening[]>([]);
   const [filteredScreenings, setFilteredScreenings] = useState<AMLScreening[]>([]);
@@ -58,6 +64,9 @@ export default function AMLScreeningDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [accessDenied, setAccessDenied] = useState(false);
+  const [showInitiateDialog, setShowInitiateDialog] = useState(false);
+  const [unscreenedInvestors, setUnscreenedInvestors] = useState<UnscreenedInvestor[]>([]);
+  const [initiatingId, setInitiatingId] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -133,6 +142,26 @@ export default function AMLScreeningDashboard() {
     }
   };
 
+  const fetchUnscreenedInvestors = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch('/api/compliance/unscreened-investors', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUnscreenedInvestors(data || []);
+      }
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const handleOpenInitiateDialog = () => {
+    fetchUnscreenedInvestors();
+    setShowInitiateDialog(true);
+  };
+
   const filterScreenings = () => {
     let filtered = [...screenings];
 
@@ -153,6 +182,7 @@ export default function AMLScreeningDashboard() {
 
   const initiateScreening = async (investorId: string) => {
     try {
+      setInitiatingId(investorId);
       // In production, this would call external AML API
       const mockScreeningResult = {
         provider: 'WorldCheck',
@@ -174,6 +204,7 @@ export default function AMLScreeningDashboard() {
         description: 'AML screening has been completed',
       });
 
+      setShowInitiateDialog(false);
       fetchScreenings();
     } catch (error) {
       const err = error as { message?: string };
@@ -182,6 +213,8 @@ export default function AMLScreeningDashboard() {
         description: err.message || 'Failed to initiate screening',
         variant: 'destructive',
       });
+    } finally {
+      setInitiatingId(null);
     }
   };
 
@@ -219,13 +252,14 @@ export default function AMLScreeningDashboard() {
       const allReasons = [...flagReasons, customReason].filter(Boolean);
 
       const response = await fetch(`/api/compliance/aml-screening/${selectedScreening.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           status: action === 'clear' ? 'clear' : 'flagged',
+          riskLevel: action === 'flag' ? 'high' : 'low',
           flaggedReasons: action === 'flag' ? allReasons : undefined,
           notes,
         }),
@@ -269,10 +303,18 @@ export default function AMLScreeningDashboard() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">AML Screening Dashboard</h1>
-        <p className="text-muted-foreground">
-          Screen investors against anti-money laundering databases
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">AML Screening Dashboard</h1>
+            <p className="text-muted-foreground">
+              Screen investors against anti-money laundering databases
+            </p>
+          </div>
+          <Button onClick={handleOpenInitiateDialog} data-testid="initiate-screening-btn">
+            <Play className="mr-2 h-4 w-4" />
+            Initiate New Screening
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -471,6 +513,47 @@ export default function AMLScreeningDashboard() {
               variant={action === 'flag' ? 'destructive' : 'default'}
             >
               {action === 'clear' ? 'Confirm Clear' : 'Submit Flag'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Initiate Screening Dialog */}
+      <Dialog open={showInitiateDialog} onOpenChange={setShowInitiateDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Initiate AML Screening</DialogTitle>
+            <DialogDescription>
+              Select an investor with verified KYC documents to initiate AML screening.
+            </DialogDescription>
+          </DialogHeader>
+          {unscreenedInvestors.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              All investors with verified KYC have been screened.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {unscreenedInvestors.map((investor) => (
+                <div key={investor.id} className="flex items-center justify-between p-3 border rounded-md">
+                  <div>
+                    <p className="font-medium text-sm">{investor.name}</p>
+                    <p className="text-xs text-muted-foreground">{investor.email}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => initiateScreening(investor.id)}
+                    disabled={initiatingId === investor.id}
+                    data-testid={`screen-investor-${investor.id}`}
+                  >
+                    <Play className="h-3 w-3 mr-1" />
+                    {initiatingId === investor.id ? 'Screening...' : 'Screen'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInitiateDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

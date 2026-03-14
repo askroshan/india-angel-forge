@@ -158,7 +158,8 @@ export default function KYCReviewDashboard() {
 
   const handleViewDocument = async (doc: KYCDocument) => {
     try {
-      window.open(`/uploads/${doc.filePath}`, '_blank');
+      // filePath already contains /uploads/ prefix
+      window.open(doc.filePath, '_blank');
     } catch (error) {
       const err = error as { message?: string };
       toast({
@@ -171,7 +172,8 @@ export default function KYCReviewDashboard() {
 
   const handleDownloadDocument = async (doc: KYCDocument) => {
     try {
-      window.open(`/uploads/${doc.filePath}`, '_blank');
+      // filePath already contains /uploads/ prefix
+      window.open(doc.filePath, '_blank');
     } catch (error) {
       const err = error as { message?: string };
       toast({
@@ -212,14 +214,14 @@ export default function KYCReviewDashboard() {
       if (!token) throw new Error('Not authenticated');
 
       const response = await fetch(`/api/compliance/kyc-review/${selectedDoc.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           status: action === 'verify' ? 'verified' : 'rejected',
-          rejectionReason: action === 'reject' ? rejectionReason : undefined,
+          notes: action === 'reject' ? rejectionReason : undefined,
         }),
       });
 
