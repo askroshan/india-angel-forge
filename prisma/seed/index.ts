@@ -7,12 +7,12 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient, ActivityType } from '@prisma/client';
+import { ActivityType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { seedEventAttendance } from './event-attendance-seed';
 import { seedFinancialStatements } from './financial-statements-seed';
 
-const prisma = new PrismaClient();
+import prisma from '../../db';
 
 // Test users with their roles and passwords
 const testUsers = [

@@ -1,0 +1,117 @@
+# ============================================
+# India Angel Forum - Local Development Docker Compose
+# Runs the full stack locally without affecting other projects
+#
+# Ports (all unique, won't conflict):
+#   App:     http://localhost:3002
+#   Adminer: http://localhost:8082
+#   Postgres: localhost:5434 (for external tools)
+#   Redis:    localhost:6380  (for external tools)
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up --build -d
+#   docker compose -f docker-compose.local.yml down
+#   docker compose -f docker-compose.local.yml logs -f app
+# ============================================
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: iaf-local-db
+    restart: unless-stopped
+    env_file: .env.docker.local
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - iaf-local-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iaflocal -d indiaangelforum_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iaf-local-net
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: iaf-local-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - iaf-local-redis:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - iaf-local-net
+
+  # ── Adminer (DB GUI) ────────────────────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: iaf-local-adminer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8082:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: iaf-local-db
+      ADMINER_DESIGN: pepa-linha
+    networks:
+      - iaf-local-net
+
+  # ── Application ─────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: iaf-local-app:latest
+    container_name: iaf-local-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env.docker.local
+    ports:
+      - "127.0.0.1:3002:3001"
+    volumes:
+      - iaf-local-uploads:/app/uploads
+      - iaf-local-invoices:/app/invoices
+      - iaf-local-attachments:/app/attachments
+      - iaf-local-archives:/app/archives
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - iaf-local-net
+
+volumes:
+  iaf-local-postgres:
+    driver: local
+  iaf-local-redis:
+    driver: local
+  iaf-local-uploads:
+    driver: local
+  iaf-local-invoices:
+    driver: local
+  iaf-local-attachments:
+    driver: local
+  iaf-local-archives:
+    driver: local
+
+networks:
+  iaf-local-net:
+    driver: bridge

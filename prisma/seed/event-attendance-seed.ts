@@ -4,9 +4,7 @@
  * Creates sample EventAttendance records for testing
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../db';
 
 export async function seedEventAttendance() {
   console.log('🎫 Seeding Event Attendance records...');

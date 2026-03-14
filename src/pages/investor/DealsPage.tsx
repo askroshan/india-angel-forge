@@ -91,7 +91,7 @@ export default function DealsPage() {
     }
 
     // Admins can view deals without an investor application
-    if (user?.role?.toLowerCase() === 'admin') {
+    if (user?.roles?.some(r => r.toLowerCase() === 'admin')) {
       await fetchDeals();
       await checkAccreditation();
       await fetchExpressedInterests();
