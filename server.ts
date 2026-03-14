@@ -463,6 +463,7 @@ app.get('/api/events/my-registrations', authenticateToken, async (req, res) => {
         registered_at: a.createdAt?.toISOString?.() || new Date().toISOString(),
         events: normalizeEvent(a.event),
         event: a.event,
+        _source: 'attendance' as const,
       }));
 
     const combined = [...normalizedRegistrations, ...attendanceAsRegistrations];
@@ -6592,6 +6593,114 @@ app.get('/api/admin/communications', authenticateToken, requireRole(['admin']), 
     res.json({ messages: result, total });
   } catch (error) {
     console.error('Get communications audit error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== OPERATOR ANGEL ROUTES (US-OA-004) ====================
+
+// GET /api/operator/deal-referrals — list operator's own referrals
+app.get('/api/operator/deal-referrals', authenticateToken, requireRole(['operator_angel', 'admin']), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const referrals = await prisma.dealReferral.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(referrals);
+  } catch (error) {
+    console.error('Get deal referrals error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/operator/deal-referrals — submit a new deal referral
+app.post('/api/operator/deal-referrals', authenticateToken, requireRole(['operator_angel', 'admin']), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { companyName, sector, stage, description, contactName, contactEmail, website } = req.body;
+
+    if (!companyName || !sector || !stage || !description || !contactName || !contactEmail) {
+      return res.status(400).json({ error: { message: 'Missing required fields', code: 'VALIDATION_ERROR' } });
+    }
+
+    const referral = await prisma.dealReferral.create({
+      data: {
+        userId,
+        companyName,
+        sector,
+        stage,
+        description,
+        contactName,
+        contactEmail,
+        website: website || null,
+      },
+    });
+    res.status(201).json(referral);
+  } catch (error) {
+    console.error('Create deal referral error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// PATCH /api/admin/deal-referrals/:id — admin reviews a referral
+app.patch('/api/admin/deal-referrals/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { status, adminNotes } = req.body;
+
+    const validStatuses = ['SUBMITTED', 'UNDER_REVIEW', 'ACCEPTED', 'REJECTED'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ error: { message: 'Invalid status', code: 'VALIDATION_ERROR' } });
+    }
+
+    const referral = await prisma.dealReferral.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(adminNotes !== undefined && { adminNotes }),
+      },
+    });
+    res.json(referral);
+  } catch (error) {
+    console.error('Update deal referral error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/operator/performance-summary — engagement metrics (US-OA-005)
+app.get('/api/operator/performance-summary', authenticateToken, requireRole(['operator_angel', 'admin']), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalReferrals, acceptedReferrals, eventsAttended, upcomingEvents] = await Promise.all([
+      prisma.dealReferral.count({ where: { userId } }),
+      prisma.dealReferral.count({ where: { userId, status: 'ACCEPTED' } }),
+      prisma.eventAttendance.count({ where: { userId, rsvpStatus: 'CONFIRMED' } }),
+      prisma.eventAttendance.count({
+        where: {
+          userId,
+          rsvpStatus: 'CONFIRMED',
+          event: { eventDate: { gte: now } },
+        },
+      }),
+    ]);
+
+    const referralsThisMonth = await prisma.dealReferral.count({
+      where: { userId, createdAt: { gte: startOfMonth } },
+    });
+
+    res.json({
+      totalReferrals,
+      acceptedReferrals,
+      referralsThisMonth,
+      eventsAttended,
+      upcomingEvents,
+    });
+  } catch (error) {
+    console.error('Get performance summary error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });

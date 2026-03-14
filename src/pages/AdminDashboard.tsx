@@ -97,8 +97,8 @@ const AdminDashboard = () => {
       }
 
       const endpoint = table === 'founder_applications' 
-        ? `/api/applications/founders/${id}` 
-        : `/api/applications/investors/${id}`;
+        ? `/api/admin/applications/founders/${id}` 
+        : `/api/admin/applications/investors/${id}`;
       
       const response = await fetch(endpoint, {
         method: 'PATCH',
