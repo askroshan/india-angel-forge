@@ -43,6 +43,11 @@ import PortfolioUpdates from "./pages/investor/PortfolioUpdates";
 import SharedDocuments from "./pages/investor/SharedDocuments";
 import DealAnalytics from "./pages/investor/DealAnalytics";
 import DueDiligenceChecklist from "./pages/investor/DueDiligenceChecklist";
+import DealDetail from "./pages/investor/DealDetail";
+import InvestorSPVList from "./pages/investor/InvestorSPVList";
+import InvestorCommitments from "./pages/investor/InvestorCommitments";
+import InvestorDashboard from "./pages/investor/InvestorDashboard";
+import InvestorProfilePage from "./pages/investor/InvestorProfilePage";
 import ApplicationStatus from "./pages/founder/ApplicationStatus";
 import InvestorDirectory from "./pages/founder/InvestorDirectory";
 import PitchSessions from "./pages/founder/PitchSessions";
@@ -177,9 +182,27 @@ const App = () => (
                 <KYCUpload />
               </ProtectedRoute>
             } />
+            {/* US-INV-107: Investor Dashboard */}
+            <Route path="/investor/dashboard" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <InvestorDashboard />
+              </ProtectedRoute>
+            } />
+            {/* US-INV-112..118: Investor Profile (SEBI, KYC, India-specific) */}
+            <Route path="/investor/profile" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <InvestorProfilePage />
+              </ProtectedRoute>
+            } />
             <Route path="/deals" element={
               <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <DealsPage />
+              </ProtectedRoute>
+            } />
+            {/* B1 FIX: Deal detail route — must appear before /deals/:dealId/documents */}
+            <Route path="/deals/:dealId" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <DealDetail />
               </ProtectedRoute>
             } />
             <Route path="/investor/deals" element={
@@ -202,9 +225,21 @@ const App = () => (
                 <InvestmentCommitment />
               </ProtectedRoute>
             } />
+            {/* B2 FIX: /investor/commitments list view */}
+            <Route path="/investor/commitments" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <InvestorCommitments />
+              </ProtectedRoute>
+            } />
             <Route path="/investor/spv/create/:interestId" element={
               <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <CreateSPV />
+              </ProtectedRoute>
+            } />
+            {/* B2 FIX: /investor/spv list view */}
+            <Route path="/investor/spv" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <InvestorSPVList />
               </ProtectedRoute>
             } />
             <Route path="/investor/spv/:spvId/invite" element={
@@ -455,6 +490,22 @@ const App = () => (
             <Route path="/transaction-history" element={
               <ProtectedRoute>
                 <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            {/* B2 FIX: Investor-namespaced aliases for transaction history, certificates, activity */}
+            <Route path="/investor/transactions" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <TransactionHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/certificates" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <Certificates />
+              </ProtectedRoute>
+            } />
+            <Route path="/investor/activity" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <ActivityTimeline />
               </ProtectedRoute>
             } />
             <Route path="/admin/financial-statements" element={

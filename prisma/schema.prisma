@@ -66,6 +66,8 @@ model User {
   sebiChecks             SebiComplianceCheck[]   @relation("SebiCheckedBy")
   femaScreenings         FemaFdiScreening[]      @relation("FemaScreenedBy")
   dpiitVerifications     DpiitVerification[]     @relation("DpiitVerifiedBy")
+  // B7: Investor profile
+  investorProfile        InvestorProfile?
 
   @@map("users")
 }
@@ -1498,4 +1500,37 @@ model DpiitVerification {
   @@index([applicationId])
   @@index([dpiitCertificateNo])
   @@map("dpiit_verifications")
+}
+
+// B7 / US-INV-112: Investor profile with SEBI and India-specific fields
+model InvestorProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  // SEBI accreditation
+  sebiCategory        String?  @map("sebi_category")          // Cat I / Cat II / Cat III AIF
+  accreditationStatus String   @default("PENDING") @map("accreditation_status") // PENDING / VERIFIED / REJECTED
+  kycStatus           String   @default("PENDING") @map("kyc_status")
+  // India-specific tax / identity fields (US-INV-113..118)
+  panNumber           String?  @map("pan_number")
+  dematAccountNo      String?  @map("demat_account_no")
+  nriStatus           Boolean  @default(false) @map("nri_status")
+  // DPIIT / FEMA flags
+  femaApplicable      Boolean  @default(false) @map("fema_applicable")
+  // eSign / eSAF token
+  eSignReference      String?  @map("e_sign_reference")
+  // Nominee details
+  nomineeName         String?  @map("nominee_name")
+  nomineeRelation     String?  @map("nominee_relation")
+  // Investment preferences
+  investmentThesisUrl String?  @map("investment_thesis_url")
+  preferredSectors    String[] @map("preferred_sectors")
+  // TDS
+  tdsDeductedYtd      Decimal  @default(0) @map("tds_deducted_ytd") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("investor_profiles")
 }

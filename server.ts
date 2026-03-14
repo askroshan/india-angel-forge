@@ -1169,9 +1169,20 @@ app.post('/api/deals/:id/interest', authenticateToken, async (req, res) => {
 
 app.get('/api/deals/:id', authenticateToken, async (req, res) => {
   try {
-    const deal = await prisma.deal.findUnique({
-      where: { id: String(req.params.id) },
-    });
+    const param = String(req.params.id);
+    // B1 FIX: Support both UUID lookup and slug lookup
+    let deal = await prisma.deal.findUnique({ where: { id: param } });
+    if (!deal) {
+      // Try slug lookup: slug is derived as companyName lowercased with hyphens
+      const allDeals = await prisma.deal.findMany({ select: { id: true, companyName: true } });
+      const matched = allDeals.find(d => {
+        const slug = d.companyName?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || '';
+        return slug === param;
+      });
+      if (matched) {
+        deal = await prisma.deal.findUnique({ where: { id: matched.id } });
+      }
+    }
     if (!deal) {
       return res.status(404).json({ error: { message: 'Deal not found', code: 'NOT_FOUND' } });
     }
@@ -2590,6 +2601,110 @@ app.get('/api/portfolio/updates', authenticateToken, async (req, res) => {
     })));
   } catch (error) {
     console.error('Get portfolio updates error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// B3 FIX: Portfolio performance metrics endpoint
+app.get('/api/portfolio/performance', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+
+    // Get portfolio companies
+    const portfolioCompanies = await prisma.portfolioCompany.findMany({
+      where: { investorId: userId },
+    });
+
+    // Fallback: derive from completed commitments
+    const commitments = await prisma.commitment.findMany({
+      where: { userId, status: 'completed' },
+      include: { deal: true },
+    });
+
+    // Merge portfolio data sources
+    const entries = portfolioCompanies.length > 0
+      ? portfolioCompanies.map(pc => ({
+          invested: Number(pc.investmentAmount),
+          currentValue: Number(pc.currentValuation ?? pc.investmentAmount),
+          sector: 'General',
+          stage: 'SEED',
+          status: pc.status || 'ACTIVE',
+          date: pc.investmentDate ?? pc.createdAt,
+        }))
+      : commitments.map(c => ({
+          invested: Number(c.amount),
+          currentValue: Number(c.amount),
+          sector: c.deal.sector || 'General',
+          stage: c.deal.stage || 'SEED',
+          status: 'ACTIVE',
+          date: c.createdAt,
+        }));
+
+    const totalDeployed = entries.reduce((s, e) => s + e.invested, 0);
+    const totalCurrentValue = entries.reduce((s, e) => s + e.currentValue, 0);
+    const unrealizedGains = totalCurrentValue - totalDeployed;
+    const activeCompanies = entries.filter(e => e.status === 'ACTIVE').length;
+    const exitedCompanies = entries.filter(e => e.status === 'EXITED').length;
+    const portfolioIrr = totalDeployed > 0 ? ((totalCurrentValue - totalDeployed) / totalDeployed) * 100 : 0;
+
+    // Sector breakdown
+    const sectorMap: Record<string, { deployed: number; current: number }> = {};
+    for (const e of entries) {
+      const sec = e.sector || 'General';
+      if (!sectorMap[sec]) sectorMap[sec] = { deployed: 0, current: 0 };
+      sectorMap[sec].deployed += e.invested;
+      sectorMap[sec].current += e.currentValue;
+    }
+    const bySector = Object.entries(sectorMap).map(([sector, v]) => ({
+      sector,
+      deployed: v.deployed,
+      current_value: v.current,
+      return_percentage: v.deployed > 0 ? ((v.current - v.deployed) / v.deployed) * 100 : 0,
+    }));
+
+    // Stage breakdown
+    const stageMap: Record<string, { deployed: number; current: number }> = {};
+    for (const e of entries) {
+      const st = e.stage || 'SEED';
+      if (!stageMap[st]) stageMap[st] = { deployed: 0, current: 0 };
+      stageMap[st].deployed += e.invested;
+      stageMap[st].current += e.currentValue;
+    }
+    const byStage = Object.entries(stageMap).map(([stage, v]) => ({
+      stage,
+      deployed: v.deployed,
+      current_value: v.current,
+      return_percentage: v.deployed > 0 ? ((v.current - v.deployed) / v.deployed) * 100 : 0,
+    }));
+
+    // Performance over time — last 12 months with cumulative value
+    const now = new Date();
+    const performanceOverTime = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const month = d.toISOString().slice(0, 7);
+      const portfolioValue = entries
+        .filter(e => e.date && new Date(e.date) <= new Date(d.getFullYear(), d.getMonth() + 1, 0))
+        .reduce((s, e) => s + e.currentValue, 0);
+      return { month, portfolio_value: portfolioValue };
+    });
+
+    res.json({
+      overview: {
+        total_deployed_capital: totalDeployed,
+        total_current_value: totalCurrentValue,
+        unrealized_gains: unrealizedGains,
+        realized_returns: 0,
+        portfolio_irr: Math.round(portfolioIrr * 100) / 100,
+        total_companies: entries.length,
+        active_companies: activeCompanies,
+        exited_companies: exitedCompanies,
+      },
+      by_sector: bySector,
+      by_stage: byStage,
+      performance_over_time: performanceOverTime,
+    });
+  } catch (error) {
+    console.error('Get portfolio performance error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });
@@ -4948,24 +5063,153 @@ app.post('/api/messages/threads', authenticateToken, async (req, res) => {
 });
 
 // GET /api/users - List platform users for messaging
+// B4/B5 FIX: Return real roles, filter seed/test accounts, sort by name, include email
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     const currentUserId = getUserId(req);
     const users = await prisma.user.findMany({
-      where: { id: { not: currentUserId } },
-      take: 50,
-      orderBy: { createdAt: 'desc' },
+      where: {
+        id: { not: currentUserId },
+        // Exclude obvious seed/test-only accounts that have no real role
+        NOT: {
+          email: {
+            in: [
+              'delete.test@test.com',
+              'seed.admin@test.com',
+            ],
+          },
+        },
+      },
+      include: { roles: true },
+      orderBy: { fullName: 'asc' },
+      take: 100,
     });
 
-    res.json(users.map(u => ({
-      id: u.id,
-      full_name: u.fullName || u.email.split('@')[0],
-      email: u.email,
-      role: 'user',
-      company: null,
-    })));
+    res.json(users.map(u => {
+      // Determine the most descriptive role
+      const roleNames = u.roles.map(r => r.role);
+      const roleLabel = roleNames.find(r => r !== 'user') || roleNames[0] || 'user';
+      return {
+        id: u.id,
+        full_name: u.fullName || u.email.split('@')[0],
+        email: u.email,
+        role: roleLabel,
+        company: null,
+      };
+    }));
   } catch (error) {
     console.error('Get users list error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== INVESTOR DASHBOARD API ====================
+
+// US-INV-107: Investor summary dashboard metrics
+app.get('/api/investor/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+
+    // Parallel fetch of all summary data
+    const [deals, interests, commitments, kycDocs, spvs, unreadThreads, portfolio] = await Promise.all([
+      prisma.deal.count({ where: { status: 'open' } }),
+      prisma.dealInterest.findMany({ where: { investorId: userId } }),
+      prisma.commitment.findMany({ where: { userId } }),
+      prisma.kYCDocument.count({ where: { userId, status: 'pending' } }),
+      prisma.spv.count({
+        where: {
+          OR: [
+            { leadInvestorId: userId },
+            { members: { some: { investorId: userId } } },
+          ],
+        },
+      }),
+      prisma.messageThread.count({
+        where: {
+          OR: [
+            { participant1Id: userId, unreadCountP1: { gt: 0 } },
+            { participant2Id: userId, unreadCountP2: { gt: 0 } },
+          ],
+        },
+      }),
+      prisma.portfolioCompany.findMany({ where: { investorId: userId } }),
+    ]);
+
+    const portfolioValue = portfolio.reduce(
+      (s, pc) => s + Number(pc.currentValuation ?? pc.investmentAmount),
+      0,
+    );
+    const totalCommitted = commitments
+      .filter(c => c.status === 'completed')
+      .reduce((s, c) => s + Number(c.amount), 0);
+
+    res.json({
+      active_deals: deals,
+      my_interests: interests.length,
+      pending_commitments: commitments.filter(c => c.status === 'pending').length,
+      portfolio_value: portfolioValue,
+      total_committed: totalCommitted,
+      pending_kyc: kycDocs,
+      active_spvs: spvs,
+      unread_messages: unreadThreads,
+      portfolio_companies: portfolio.length,
+    });
+  } catch (error) {
+    console.error('Investor dashboard error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// US-INV-112: Get / upsert investor profile
+app.get('/api/investor/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    let profile = await prisma.investorProfile.findUnique({ where: { userId } });
+    if (!profile) {
+      profile = await prisma.investorProfile.create({ data: { userId } });
+    }
+    res.json(profile);
+  } catch (error) {
+    console.error('Get investor profile error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+app.patch('/api/investor/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const {
+      sebiCategory, accreditationStatus, kycStatus, panNumber, dematAccountNo,
+      nriStatus, femaApplicable, eSignReference, nomineeName, nomineeRelation,
+      investmentThesisUrl, preferredSectors, tdsDeductedYtd,
+    } = req.body;
+    const profile = await prisma.investorProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        sebiCategory, accreditationStatus, kycStatus, panNumber, dematAccountNo,
+        nriStatus, femaApplicable, eSignReference, nomineeName, nomineeRelation,
+        investmentThesisUrl, preferredSectors, tdsDeductedYtd,
+      },
+      update: {
+        ...(sebiCategory !== undefined && { sebiCategory }),
+        ...(accreditationStatus !== undefined && { accreditationStatus }),
+        ...(kycStatus !== undefined && { kycStatus }),
+        ...(panNumber !== undefined && { panNumber }),
+        ...(dematAccountNo !== undefined && { dematAccountNo }),
+        ...(nriStatus !== undefined && { nriStatus }),
+        ...(femaApplicable !== undefined && { femaApplicable }),
+        ...(eSignReference !== undefined && { eSignReference }),
+        ...(nomineeName !== undefined && { nomineeName }),
+        ...(nomineeRelation !== undefined && { nomineeRelation }),
+        ...(investmentThesisUrl !== undefined && { investmentThesisUrl }),
+        ...(preferredSectors !== undefined && { preferredSectors }),
+        ...(tdsDeductedYtd !== undefined && { tdsDeductedYtd }),
+      },
+    });
+    res.json(profile);
+  } catch (error) {
+    console.error('Update investor profile error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });
