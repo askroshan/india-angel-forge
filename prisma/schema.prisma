@@ -68,6 +68,9 @@ model User {
   dpiitVerifications     DpiitVerification[]     @relation("DpiitVerifiedBy")
   // B7: Investor profile
   investorProfile        InvestorProfile?
+  // US-FO-05: Family Office multi-seat
+  familyOfficePrimary    FamilyOfficeMember[]    @relation("FamilyOfficePrimary")
+  familyOfficeMember     FamilyOfficeMember[]    @relation("FamilyOfficeMember")
 
   @@map("users")
 }
@@ -212,9 +215,43 @@ model InvestorApplication {
   submittedAt          DateTime  @default(now()) @map("submitted_at")
   metadata             Json?
 
+  // US-FO-01: Family Office specific fields
+  entityName          String?   @map("entity_name")
+  entityType          String?   @map("entity_type")
+  aumManaged          Decimal?  @map("aum_managed") @db.Decimal(20, 2)
+  numBeneficiaries    Int?      @map("num_beneficiaries")
+  trusteeNames        String?   @map("trustee_names")
+  investmentMandate   String?   @map("investment_mandate")
+
+  // US-FO-09: NRI fields
+  isNri               Boolean   @default(false) @map("is_nri")
+  fcrnNumber          String?   @map("fcrn_number")
+  bankAccountType     String?   @map("bank_account_type")
+  rbiComplianceFlag   Boolean   @default(false) @map("rbi_compliance_flag")
+
+  // US-FO-07: KYC expiry
+  kycExpiresAt        DateTime? @map("kyc_expires_at")
+  kycReminderSentAt   DateTime? @map("kyc_reminder_sent_at")
+
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("investor_applications")
+}
+
+// US-FO-05: Multi-seat Family Office access model
+model FamilyOfficeMember {
+  id            String   @id @default(uuid())
+  primaryUserId String   @map("primary_user_id")
+  memberUserId  String   @map("member_user_id")
+  role          String   @default("VIEWER")
+  addedAt       DateTime @default(now()) @map("added_at")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  primaryUser User @relation("FamilyOfficePrimary", fields: [primaryUserId], references: [id], onDelete: Cascade)
+  memberUser  User @relation("FamilyOfficeMember", fields: [memberUserId], references: [id], onDelete: Cascade)
+
+  @@unique([primaryUserId, memberUserId])
+  @@map("family_office_members")
 }
 
 model CompanyProfile {

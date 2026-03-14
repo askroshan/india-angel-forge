@@ -57,6 +57,20 @@ const investorApplicationSchema = z.object({
   sebi_declaration: z.boolean().refine(val => val === true, {
     message: "You must confirm the SEBI accredited investor self-declaration to proceed",
   }),
+
+  // Family Office details (US-FO-01) — required when membership_type === "Family Office"
+  entity_name: z.string().max(200).optional(),
+  entity_type: z.enum(["TRUST", "HUF", "LLP", "INDIVIDUAL"]).optional(),
+  aum_managed: z.string().optional(),
+  num_beneficiaries: z.string().optional(),
+  trustee_names: z.string().max(500).optional(),
+  investment_mandate: z.enum(["GROWTH_EQUITY", "SEED", "DEBT", "MIXED"]).optional(),
+
+  // NRI details (US-FO-09)
+  is_nri: z.boolean().default(false),
+  fcrn_number: z.string().optional(),
+  bank_account_type: z.enum(["NRE", "NRO", "RESIDENT"]).optional(),
+  rbi_compliance_flag: z.boolean().default(false),
 });
 
 type InvestorApplicationFormValues = z.infer<typeof investorApplicationSchema>;
@@ -85,8 +99,13 @@ export function InvestorApplicationForm() {
       full_name: user?.fullName || "",
       email: user?.email || "",
       sebi_declaration: false,
+      is_nri: false,
+      rbi_compliance_flag: false,
     },
   });
+
+  const membershipType = form.watch("membership_type");
+  const isNri = form.watch("is_nri");
 
   // Pre-fill from auth user when user data arrives (B9 / US-INV-202)
   useEffect(() => {
@@ -130,6 +149,18 @@ export function InvestorApplicationForm() {
         motivation: values.motivation,
         pan_number: values.pan_number || null,
         sebi_declaration: values.sebi_declaration,
+        // Family Office fields (US-FO-01)
+        entity_name: values.entity_name || null,
+        entity_type: values.entity_type || null,
+        aum_managed: values.aum_managed ? parseFloat(values.aum_managed) : null,
+        num_beneficiaries: values.num_beneficiaries ? parseInt(values.num_beneficiaries, 10) : null,
+        trustee_names: values.trustee_names || null,
+        investment_mandate: values.investment_mandate || null,
+        // NRI fields (US-FO-09)
+        is_nri: values.is_nri,
+        fcrn_number: values.fcrn_number || null,
+        bank_account_type: values.bank_account_type || null,
+        rbi_compliance_flag: values.rbi_compliance_flag,
       };
 
       // Submit via API for server-side validation and rate limiting
@@ -325,6 +356,118 @@ export function InvestorApplicationForm() {
             />
           </CardContent>
         </Card>
+
+        {/* US-FO-01: Family Office Details — only when membership_type is "Family Office" */}
+        {membershipType === "Family Office" && (
+          <Card data-testid="family-office-section">
+            <CardHeader>
+              <CardTitle>Family Office Details</CardTitle>
+              <CardDescription>Required for Family Office membership (US-FO-01)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="entity_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entity / Trust Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Mehta Family Trust" {...field} data-testid="entity-name-input" />
+                    </FormControl>
+                    <FormDescription>Name of the trust, HUF, LLP, or entity</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="entity_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entity Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="entity-type-select">
+                          <SelectValue placeholder="Select entity type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="TRUST">Trust</SelectItem>
+                        <SelectItem value="HUF">HUF (Hindu Undivided Family)</SelectItem>
+                        <SelectItem value="LLP">LLP</SelectItem>
+                        <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="aum_managed"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>AUM Managed (₹ Crores)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="100" {...field} data-testid="aum-managed-input" />
+                    </FormControl>
+                    <FormDescription>Total Assets Under Management in ₹ Crores</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="num_beneficiaries"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Number of Beneficiaries</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="4" {...field} data-testid="num-beneficiaries-input" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="trustee_names"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trustee / Authorized Signatory Names</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="List all trustees or authorized signatories" {...field} data-testid="trustee-names-input" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="investment_mandate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Investment Mandate</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="investment-mandate-select">
+                          <SelectValue placeholder="Select investment mandate" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="GROWTH_EQUITY">Growth Equity</SelectItem>
+                        <SelectItem value="SEED">Seed Stage</SelectItem>
+                        <SelectItem value="DEBT">Debt</SelectItem>
+                        <SelectItem value="MIXED">Mixed / Multi-stage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Investment Profile */}
         <Card>
@@ -643,6 +786,95 @@ export function InvestorApplicationForm() {
                 </FormItem>
               )}
             />
+
+            {/* US-FO-09: NRI status */}
+            <FormField
+              control={form.control}
+              name="is_nri"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="is-nri-checkbox"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>I am a Non-Resident Indian (NRI)</FormLabel>
+                    <FormDescription>
+                      Check this if you hold NRI status — additional RBI compliance fields will appear
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* NRI fields — only when is_nri is checked */}
+            {isNri && (
+              <div className="space-y-4 pl-2 border-l-2 border-amber-300" data-testid="nri-section">
+                <FormField
+                  control={form.control}
+                  name="fcrn_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>FCRA Registration Number (FCRN)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="FC123456789" {...field} data-testid="fcrn-number-input" />
+                      </FormControl>
+                      <FormDescription>
+                        Foreign Contribution Registration Number under FCRA 2010
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="bank_account_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bank Account Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="bank-account-type-select">
+                            <SelectValue placeholder="Select account type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="NRE">NRE (Non-Resident External)</SelectItem>
+                          <SelectItem value="NRO">NRO (Non-Resident Ordinary)</SelectItem>
+                          <SelectItem value="RESIDENT">Resident Account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="rbi_compliance_flag"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="rbi-compliance-checkbox"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>I confirm RBI compliance for inward remittances *</FormLabel>
+                        <FormDescription>
+                          I confirm that all investments will be made in compliance with RBI
+                          Foreign Exchange Management Act (FEMA) regulations and applicable guidelines.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <FormField
               control={form.control}

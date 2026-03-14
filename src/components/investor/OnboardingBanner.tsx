@@ -119,7 +119,9 @@ export function OnboardingBanner({ applicationStatus }: OnboardingBannerProps) {
                     <Badge variant="outline" className="text-xs border-green-400 text-green-700">Done</Badge>
                   )}
                   {step.status === "current" && (
-                    <Badge variant="outline" className="text-xs border-amber-400 text-amber-700">In Progress</Badge>
+                    <Badge variant="outline" className="text-xs border-amber-400 text-amber-700">
+                      {step.id === 1 && !isSubmitted ? "Not Started" : "In Progress"}
+                    </Badge>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>

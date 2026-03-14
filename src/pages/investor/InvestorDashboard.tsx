@@ -17,6 +17,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
+import { KYCExpiryBanner } from '@/components/investor/KYCExpiryBanner';
 
 interface DashboardData {
   active_deals: number;
@@ -51,6 +52,9 @@ export default function InvestorDashboard() {
           <h1 className="text-3xl font-bold">Investor Dashboard</h1>
           <p className="text-muted-foreground mt-1">Overview of your investment activity</p>
         </div>
+
+        {/* US-FO-07: KYC expiry warning banner */}
+        <KYCExpiryBanner />
 
         {isLoading && (
           <div className="text-center py-12 text-muted-foreground" data-testid="dashboard-loading">
