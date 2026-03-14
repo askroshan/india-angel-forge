@@ -27,7 +27,9 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, Calendar, DollarSign, Users, Search, Filter, CheckCircle } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, Users, Search, Filter, CheckCircle, Lock } from 'lucide-react';
+import { OnboardingBanner } from '@/components/investor/OnboardingBanner';
+import { Link } from 'react-router-dom';
 
 interface Deal {
   id: string;
@@ -66,6 +68,9 @@ export default function DealsPage() {
   const [submittingInterest, setSubmittingInterest] = useState(false);
   const [expresssedInterests, setExpressedInterests] = useState<Record<string, boolean>>({});
   const [isAccredited, setIsAccredited] = useState(false);
+  const [accessRestricted, setAccessRestricted] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [publicDeals, setPublicDeals] = useState<{ id: string; companyName: string; sector: string; stage: string; postedAt: string }[]>([]);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -111,13 +116,18 @@ export default function DealsPage() {
 
     if (appResponse.ok) {
       const application = await appResponse.json();
-      if (!application || application.status?.toLowerCase() !== 'approved') {
-        toast({
-          title: 'Access Restricted',
-          description: 'Please complete your investor application first',
-          variant: 'destructive',
-        });
-        navigate('/apply/investor');
+      const status = application?.status?.toLowerCase();
+      setApplicationStatus(status || null);
+
+      if (!application || status !== 'approved') {
+        // B10 fix: show persistent onboarding guidance instead of navigating away
+        setAccessRestricted(true);
+        setLoading(false);
+        // Load public deal preview (US-INV-207)
+        fetch('/api/deals/public')
+          .then(r => r.ok ? r.json() : { success: false, data: [] })
+          .then(d => setPublicDeals(d.data || []))
+          .catch(() => {});
         return;
       }
     }
@@ -375,7 +385,51 @@ export default function DealsPage() {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* B10 fix: Persistent onboarding guidance for unapproved investors (US-INV-201 / US-INV-207) */}
+      {accessRestricted && (
+        <div className="space-y-8" data-testid="access-restricted-view">
+          <OnboardingBanner applicationStatus={applicationStatus} />
+
+          {publicDeals.length > 0 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-muted-foreground" />
+                Deal Preview (Approved Members See Full Details)
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="public-deals-preview">
+                {publicDeals.map(deal => (
+                  <Card key={deal.id} className="opacity-75">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{deal.companyName}</CardTitle>
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="secondary">{deal.sector}</Badge>
+                        <Badge variant="outline">{deal.stage}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Full details available to approved members only
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <p className="text-sm text-center text-muted-foreground mt-4">
+                <Link to="/apply/investor" className="text-accent underline">
+                  Complete your application
+                </Link>{" "}
+                to access full deal details, financials, and express interest.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!accessRestricted && (
+      <>
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -683,6 +737,8 @@ export default function DealsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }

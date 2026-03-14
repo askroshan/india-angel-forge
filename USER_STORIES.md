@@ -1964,3 +1964,97 @@ All user stories must meet these requirements:
 **Last Updated:** March 14, 2026  
 **Implementation Complete:** March 14, 2026 (branch: 2026-03-14-Investor)  
 **Owner:** Product Management Team
+
+---
+
+## Investor Secondary — B8/B9/B10 + US-INV-201..209
+
+### B8 Fix: RSVP endpoints missing
+**Bug:** `POST /api/events/:id/rsvp` and related endpoints did not exist  
+**Fix:** Added `GET/POST/DELETE /api/events/:id/rsvp` + `GET /api/events/:id/my-rsvp`  
+**Implementation Status:** ✅ Complete (server.ts)
+
+---
+
+### B9 Fix: InvestorApplicationForm not pre-filling from auth
+**Bug:** Form defaultValues were empty strings; user had to retype name and email  
+**Fix:** `useAuth()` + `useEffect` to pre-fill `full_name` and `email` from JWT  
+**Implementation Status:** ✅ Complete (`InvestorApplicationForm.tsx`)
+
+---
+
+### B10 Fix: Unapproved investor navigated away from Deals
+**Bug:** `DealsPage` called `toast + navigate('/apply/investor')` — no persistence  
+**Fix:** Sets `accessRestricted = true`, loads public deals, shows inline `OnboardingBanner`  
+**Implementation Status:** ✅ Complete (`DealsPage.tsx`)
+
+---
+
+### US-INV-201: Onboarding Banner / Checklist
+**As an** unapproved investor  
+**I want to** see my onboarding progress as a checklist  
+**So that** I know exactly what steps remain before I can access deals  
+**Implementation Status:** ✅ Complete (`OnboardingBanner.tsx`, shown on ApplyInvestor + DealsPage)
+
+---
+
+### US-INV-202: Application Form Auto-populate (= B9)
+**As an** investor  
+**I want to** have my name and email pre-filled in the application form  
+**So that** I don't have to retype information already in my account  
+**Implementation Status:** ✅ Complete (`InvestorApplicationForm.tsx`)
+
+---
+
+### US-INV-203: Application Status Tracking
+**As an** investor  
+**I want to** check the status of my investor application  
+**So that** I know whether it is pending, under review, approved, or rejected  
+**Implementation Status:** ✅ Complete (`/apply/investor/status` → `ApplicationStatus.tsx`)
+
+---
+
+### US-INV-204: Reliable RSVP Persisted to DB (= B8)
+**As an** investor  
+**I want to** RSVP to events and have that persisted  
+**So that** my attendance is recorded  
+**Implementation Status:** ✅ Complete (`POST /api/events/:id/rsvp`, `EventAttendance` table)
+
+---
+
+### US-INV-205: Dietary Requirements in RSVP
+**As an** investor  
+**I want to** specify dietary requirements when RSVPing to an event  
+**So that** the organiser can accommodate my needs  
+**Implementation Status:** ✅ Complete (`dietaryRequirements` field added to `EventAttendance`; input in `EventDetail.tsx`)
+
+---
+
+### US-INV-207: Public Deal Preview for Unapproved Investors
+**As an** unapproved investor  
+**I want to** see a limited public preview of available deals  
+**So that** I am motivated to complete my application  
+**Implementation Status:** ✅ Complete (`GET /api/deals/public` — max 6 open deals, shown in `DealsPage` when `accessRestricted`)
+
+---
+
+### US-INV-208: SEBI Accredited Investor Self-Declaration
+**As an** investor applying for access  
+**I want to** declare that I meet SEBI accreditation criteria  
+**So that** the platform complies with SEBI regulations  
+**Implementation Status:** ✅ Complete (`sebi_declaration` checkbox + DB field on `InvestorApplication`)
+
+---
+
+### US-INV-209: PAN Number Field on Application
+**As an** investor applying for access  
+**I want to** provide my PAN number during the application  
+**So that** my identity can be verified for regulatory compliance  
+**Implementation Status:** ✅ Complete (`pan_number` field + validation in `InvestorApplicationForm.tsx`)
+
+---
+
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 9 investor secondary features added  
+**Last Updated:** March 14, 2026  
+**Implementation Complete:** March 14, 2026 (branch: 2026-03-14-InvestorSec)  
+**Owner:** Product Management Team

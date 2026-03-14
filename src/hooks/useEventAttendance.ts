@@ -14,6 +14,7 @@ interface EventAttendance {
   attendanceStatus: 'ATTENDED' | 'PARTIAL' | 'ABSENT' | null;
   checkInTime: string | null;
   checkOutTime: string | null;
+  dietaryRequirements: string | null;
 }
 
 /**
@@ -46,7 +47,7 @@ export function useRSVPToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (eventId: string) => {
+    mutationFn: async ({ eventId, dietaryRequirements }: { eventId: string; dietaryRequirements?: string }) => {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/events/${eventId}/rsvp`, {
         method: 'POST',
@@ -54,16 +55,17 @@ export function useRSVPToEvent() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({ dietaryRequirements: dietaryRequirements || undefined }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to RSVP');
+        throw new Error(error.error?.message || error.error || 'Failed to RSVP');
       }
 
       return response.json();
     },
-    onSuccess: (_, eventId) => {
+    onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: ['my-rsvp', eventId] });
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });
       toast.success('Successfully RSVPed to event!');

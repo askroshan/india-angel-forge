@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { apiClient } from "@/api/client";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const investorApplicationSchema = z.object({
   // Personal Information
@@ -47,6 +48,15 @@ const investorApplicationSchema = z.object({
   // Additional
   how_did_you_hear: z.string().max(200).optional(),
   motivation: z.string().min(100, "Please provide at least 100 characters").max(1000),
+
+  // Compliance (US-INV-208 / US-INV-209)
+  pan_number: z.string()
+    .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "PAN must be in format: AAAAA9999A")
+    .optional()
+    .or(z.literal("")),
+  sebi_declaration: z.boolean().refine(val => val === true, {
+    message: "You must confirm the SEBI accredited investor self-declaration to proceed",
+  }),
 });
 
 type InvestorApplicationFormValues = z.infer<typeof investorApplicationSchema>;
@@ -54,6 +64,7 @@ type InvestorApplicationFormValues = z.infer<typeof investorApplicationSchema>;
 export function InvestorApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const { user } = useAuth();
 
   const sectors = [
     "AI & Deep Tech",
@@ -71,8 +82,23 @@ export function InvestorApplicationForm() {
       preferred_sectors: [],
       previous_angel_investments: "0",
       years_of_experience: "",
+      full_name: user?.fullName || "",
+      email: user?.email || "",
+      sebi_declaration: false,
     },
   });
+
+  // Pre-fill from auth user when user data arrives (B9 / US-INV-202)
+  useEffect(() => {
+    if (user) {
+      if (user.fullName && !form.getValues("full_name")) {
+        form.setValue("full_name", user.fullName, { shouldValidate: false });
+      }
+      if (user.email && !form.getValues("email")) {
+        form.setValue("email", user.email, { shouldValidate: false });
+      }
+    }
+  }, [user, form]);
 
   const onSubmit = async (values: InvestorApplicationFormValues) => {
     setIsSubmitting(true);
@@ -102,6 +128,8 @@ export function InvestorApplicationForm() {
         reference_email_2: values.reference_email_2 || null,
         how_did_you_hear: values.how_did_you_hear || null,
         motivation: values.motivation,
+        pan_number: values.pan_number || null,
+        sebi_declaration: values.sebi_declaration,
       };
 
       // Submit via API for server-side validation and rate limiting
@@ -591,6 +619,31 @@ export function InvestorApplicationForm() {
               )}
             />
 
+            {/* US-INV-209: PAN at application stage */}
+            <FormField
+              control={form.control}
+              name="pan_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>PAN Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                      style={{ textTransform: "uppercase" }}
+                      {...field}
+                      onChange={e => field.onChange(e.target.value.toUpperCase())}
+                      data-testid="pan-number-input"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Your Permanent Account Number (PAN) — required for compliance verification
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="motivation"
@@ -608,6 +661,43 @@ export function InvestorApplicationForm() {
                     {field.value?.length || 0} / 1000 characters
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* US-INV-208: SEBI Accredited Investor Self-Declaration */}
+        <Card>
+          <CardHeader>
+            <CardTitle>SEBI Accredited Investor Declaration</CardTitle>
+            <CardDescription>Required under SEBI (Alternative Investment Funds) Regulations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FormField
+              control={form.control}
+              name="sebi_declaration"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="sebi-declaration-checkbox"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      I confirm that I qualify as an Accredited Investor under SEBI regulations *
+                    </FormLabel>
+                    <FormDescription>
+                      I declare that my annual income exceeds ₹50 lakhs, or my net worth exceeds ₹5 crores,
+                      or I hold relevant financial professional qualifications as per the SEBI (Accredited
+                      Investors) Regulations, 2021. I understand that angel investing involves significant risk
+                      including possible loss of the entire investment.
+                    </FormDescription>
+                    <FormMessage />
+                  </div>
                 </FormItem>
               )}
             />
