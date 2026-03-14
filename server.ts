@@ -4773,6 +4773,8 @@ if (process.env.NODE_ENV === 'production') {
     app.get('{*path}', (req, res) => {
       if (!req.path.startsWith('/api/')) {
         res.sendFile(path.join(distPath, 'index.html'));
+      } else {
+        res.status(404).json({ error: { message: 'Not found', code: 'NOT_FOUND' } });
       }
     });
     console.log('📁 Serving static frontend from /dist');
