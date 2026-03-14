@@ -93,6 +93,7 @@ import SeedDataManagement from "./pages/admin/SeedDataManagement";
 import CommunicationAuditLog from "./pages/admin/CommunicationAuditLog";
 import AdminDeals from "./pages/admin/AdminDeals";
 import FamilyOfficeMembers from "./pages/investor/FamilyOfficeMembers";
+import ComplianceFormsPage from "./pages/investor/ComplianceFormsPage";
 
 /**
  * Role definitions for route protection
@@ -265,6 +266,12 @@ const App = () => (
             <Route path="/investor/family-office/members" element={
               <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
                 <FamilyOfficeMembers />
+              </ProtectedRoute>
+            } />
+            {/* US-FO-06: DPIIT/SEBI compliance form tracking */}
+            <Route path="/investor/family-office/compliance-forms" element={
+              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+                <ComplianceFormsPage />
               </ProtectedRoute>
             } />
             <Route path="/investor/portfolio/performance" element={

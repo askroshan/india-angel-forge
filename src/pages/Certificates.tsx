@@ -29,7 +29,7 @@ export default function Certificates() {
   const fetchCertificates = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/certificates', {
         headers: { Authorization: `Bearer ${token}` },
       });

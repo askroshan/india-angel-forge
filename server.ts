@@ -817,6 +817,316 @@ app.get('/api/family-office/committee-report', authenticateToken, async (req: Au
   }
 });
 
+// ==================== US-FO-06: DPIIT/SEBI COMPLIANCE FILINGS ====================
+
+// GET /api/family-office/compliance-forms — list all compliance filings for current user
+// Also auto-creates PENDING filings derived from existing commitments (idempotent)
+app.get('/api/family-office/compliance-forms', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+
+    // Auto-detect and upsert any required filings from investment commitments
+    const commitments = await prisma.investmentCommitment.findMany({
+      where: { investorId: userId },
+      include: {
+        interest: { include: { deal: { select: { id: true, companyName: true, sector: true } } } },
+        complianceFilings: true,
+      },
+    });
+
+    // Also check if user has NRI flag → FEMA Form 10 required for each commitment
+    const investorApp = await prisma.investorApplication.findFirst({
+      where: { userId },
+      orderBy: { submittedAt: 'desc' },
+      select: { isNri: true, entityType: true, entityName: true, fcrnNumber: true },
+    });
+
+    const isNri = investorApp?.isNri ?? false;
+    const isFamilyOffice = investorApp?.entityType != null; // has entity type = FO structure
+
+    for (const commitment of commitments) {
+      const existingFilings = commitment.complianceFilings ?? [];
+
+      // FEMA Form 10 required for NRI investors on each commitment
+      if (isNri && !existingFilings.some(f => f.formType === 'FEMA_FORM10')) {
+        // Due 30 days after the commitment was created (typical FEMA reporting window)
+        const dueDate = new Date(commitment.createdAt);
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        await prisma.complianceFiling.create({
+          data: {
+            userId,
+            formType: 'FEMA_FORM10',
+            status: new Date() > dueDate ? 'OVERDUE' : 'PENDING',
+            commitmentId: commitment.id,
+            regulatoryRef: 'FEMA 20(R)/2017-RB Schedule 1',
+            dueDate,
+            formData: {
+              investorName: '',
+              fcrnNumber: investorApp?.fcrnNumber || '',
+              companyName: commitment.interest?.deal?.companyName || '',
+              sector: commitment.interest?.deal?.sector || '',
+              investmentAmount: Number(commitment.amount),
+              currency: 'INR',
+              typeOfInstrument: 'Equity',
+              dateOfInvestment: commitment.createdAt.toISOString().split('T')[0],
+            },
+          },
+        });
+      }
+
+      // AIF Schedule III required for Family Office structures per SEBI AIF Reg 2012
+      if (isFamilyOffice && !existingFilings.some(f => f.formType === 'AIF_SCHEDULE3')) {
+        // Quarterly due date — next quarter end from commitment date
+        const quarter = Math.floor(commitment.createdAt.getMonth() / 3);
+        const qEnd = new Date(commitment.createdAt.getFullYear(), (quarter + 1) * 3, 0);
+        qEnd.setDate(qEnd.getDate() + 21); // 21 days after quarter end
+
+        await prisma.complianceFiling.create({
+          data: {
+            userId,
+            formType: 'AIF_SCHEDULE3',
+            status: new Date() > qEnd ? 'OVERDUE' : 'PENDING',
+            commitmentId: commitment.id,
+            regulatoryRef: 'SEBI AIF Regulations 2012 — Schedule III',
+            dueDate: qEnd,
+            formData: {
+              fundName: investorApp?.entityName || 'Family Office',
+              entityType: investorApp?.entityType || '',
+              aifCategory: 'Category I - Angel Fund',
+              reportingPeriod: `Q${quarter + 1} ${commitment.createdAt.getFullYear()}`,
+              portfolioCompany: commitment.interest?.deal?.companyName || '',
+              investmentAmount: Number(commitment.amount),
+              investmentDate: commitment.createdAt.toISOString().split('T')[0],
+              exitDetails: null,
+              sebiRegistrationNo: '',
+              trusteeDeclaration: false,
+            },
+          },
+        });
+      }
+    }
+
+    // For FO users with no commitments yet, ensure at least one periodic AIF Schedule III sits in the list
+    if (isFamilyOffice && commitments.length === 0) {
+      const existing = await prisma.complianceFiling.findFirst({
+        where: { userId, formType: 'AIF_SCHEDULE3', commitmentId: null },
+      });
+      if (!existing) {
+        const now = new Date();
+        const quarter = Math.floor(now.getMonth() / 3);
+        const qEnd = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
+        qEnd.setDate(qEnd.getDate() + 21);
+        await prisma.complianceFiling.create({
+          data: {
+            userId,
+            formType: 'AIF_SCHEDULE3',
+            status: 'PENDING',
+            regulatoryRef: 'SEBI AIF Regulations 2012 — Schedule III',
+            dueDate: qEnd,
+            formData: {
+              fundName: investorApp?.entityName || 'Family Office',
+              entityType: investorApp?.entityType || '',
+              aifCategory: 'Category I - Angel Fund',
+              reportingPeriod: `Q${quarter + 1} ${now.getFullYear()}`,
+              portfolioCompany: null,
+              investmentAmount: 0,
+              sebiRegistrationNo: '',
+              trusteeDeclaration: false,
+            },
+          },
+        });
+      }
+    }
+
+    // Fetch all filings for user
+    const filings = await prisma.complianceFiling.findMany({
+      where: { userId },
+      include: {
+        commitment: {
+          include: { interest: { include: { deal: { select: { companyName: true, sector: true } } } } },
+        },
+      },
+      orderBy: [{ status: 'asc' }, { dueDate: 'asc' }],
+    });
+
+    const FORM_LABELS: Record<string, string> = {
+      FEMA_FORM10: 'Form 10 — FEMA Foreign Investment Report',
+      AIF_SCHEDULE3: 'Schedule III — SEBI AIF Quarterly Disclosure',
+    };
+
+    res.json(filings.map(f => ({
+      id: f.id,
+      formType: f.formType,
+      formLabel: FORM_LABELS[f.formType] || f.formType,
+      status: f.status,
+      regulatoryRef: f.regulatoryRef,
+      dueDate: f.dueDate?.toISOString() || null,
+      filedAt: f.filedAt?.toISOString() || null,
+      filingReference: f.filingReference,
+      notes: f.notes,
+      createdAt: f.createdAt.toISOString(),
+      company: f.commitment?.interest?.deal?.companyName || null,
+      sector: f.commitment?.interest?.deal?.sector || null,
+      formData: f.formData,
+    })));
+  } catch (error) {
+    console.error('Get compliance forms error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/family-office/compliance-forms — manually create a compliance filing
+app.post('/api/family-office/compliance-forms', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const { formType, commitmentId, regulatoryRef, dueDate, notes } = req.body as {
+      formType?: string;
+      commitmentId?: string;
+      regulatoryRef?: string;
+      dueDate?: string;
+      notes?: string;
+    };
+
+    const VALID_FORM_TYPES = ['FEMA_FORM10', 'AIF_SCHEDULE3'];
+    if (!formType || !VALID_FORM_TYPES.includes(formType)) {
+      return res.status(400).json({ error: `formType must be one of: ${VALID_FORM_TYPES.join(', ')}` });
+    }
+
+    // Verify commitment belongs to user if provided
+    if (commitmentId) {
+      const commitment = await prisma.investmentCommitment.findUnique({ where: { id: commitmentId } });
+      if (!commitment || commitment.investorId !== userId) {
+        return res.status(404).json({ error: 'Commitment not found' });
+      }
+    }
+
+    const defaultRef = formType === 'FEMA_FORM10'
+      ? 'FEMA 20(R)/2017-RB Schedule 1'
+      : 'SEBI AIF Regulations 2012 — Schedule III';
+
+    const filing = await prisma.complianceFiling.create({
+      data: {
+        userId,
+        formType,
+        status: 'PENDING',
+        commitmentId: commitmentId || null,
+        regulatoryRef: regulatoryRef || defaultRef,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        notes: notes || null,
+        formData: {},
+      },
+    });
+
+    return res.status(201).json({
+      id: filing.id,
+      formType: filing.formType,
+      status: filing.status,
+      regulatoryRef: filing.regulatoryRef,
+      dueDate: filing.dueDate?.toISOString() || null,
+      notes: filing.notes,
+      createdAt: filing.createdAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('Create compliance filing error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/family-office/compliance-forms/:id/generate — return pre-filled form data for PDF
+app.get('/api/family-office/compliance-forms/:id/generate', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const filing = await prisma.complianceFiling.findUnique({
+      where: { id: req.params.id as string },
+      include: {
+        commitment: {
+          include: { interest: { include: { deal: { select: { companyName: true, sector: true, stage: true } } } } },
+        },
+      },
+    });
+
+    if (!filing) return res.status(404).json({ error: 'Filing not found' });
+    if (filing.userId !== userId) return res.status(403).json({ error: 'Not authorised' });
+
+    // Merge live data into the stored formData
+    const investorApp = await prisma.investorApplication.findFirst({
+      where: { userId },
+      orderBy: { submittedAt: 'desc' },
+      select: { entityName: true, entityType: true, fcrnNumber: true, trusteeNames: true, panNumber: true },
+    });
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, email: true } });
+
+    const baseData = (filing.formData as Record<string, unknown>) || {};
+    const generated = {
+      ...baseData,
+      // Investor identity
+      investorName: user?.fullName || baseData.investorName,
+      investorEmail: user?.email || '',
+      panNumber: investorApp?.panNumber || '',
+      fcrnNumber: investorApp?.fcrnNumber || baseData.fcrnNumber || '',
+      entityName: investorApp?.entityName || baseData.fundName || '',
+      trusteeNames: investorApp?.trusteeNames || '',
+      // Company / deal
+      companyName: filing.commitment?.interest?.deal?.companyName || baseData.companyName || '',
+      sector: filing.commitment?.interest?.deal?.sector || baseData.sector || '',
+      stage: filing.commitment?.interest?.deal?.stage || '',
+      // Filing metadata
+      formType: filing.formType,
+      regulatoryRef: filing.regulatoryRef,
+      generatedAt: new Date().toISOString(),
+      status: filing.status,
+      dueDate: filing.dueDate?.toISOString() || null,
+      filingReference: filing.filingReference,
+    };
+
+    res.json({ filingId: filing.id, formType: filing.formType, generatedAt: new Date().toISOString(), formData: generated });
+  } catch (error) {
+    console.error('Generate compliance form error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /api/family-office/compliance-forms/:id — mark as filed / update status
+app.patch('/api/family-office/compliance-forms/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const { status, filingReference, notes } = req.body as { status?: string; filingReference?: string; notes?: string };
+
+    const filing = await prisma.complianceFiling.findUnique({ where: { id: req.params.id as string } });
+    if (!filing) return res.status(404).json({ error: 'Filing not found' });
+    if (filing.userId !== userId) return res.status(403).json({ error: 'Not authorised' });
+
+    const VALID_STATUSES = ['PENDING', 'FILED', 'OVERDUE', 'NOT_REQUIRED'];
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+
+    const updated = await prisma.complianceFiling.update({
+      where: { id: req.params.id as string },
+      data: {
+        status: status || filing.status,
+        filingReference: filingReference !== undefined ? filingReference : filing.filingReference,
+        notes: notes !== undefined ? notes : filing.notes,
+        filedAt: status === 'FILED' ? new Date() : filing.filedAt,
+      },
+    });
+
+    res.json({
+      id: updated.id,
+      formType: updated.formType,
+      status: updated.status,
+      filedAt: updated.filedAt?.toISOString() || null,
+      filingReference: updated.filingReference,
+      notes: updated.notes,
+    });
+  } catch (error) {
+    console.error('Update compliance filing error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ==================== APPLICATION CRUD ROUTES (Investor & Founder) ====================
 
 // Helper: Transform InvestorApplication DB record to test-expected field names

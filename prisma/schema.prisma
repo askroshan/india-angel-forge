@@ -71,6 +71,8 @@ model User {
   // US-FO-05: Family Office multi-seat
   familyOfficePrimary    FamilyOfficeMember[]    @relation("FamilyOfficePrimary")
   familyOfficeMember     FamilyOfficeMember[]    @relation("FamilyOfficeMember")
+  // US-FO-06: DPIIT/SEBI compliance filings
+  complianceFilings      ComplianceFiling[]      @relation("UserComplianceFilings")
 
   @@map("users")
 }
@@ -216,22 +218,22 @@ model InvestorApplication {
   metadata             Json?
 
   // US-FO-01: Family Office specific fields
-  entityName          String?   @map("entity_name")
-  entityType          String?   @map("entity_type")
-  aumManaged          Decimal?  @map("aum_managed") @db.Decimal(20, 2)
-  numBeneficiaries    Int?      @map("num_beneficiaries")
-  trusteeNames        String?   @map("trustee_names")
-  investmentMandate   String?   @map("investment_mandate")
+  entityName        String?  @map("entity_name")
+  entityType        String?  @map("entity_type")
+  aumManaged        Decimal? @map("aum_managed") @db.Decimal(20, 2)
+  numBeneficiaries  Int?     @map("num_beneficiaries")
+  trusteeNames      String?  @map("trustee_names")
+  investmentMandate String?  @map("investment_mandate")
 
   // US-FO-09: NRI fields
-  isNri               Boolean   @default(false) @map("is_nri")
-  fcrnNumber          String?   @map("fcrn_number")
-  bankAccountType     String?   @map("bank_account_type")
-  rbiComplianceFlag   Boolean   @default(false) @map("rbi_compliance_flag")
+  isNri             Boolean @default(false) @map("is_nri")
+  fcrnNumber        String? @map("fcrn_number")
+  bankAccountType   String? @map("bank_account_type")
+  rbiComplianceFlag Boolean @default(false) @map("rbi_compliance_flag")
 
   // US-FO-07: KYC expiry
-  kycExpiresAt        DateTime? @map("kyc_expires_at")
-  kycReminderSentAt   DateTime? @map("kyc_reminder_sent_at")
+  kycExpiresAt      DateTime? @map("kyc_expires_at")
+  kycReminderSentAt DateTime? @map("kyc_reminder_sent_at")
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -252,6 +254,35 @@ model FamilyOfficeMember {
 
   @@unique([primaryUserId, memberUserId])
   @@map("family_office_members")
+}
+
+// US-FO-06: DPIIT/SEBI compliance filing tracker for Family Office co-investors
+model ComplianceFiling {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  // Form type: FEMA_FORM10 | AIF_SCHEDULE3
+  formType            String    @map("form_type")
+  // Current status: PENDING | FILED | OVERDUE | NOT_REQUIRED
+  status              String    @default("PENDING") @map("status")
+  // Links to the triggering investment (optional — some filings are periodic)
+  commitmentId        String?   @map("commitment_id")
+  // Regulatory references
+  regulatoryRef       String?   @map("regulatory_ref")   // e.g. "FEMA 20(R)/2017-RB Schedule 1"
+  dueDate             DateTime? @map("due_date")
+  filedAt             DateTime? @map("filed_at")
+  filingReference     String?   @map("filing_reference") // RBI/SEBI filing reference number
+  // Pre-filled form data (JSON blob for PDF generation)
+  formData            Json      @default("{}") @map("form_data")
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user       User                  @relation("UserComplianceFilings", fields: [userId], references: [id], onDelete: Cascade)
+  commitment InvestmentCommitment? @relation("CommitmentComplianceFilings", fields: [commitmentId], references: [id])
+
+  @@index([userId, formType])
+  @@index([status])
+  @@map("compliance_filings")
 }
 
 model CompanyProfile {
@@ -507,8 +538,9 @@ model InvestmentCommitment {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime? @updatedAt @map("updated_at")
 
-  interest DealInterest @relation(fields: [interestId], references: [id], onDelete: Cascade)
-  investor User         @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  interest            DealInterest       @relation(fields: [interestId], references: [id], onDelete: Cascade)
+  investor            User               @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  complianceFilings   ComplianceFiling[] @relation("CommitmentComplianceFilings")
 
   @@map("investment_commitments")
 }

@@ -12,17 +12,13 @@ import { toast } from '@/hooks/use-toast';
 interface Activity {
   id: string;
   activityType: string;
-  type?: string;
   description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>;
   createdAt: string;
-  timestamp?: string;
 }
 
 const ACTIVITIES_PER_PAGE = 20;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TYPE_ICONS: Record<string, any> = {
   PAYMENT: DollarSign, EVENT: Calendar, MESSAGE: MessageSquare,
   DOCUMENT: FileText, PROFILE: User,
@@ -33,17 +29,7 @@ const TYPE_LABELS: Record<string, string> = {
   DOCUMENT: 'Document', PROFILE: 'Profile',
 };
 
-// Maps UI category names to the activityType prefixes the backend should search with startsWith
-const CATEGORY_PREFIXES: Record<string, string[]> = {
-  PAYMENT: ['PAYMENT', 'REFUND', 'INVEST', 'DEAL'],
-  EVENT: ['EVENT', 'RSVP', 'ATTENDANCE'],
-  MESSAGE: ['MESSAGE', 'EMAIL', 'NOTIFICATION'],
-  DOCUMENT: ['DOCUMENT', 'STATEMENT', 'CERTIFICATE'],
-  PROFILE: ['PROFILE', 'UPDATE', 'CHANGE'],
-};
-
 function getTypeCategory(activityType: string): string {
-  if (!activityType) return 'PAYMENT';
   if (activityType.startsWith('PAYMENT') || activityType.includes('REFUND') || activityType.includes('INVEST')) return 'PAYMENT';
   if (activityType.startsWith('EVENT') || activityType.includes('RSVP') || activityType.includes('ATTENDANCE')) return 'EVENT';
   if (activityType.startsWith('MESSAGE') || activityType.includes('EMAIL') || activityType.includes('NOTIFICATION')) return 'MESSAGE';
@@ -79,7 +65,6 @@ function timeAgo(dateStr: string) {
 export default function ActivityTimeline() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -98,32 +83,23 @@ export default function ActivityTimeline() {
     try {
       if (!cursorId) setIsLoading(true);
       else setIsLoadingMore(true);
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('token');
       let url = `/api/activity?limit=${ACTIVITIES_PER_PAGE}`;
       if (cursorId) url += `&cursor=${cursorId}`;
-      if (activeTypeFilter.length > 0) {
-        const prefixes = activeTypeFilter.flatMap((cat) => CATEGORY_PREFIXES[cat] ?? [cat]);
-        url += `&activityType=${prefixes.join(',')}`;
-      }
+      if (activeTypeFilter.length > 0) url += `&type=${activeTypeFilter.join(',')}`;
       if (activeDateFilter === 'last-7-days') {
         const d = new Date(); d.setDate(d.getDate() - 7);
-        url += `&dateFrom=${d.toISOString()}`;
+        url += `&from=${d.toISOString()}`;
       } else if (activeDateFilter === 'last-30-days') {
         const d = new Date(); d.setDate(d.getDate() - 30);
-        url += `&dateFrom=${d.toISOString()}`;
+        url += `&from=${d.toISOString()}`;
       } else if (activeDateFilter === 'custom' && dateFrom && dateTo) {
-        url += `&dateFrom=${new Date(dateFrom).toISOString()}&dateTo=${new Date(dateTo).toISOString()}`;
+        url += `&from=${new Date(dateFrom).toISOString()}&to=${new Date(dateTo).toISOString()}`;
       }
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error('Failed to fetch activities');
       const data = await response.json();
-      const rawItems = data.data || data.activities || [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const items: Activity[] = rawItems.map((item: any) => ({
-        ...item,
-        activityType: item.activityType || item.type || 'UNKNOWN',
-        createdAt: item.createdAt || item.timestamp || new Date().toISOString(),
-      }));
+      const items: Activity[] = data.data || data.activities || [];
       if (cursorId) { setActivities(prev => [...prev, ...items]); }
       else { setActivities(items); }
       if (items.length < ACTIVITIES_PER_PAGE) { setHasMore(false); }
@@ -131,7 +107,7 @@ export default function ActivityTimeline() {
     } catch (error) {
       console.error('Error fetching activities:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to load activities' });
-    } finally { setIsLoading(false); setIsLoadingMore(false); setIsInitialLoad(false); }
+    } finally { setIsLoading(false); setIsLoadingMore(false); }
   }, [activeTypeFilter, activeDateFilter, dateFrom, dateTo]);
 
   useEffect(() => {
@@ -217,7 +193,7 @@ export default function ActivityTimeline() {
     );
   };
 
-  if (isLoading && isInitialLoad) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Activity Timeline</h1>
@@ -246,10 +222,10 @@ export default function ActivityTimeline() {
           {showTypeFilter && (
             <div data-testid="type-filter-menu" className="absolute z-50 top-full left-0 mt-1 bg-background border rounded-lg shadow-lg p-3 min-w-[200px]">
               {['payment', 'event', 'message', 'document', 'profile'].map(type => (
-                <div key={type} data-testid={`type-${type}`} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted px-2 rounded" onClick={() => toggleTypeSelection(type.toUpperCase())}>
-                  <input type="checkbox" checked={selectedTypes.includes(type.toUpperCase())} readOnly className="rounded pointer-events-none" />
+                <label key={type} data-testid={`type-${type}`} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted px-2 rounded" onClick={() => toggleTypeSelection(type.toUpperCase())}>
+                  <input type="checkbox" checked={selectedTypes.includes(type.toUpperCase())} onChange={() => {}} className="rounded" />
                   <span className="capitalize">{type}</span>
-                </div>
+                </label>
               ))}
               <Button size="sm" className="w-full mt-2" data-testid="apply-type-filter" onClick={handleApplyTypeFilter}>Apply</Button>
             </div>

@@ -2166,11 +2166,29 @@ All user stories must meet these requirements:
 
 ---
 
-### US-FO-06: Family Office SPV Participation
-**As a** Family Office investor  
-**I want to** participate in SPV structures alongside other angel investors  
-**So that** I can co-invest with structured legal backing  
-**Implementation Status:** ✅ Inherited from investor SPV features — `/investor/spv` accessible
+### US-FO-06: DPIIT/SEBI Angel Fund Compliance Tracking
+**As a** Family Office investor co-investing alongside the IAF Angel Fund  
+**I want to** track and generate FEMA Form 10 and SEBI AIF Schedule III disclosure forms for my co-investments  
+**So that** I meet DPIIT/SEBI regulatory obligations without missing deadlines  
+**Acceptance Criteria:**
+- `GET /api/family-office/compliance-forms` returns all compliance filings for the user; auto-creates PENDING filings for new investment commitments (NRI → FEMA Form 10, Family Office entity → AIF Schedule III)  
+- `POST /api/family-office/compliance-forms` allows manual creation of a filing (formType: `FEMA_FORM10` | `AIF_SCHEDULE3`)  
+- `PATCH /api/family-office/compliance-forms/:id` updates filing status (`PENDING` | `FILED` | `OVERDUE` | `NOT_REQUIRED`) and stores the official filing reference number  
+- `GET /api/family-office/compliance-forms/:id/generate` returns pre-filled form data (investorName, pan, FCRN, company, sector, amount, regulatory declarations, generatedAt timestamp)  
+- FEMA Form 10 data includes: investorName, fcrnNumber, companyName, amount, regulatoryRef (`FEMA 20(R)/2017-RB Schedule 1`), filingDeadline  
+- AIF Schedule III data includes: entityName, aifCategory, portfolioCompany, investmentAmount, reportingPeriod, regulatoryRef (`SEBI AIF Regulations 2012 — Schedule III`)  
+- All 4 endpoints return 401 without auth token  
+- Compliance Forms page rendered at `/investor/family-office/compliance-forms` with `data-testid="compliance-forms-page"`  
+- Page shows FEMA section (`data-testid="fema-forms-section"`) and AIF section (`data-testid="aif-forms-section"`) when filings exist  
+- Each filing card has `data-testid="generate-btn-{id}"` and `data-testid="mark-filed-btn-{id}"`  
+- E2E: `FO-FO06-001` through `FO-FO06-008`  
+**Implementation Status:** ✅ Complete
+- Schema: `ComplianceFiling` model in `prisma/schema.prisma`; back-relations on `User` and `InvestmentCommitment`
+- Migration: `20260314193113_add_compliance_filings`
+- API: 4 new endpoints in `server.ts` (`GET`, `POST`, `PATCH`, `GET /:id/generate`)
+- UI: `src/pages/investor/ComplianceFormsPage.tsx`
+- Route: `/investor/family-office/compliance-forms` in `App.tsx`
+- Tests: `e2e/fo-compliance-forms.spec.ts` (FO-FO06-001 → FO-FO06-008)
 
 ---
 
