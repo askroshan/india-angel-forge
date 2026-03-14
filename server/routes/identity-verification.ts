@@ -21,7 +21,7 @@ const router = Router();
 const PERSONA_API_KEY = process.env.PERSONA_API_KEY || '';
 const PERSONA_TEMPLATE_ID = process.env.PERSONA_TEMPLATE_ID || '';
 const PERSONA_WEBHOOK_SECRET = process.env.PERSONA_WEBHOOK_SECRET || '';
-const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3002';
+const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:8082';
 
 // ============================================================================
 // POST /api/verification/start — Initiate Persona verification

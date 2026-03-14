@@ -79,6 +79,8 @@ import ComplianceDashboard from "./pages/moderator/ComplianceDashboard";
 import AdvisoryHours from "./pages/operator/AdvisoryHours";
 import AdvisoryProfile from "./pages/operator/AdvisoryProfile";
 import MentorshipHub from "./pages/operator/MentorshipHub";
+import DealSourcing from "./pages/operator/DealSourcing";
+import OperatorPerformance from "./pages/operator/OperatorPerformance";
 import Certificates from "./pages/Certificates";
 import CertificateVerification from "./pages/CertificateVerification";
 import TransactionHistory from "./pages/TransactionHistory";
@@ -506,6 +508,18 @@ const App = () => (
             <Route path="/operator/mentorship" element={
               <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
                 <MentorshipHub />
+              </ProtectedRoute>
+            } />
+            {/* US-OA-004: Deal Sourcing / Network Referrals */}
+            <Route path="/operator/deal-sourcing" element={
+              <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
+                <DealSourcing />
+              </ProtectedRoute>
+            } />
+            {/* US-OA-005: Operator Performance Overview */}
+            <Route path="/operator/performance" element={
+              <ProtectedRoute allowedRoles={OPERATOR_ROLES}>
+                <OperatorPerformance />
               </ProtectedRoute>
             } />
             {/* Phase 2 Routes - Transaction History & Certificates */}
