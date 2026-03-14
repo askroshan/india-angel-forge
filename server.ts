@@ -2196,6 +2196,17 @@ app.put('/api/compliance/kyc-review/:id', authenticateToken, requireRole(['compl
         reviewedAt: new Date(),
       },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: reviewedBy,
+        action: status === 'verified' ? 'verify_kyc' : 'reject_kyc',
+        entity: 'kyc_document',
+        entityId: document.id,
+        details: status === 'rejected' ? `Rejected: ${notes || 'No reason'}` : 'KYC document verified',
+      },
+    });
+
     res.json(document);
   } catch (error) {
     console.error('Update KYC review error:', error);
@@ -2209,16 +2220,72 @@ app.get('/api/compliance/aml-screening', authenticateToken, requireRole(['compli
       include: { user: true },
       orderBy: { screenedAt: 'desc' },
     });
-    res.json(screenings);
+    res.json(screenings.map(s => ({
+      id: s.id,
+      investorId: s.userId,
+      investorName: s.user?.fullName || s.user?.email || 'Unknown',
+      investorEmail: s.user?.email || '',
+      screeningDate: s.screenedAt,
+      screeningStatus: s.status,
+      screeningProvider: s.provider,
+      matchScore: s.matchScore ? Number(s.matchScore) : null,
+      screeningResults: s.screeningResults,
+      flaggedReasons: s.flaggedReasons ? JSON.parse(s.flaggedReasons) : [],
+      reviewedBy: s.reviewedBy,
+      reviewedAt: s.reviewedAt,
+      notes: s.reviewNotes,
+    })));
   } catch (error) {
     console.error('Get AML screenings error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
   }
 });
 
+app.post('/api/compliance/aml-screening', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
+  try {
+    const { investor_id, screening_status, screening_provider, match_score, screening_results } = req.body;
+    if (!investor_id) {
+      return res.status(400).json({ error: { message: 'investor_id is required', code: 'VALIDATION_ERROR' } });
+    }
+    const screening = await prisma.aMLScreening.create({
+      data: {
+        userId: String(investor_id),
+        status: screening_status || 'pending',
+        provider: screening_provider || null,
+        matchScore: match_score != null ? match_score : null,
+        screeningResults: screening_results || null,
+        screenedAt: new Date(),
+      },
+      include: { user: true },
+    });
+    await prisma.auditLog.create({
+      data: {
+        userId: getUserId(req),
+        action: 'initiate_aml_screening',
+        entity: 'aml_screening',
+        entityId: screening.id,
+        details: `Initiated AML screening for investor ${investor_id}`,
+      },
+    });
+    res.json({
+      id: screening.id,
+      investorId: screening.userId,
+      investorName: screening.user?.fullName || screening.user?.email || 'Unknown',
+      investorEmail: screening.user?.email || '',
+      screeningDate: screening.screenedAt,
+      screeningStatus: screening.status,
+      screeningProvider: screening.provider,
+      matchScore: screening.matchScore ? Number(screening.matchScore) : null,
+    });
+  } catch (error) {
+    console.error('Create AML screening error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
 app.put('/api/compliance/aml-screening/:id', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
   try {
-    const { status, riskLevel, notes } = req.body;
+    const { status, riskLevel, flaggedReasons, notes } = req.body;
     const reviewedBy = getUserId(req);
     
     const screening = await prisma.aMLScreening.update({
@@ -2226,9 +2293,19 @@ app.put('/api/compliance/aml-screening/:id', authenticateToken, requireRole(['co
       data: { 
         status, 
         riskLevel,
+        flaggedReasons: flaggedReasons ? JSON.stringify(flaggedReasons) : null,
         reviewNotes: notes,
         reviewedBy,
         reviewedAt: new Date(),
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        userId: reviewedBy,
+        action: status === 'flagged' ? 'flag_aml_screening' : 'clear_aml_screening',
+        entity: 'aml_screening',
+        entityId: screening.id,
+        details: status === 'flagged' ? `Flagged: ${notes || 'No notes'}` : 'Cleared AML screening',
       },
     });
     res.json(screening);
@@ -2253,6 +2330,17 @@ app.get('/api/compliance/accreditation', authenticateToken, async (req, res) => 
         orderBy: { createdAt: 'desc' },
       });
 
+      // Fetch all KYC documents for the relevant users
+      const userIds = accreditations.map(a => a.userId);
+      const kycDocs = await prisma.kYCDocument.findMany({
+        where: { userId: { in: userIds } },
+      });
+      const docsByUser: Record<string, typeof kycDocs> = {};
+      for (const doc of kycDocs) {
+        if (!docsByUser[doc.userId]) docsByUser[doc.userId] = [];
+        docsByUser[doc.userId].push(doc);
+      }
+
       return res.json(accreditations.map(a => ({
         id: a.id,
         investor_id: a.userId,
@@ -2265,7 +2353,11 @@ app.get('/api/compliance/accreditation', authenticateToken, async (req, res) => 
         approved_at: a.verifiedAt?.toISOString() || null,
         rejected_at: a.status === 'rejected' ? a.createdAt.toISOString() : null,
         rejection_reason: a.reviewNotes || null,
-        documents: [],
+        documents: (docsByUser[a.userId] || []).map(d => ({
+          id: d.id,
+          type: d.documentType,
+          url: d.fileUrl,
+        })),
         submitted_at: a.createdAt.toISOString(),
         investor: {
           id: a.user.id,
@@ -2296,6 +2388,42 @@ app.get('/api/compliance/accreditation', authenticateToken, async (req, res) => 
 });
 
 // ==================== KYC DOCUMENTS ROUTES ====================
+
+// GET /api/compliance/unscreened-investors — Investors with verified KYC but no AML screening
+app.get('/api/compliance/unscreened-investors', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
+  try {
+    // Get all users who have at least one verified KYC document
+    const usersWithVerifiedKYC = await prisma.kYCDocument.findMany({
+      where: { status: 'verified' },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const verifiedUserIds = usersWithVerifiedKYC.map(d => d.userId);
+
+    // Get all users who already have an AML screening
+    const screenedUserIds = (await prisma.aMLScreening.findMany({
+      select: { userId: true },
+      distinct: ['userId'],
+    })).map(s => s.userId);
+
+    // Investors with verified KYC but no AML screening yet
+    const unscreenedIds = verifiedUserIds.filter(id => !screenedUserIds.includes(id));
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: unscreenedIds } },
+      select: { id: true, fullName: true, email: true },
+    });
+
+    res.json(users.map(u => ({
+      id: u.id,
+      name: u.fullName || u.email,
+      email: u.email,
+    })));
+  } catch (error) {
+    console.error('Get unscreened investors error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
 
 app.get('/api/kyc/documents', authenticateToken, async (req, res) => {
   try {
@@ -2644,6 +2772,83 @@ app.post('/api/company/fundraising-rounds', authenticateToken, async (req, res) 
 });
 
 // ==================== ADMIN ROUTES ====================
+
+// ==================== COMPLIANCE DASHBOARD & AUDIT LOGS ====================
+
+// GET /api/compliance/dashboard - Compliance KPI summary
+app.get('/api/compliance/dashboard', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
+  try {
+    const [pendingKYC, verifiedKYC, rejectedKYC] = await Promise.all([
+      prisma.kYCDocument.count({ where: { status: 'pending' } }),
+      prisma.kYCDocument.count({ where: { status: 'verified' } }),
+      prisma.kYCDocument.count({ where: { status: 'rejected' } }),
+    ]);
+
+    const [pendingAML, flaggedAML, clearedAML] = await Promise.all([
+      prisma.aMLScreening.count({ where: { status: 'pending' } }),
+      prisma.aMLScreening.count({ where: { status: 'flagged' } }),
+      prisma.aMLScreening.count({ where: { status: 'clear' } }),
+    ]);
+
+    const [pendingAccreditations, approvedAccreditations] = await Promise.all([
+      prisma.accreditation.count({ where: { status: 'pending' } }),
+      prisma.accreditation.count({ where: { status: { in: ['verified', 'approved'] } } }),
+    ]);
+
+    const totalAuditLogs = await prisma.auditLog.count({
+      where: { action: { in: ['verify_kyc', 'reject_kyc', 'initiate_aml_screening', 'clear_aml_screening', 'flag_aml_screening', 'verify_accreditation', 'reject_accreditation'] } },
+    });
+
+    res.json({
+      pendingKYC,
+      verifiedKYC,
+      rejectedKYC,
+      pendingAML,
+      flaggedAML,
+      clearedAML,
+      pendingAccreditations,
+      approvedAccreditations,
+      totalAuditLogs,
+    });
+  } catch (error) {
+    console.error('Compliance dashboard error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// GET /api/compliance/audit-logs - Compliance officer audit log view
+app.get('/api/compliance/audit-logs', authenticateToken, requireRole(['compliance_officer', 'admin']), async (req, res) => {
+  try {
+    const complianceActions = [
+      'verify_kyc', 'reject_kyc',
+      'initiate_aml_screening', 'clear_aml_screening', 'flag_aml_screening',
+      'verify_accreditation', 'reject_accreditation',
+    ];
+
+    const auditEntries = await prisma.auditLog.findMany({
+      where: { action: { in: complianceActions } },
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    res.json(auditEntries.map(l => ({
+      id: l.id,
+      userId: l.userId,
+      action: l.action,
+      resourceType: l.entity || 'compliance',
+      resourceId: l.entityId,
+      details: l.details ? { message: l.details } : {},
+      createdAt: l.createdAt,
+      userName: l.user?.fullName || null,
+      userEmail: l.user?.email || null,
+      source: 'audit_log',
+    })));
+  } catch (error) {
+    console.error('Compliance audit logs error:', error);
+    res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
 
 app.get('/api/admin/audit-logs', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
@@ -4433,6 +4638,16 @@ app.get('/api/compliance/accreditation/list', authenticateToken, requireRole(['c
       orderBy: { createdAt: 'desc' },
     });
 
+    const userIds = accreditations.map(a => a.userId);
+    const kycDocs = await prisma.kYCDocument.findMany({
+      where: { userId: { in: userIds } },
+    });
+    const docsByUser: Record<string, typeof kycDocs> = {};
+    for (const doc of kycDocs) {
+      if (!docsByUser[doc.userId]) docsByUser[doc.userId] = [];
+      docsByUser[doc.userId].push(doc);
+    }
+
     res.json(accreditations.map(a => ({
       id: a.id,
       investor_id: a.userId,
@@ -4445,7 +4660,11 @@ app.get('/api/compliance/accreditation/list', authenticateToken, requireRole(['c
       approved_at: a.verifiedAt?.toISOString() || null,
       rejected_at: a.status === 'rejected' ? a.createdAt.toISOString() : null,
       rejection_reason: a.reviewNotes || null,
-      documents: [],
+      documents: (docsByUser[a.userId] || []).map(d => ({
+        id: d.id,
+        type: d.documentType,
+        url: d.fileUrl,
+      })),
       submitted_at: a.createdAt.toISOString(),
       investor: {
         id: a.user.id,
@@ -5003,6 +5222,53 @@ app.post('/api/test/seed-messages', authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Seed messages error:', error);
+    res.status(500).json({ error: { message: 'Seed failed', code: 'SEED_ERROR' } });
+  }
+});
+
+// Seed AML screening records for compliance tests
+app.post('/api/test/seed-aml-screenings', authenticateToken, async (req, res) => {
+  try {
+    // Find the compliance officer user
+    const complianceOfficer = await prisma.user.findFirst({ where: { email: 'compliance@indiaangelforum.test' } });
+    // Find or create a test investor for AML screening
+    let testInvestor = await prisma.user.findFirst({ where: { email: 'investor.standard@test.com' } });
+    if (!testInvestor) {
+      testInvestor = await prisma.user.create({
+        data: { email: 'investor.standard@test.com', passwordHash: '$2b$10$dummyhash', fullName: 'Standard Investor' },
+      });
+    }
+
+    const existing = await prisma.aMLScreening.findFirst({ where: { userId: testInvestor.id } });
+    if (!existing) {
+      await prisma.aMLScreening.create({
+        data: {
+          userId: testInvestor.id,
+          status: 'pending',
+          provider: 'WorldCheck',
+          matchScore: 15.5,
+          screenedAt: new Date(),
+        },
+      });
+    }
+
+    // Seed audit log entries for compliance
+    if (complianceOfficer) {
+      const existingLog = await prisma.auditLog.findFirst({ where: { action: 'initiate_aml_screening' } });
+      if (!existingLog) {
+        await prisma.auditLog.createMany({
+          data: [
+            { userId: complianceOfficer.id, action: 'verify_kyc', entity: 'kyc_document', details: 'KYC document verified' },
+            { userId: complianceOfficer.id, action: 'initiate_aml_screening', entity: 'aml_screening', details: 'Initiated AML screening' },
+            { userId: complianceOfficer.id, action: 'clear_aml_screening', entity: 'aml_screening', details: 'Cleared AML screening' },
+          ],
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Seed AML screenings error:', error);
     res.status(500).json({ error: { message: 'Seed failed', code: 'SEED_ERROR' } });
   }
 });

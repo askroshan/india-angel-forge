@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket, Users } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, User, Shield, CreditCard, Ticket, Users, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -88,7 +88,7 @@ const Navigation = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2">
+                  <Button variant="ghost" className="flex items-center gap-2" data-testid="user-menu-button">
                     <User className="h-4 w-4" />
                     <span className="max-w-[120px] truncate">
                       {user.email?.split('@')[0]}
@@ -115,6 +115,40 @@ const Navigation = () => {
                         Moderator Panel
                       </Link>
                     </DropdownMenuItem>
+                  )}
+                  {user.roles?.includes('compliance_officer') && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/compliance" className="flex items-center gap-2 cursor-pointer" data-testid="nav-compliance-dashboard">
+                          <Shield className="h-4 w-4" />
+                          Compliance Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/compliance/kyc-review" className="flex items-center gap-2 cursor-pointer" data-testid="nav-kyc-review">
+                          <FileText className="h-4 w-4" />
+                          KYC Review
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/compliance/aml-screening" className="flex items-center gap-2 cursor-pointer" data-testid="nav-aml-screening">
+                          <Shield className="h-4 w-4" />
+                          AML Screening
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/compliance/accreditation" className="flex items-center gap-2 cursor-pointer" data-testid="nav-accreditation">
+                          <Users className="h-4 w-4" />
+                          Accreditation
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/compliance/audit-logs" className="flex items-center gap-2 cursor-pointer" data-testid="nav-compliance-audit-logs">
+                          <FileText className="h-4 w-4" />
+                          Audit Logs
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {user.roles?.includes('admin') && (
                     <DropdownMenuItem asChild>
@@ -191,6 +225,14 @@ const Navigation = () => {
                       <Link to="/moderator/applications" onClick={() => setIsOpen(false)} data-testid="nav-moderator-panel-mobile">
                         <Users className="h-4 w-4 mr-2" />
                         Moderator Panel
+                      </Link>
+                    </Button>
+                  )}
+                  {user.roles?.includes('compliance_officer') && (
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/compliance" onClick={() => setIsOpen(false)} data-testid="nav-compliance-dashboard-mobile">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Compliance Dashboard
                       </Link>
                     </Button>
                   )}

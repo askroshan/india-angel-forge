@@ -54,6 +54,8 @@ import FundraisingProgress from "./pages/founder/FundraisingProgress";
 import KYCReviewDashboard from "./pages/compliance/KYCReviewDashboard";
 import AMLScreeningDashboard from "./pages/compliance/AMLScreeningDashboard";
 import AccreditationVerification from "./pages/compliance/AccreditationVerification";
+import ComplianceOfficerDashboard from "./pages/compliance/ComplianceDashboard";
+import ComplianceAuditLogs from "./pages/compliance/AuditLogs";
 import UserRoleManagement from "./pages/admin/UserRoleManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminEvents from "./pages/admin/AdminEvents";
@@ -292,6 +294,16 @@ const App = () => (
               </ProtectedRoute>
             } />
             {/* Compliance Routes */}
+            <Route path="/compliance" element={
+              <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
+                <ComplianceOfficerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/compliance/audit-logs" element={
+              <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
+                <ComplianceAuditLogs />
+              </ProtectedRoute>
+            } />
             <Route path="/compliance/kyc-review" element={
               <ProtectedRoute allowedRoles={COMPLIANCE_ROLES}>
                 <KYCReviewDashboard />

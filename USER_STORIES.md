@@ -447,6 +447,185 @@ AND I cannot commit to deals (read-only)
 
 ---
 
+### US-COMPLIANCE-005: Compliance Dashboard
+**As a** Compliance Officer  
+**I want to** view a centralised compliance dashboard  
+**So that** I can quickly see all outstanding actions across KYC, AML, and accreditation workflows
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/compliance`
+- THEN I see KPI cards: Pending KYC, Pending AML, Pending Accreditations, Audit Log count
+- AND I can navigate directly to each compliance workflow from the dashboard
+- AND urgent items (pending count > 0) are highlighted with an alert icon
+- AND the page is only accessible to compliance_officer and admin roles
+
+**Implementation Status:** ✅ Complete  
+**API Endpoint:** `GET /api/compliance/dashboard`  
+**Frontend Component:** `src/pages/compliance/ComplianceDashboard.tsx` → `/compliance`  
+**Database Tables:** `kyc_documents`, `aml_screenings`, `accreditations`, `audit_logs`
+
+---
+
+### US-COMPLIANCE-006: Dedicated Compliance Audit Logs
+**As a** Compliance Officer  
+**I want to** view a compliance-specific audit log page  
+**So that** I can track all KYC, AML, and accreditation actions I or other officers have taken
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/compliance/audit-logs`
+- THEN I see all compliance actions (verify_kyc, reject_kyc, initiate_aml_screening, clear_aml_screening, flag_aml_screening, verify_accreditation, reject_accreditation)
+- AND I can filter by action type
+- AND I can search by officer name or email
+- AND I can export filtered results to CSV
+- AND the page is only accessible to compliance_officer and admin roles
+
+**Implementation Status:** ✅ Complete  
+**API Endpoint:** `GET /api/compliance/audit-logs`  
+**Frontend Component:** `src/pages/compliance/AuditLogs.tsx` → `/compliance/audit-logs`  
+**Database Tables:** `audit_logs`
+
+---
+
+### US-COMPLIANCE-007: Initiate AML Screening
+**As a** Compliance Officer  
+**I want to** initiate AML screening for investors who have completed KYC  
+**So that** I can ensure investors are screened against PEP lists and sanctions databases before they invest
+
+**Acceptance Criteria:**
+- GIVEN I'm on the AML Screening Dashboard
+- WHEN I click "Initiate New Screening"
+- THEN I see a dialog listing investors with verified KYC but no AML screening
+- AND I can click "Screen" next to each investor to run the screening
+- AND the screening result (clear/flagged) is recorded with a match score and provider
+- AND the screening appears in the AML Screening list
+
+**Implementation Status:** ✅ Complete  
+**API Endpoints:** `POST /api/compliance/aml-screening`, `GET /api/compliance/unscreened-investors`  
+**Frontend Component:** `src/pages/compliance/AMLScreeningDashboard.tsx` — Initiate Screening dialog  
+**Database Tables:** `aml_screenings`, `audit_logs`
+
+---
+
+### US-COMPLIANCE-008: KYC Document URL Fix  
+**As a** Compliance Officer  
+**I want to** view and download investor documents without broken URLs  
+**So that** I can complete document verification efficiently
+
+**Acceptance Criteria:**
+- GIVEN I'm on the KYC Review Dashboard
+- WHEN I click "View" or download on a document
+- THEN the document opens at the correct URL (no double `/uploads/` prefix)
+
+**Implementation Status:** ✅ Complete — BUG-CO-002 fixed: `filePath` field already contains `/uploads/` prefix  
+**Frontend Component:** `src/pages/compliance/KYCReviewDashboard.tsx`
+
+---
+
+### US-COMPLIANCE-009: KYC Verify/Reject with Correct HTTP Method
+**As a** Compliance Officer  
+**I want to** verify or reject KYC documents with persisted notes  
+**So that** investors are properly notified and records are complete
+
+**Acceptance Criteria:**
+- GIVEN I'm viewing a pending KYC document
+- WHEN I approve/submit the verify or reject action
+- THEN the API call uses PUT (not PATCH) to match the backend endpoint
+- AND rejection reason is sent as the `notes` field (not `rejectionReason`)
+- AND an audit log entry is created for the action
+
+**Implementation Status:** ✅ Complete — BUG-CO-001 fixed  
+**API Endpoint:** `PUT /api/compliance/kyc-review/:id`  
+**Frontend Component:** `src/pages/compliance/KYCReviewDashboard.tsx`
+
+---
+
+### US-COMPLIANCE-010: Accreditation Documents Modal  
+**As a** Compliance Officer  
+**I want to** view submitted KYC documents when reviewing an accreditation application  
+**So that** I can verify the investor's income or net worth claims
+
+**Acceptance Criteria:**
+- GIVEN I'm viewing an accreditation application on `/compliance/accreditation`
+- WHEN I click "View Documents"
+- THEN I see the investor's submitted KYC documents (not an empty list)
+- AND I can download each document
+
+**Implementation Status:** ✅ Complete — BUG-CO-004 fixed: KYC documents fetched and included in accreditation response  
+**API Endpoint:** `GET /api/compliance/accreditation`  
+**Frontend Component:** `src/pages/compliance/AccreditationVerification.tsx`  
+**Database Tables:** `accreditations`, `kyc_documents`
+
+---
+
+### US-COMPLIANCE-011: Compliance Navigation Links
+**As a** Compliance Officer  
+**I want to** access all compliance tools from the main navigation  
+**So that** I can quickly switch between workflows without manual URL entry
+
+**Acceptance Criteria:**
+- GIVEN I'm logged in as a compliance_officer
+- THEN the navigation dropdown shows: Compliance Dashboard, KYC Review, AML Screening, Accreditation, Audit Logs
+- AND each link navigates to the correct compliance page
+- AND these links are NOT shown to investors, founders, or moderators
+
+**Implementation Status:** ✅ Complete — BUG-CO-007 fixed  
+**Frontend Component:** `src/components/Navigation.tsx`
+
+---
+
+### US-COMPLIANCE-012: AML Screening PATCH→PUT Fix
+**As a** Compliance Officer  
+**I want to** clear or flag AML screenings successfully  
+**So that** screening results are persisted in the database
+
+**Acceptance Criteria:**
+- GIVEN I'm on the AML Screening Dashboard
+- WHEN I clear or flag an investor's AML screening
+- THEN the API call uses PUT (not PATCH) to match the backend endpoint
+- AND flagged reasons are stored and displayed
+- AND an audit log entry captures the action
+
+**Implementation Status:** ✅ Complete — BUG-CO-003 fixed  
+**API Endpoint:** `PUT /api/compliance/aml-screening/:id`  
+**Frontend Component:** `src/pages/compliance/AMLScreeningDashboard.tsx`
+
+---
+
+### US-COMPLIANCE-013: Compliance Dashboard Route
+**As a** Compliance Officer  
+**I want to** access a centralised dashboard at `/compliance`  
+**So that** I have a home page for all compliance work
+
+**Acceptance Criteria:**
+- GIVEN I navigate to `/compliance`
+- THEN the page loads (no 404)
+- AND I see the Compliance Dashboard with KPI cards
+- GIVEN I navigate to `/compliance/audit-logs`
+- THEN the page loads showing compliance audit log entries
+
+**Implementation Status:** ✅ Complete — BUG-CO-006 fixed  
+**Frontend Components:** `ComplianceDashboard.tsx`, `AuditLogs.tsx`  
+**Routes added in:** `src/App.tsx`
+
+---
+
+### US-COMPLIANCE-014: AML Screening Response Shape
+**As a** Compliance Officer  
+**I want to** see investor names and screening details in the AML Screening Dashboard  
+**So that** I can identify which investor each screening row belongs to
+
+**Acceptance Criteria:**
+- GIVEN AML screenings exist in the database
+- WHEN I view the AML Screening Dashboard
+- THEN each row shows investorName, investorEmail, screeningDate, matchScore, screeningProvider
+- AND flaggedReasons are shown for flagged screenings
+
+**Implementation Status:** ✅ Complete — AML GET endpoint now maps fields properly; AMLScreening Prisma model extended  
+**API Endpoint:** `GET /api/compliance/aml-screening`  
+**Database Tables:** `aml_screenings` (new fields: provider, match_score, flagged_reasons, screening_results)
+
+---
+
 ## Investor User Stories
 
 ### US-INVESTOR-001: Submit Application
