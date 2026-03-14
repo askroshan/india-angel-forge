@@ -315,6 +315,10 @@ curl -s $API_URL/api/admin/statistics \
 | Compliance — Accreditation | `/compliance/accreditation` | `compliance_officer` |
 | Moderator — Applications | `/moderator/applications` | `moderator` |
 | Moderator — Content | `/moderator/content` | `moderator` |
+| Moderator — Users | `/moderator/users` | `moderator` |
+| Moderator — Reports | `/moderator/reports` | `moderator` |
+| Moderator — Attendance | `/moderator/attendance` | `moderator` |
+| Moderator — Compliance | `/moderator/compliance` | `moderator` |
 | Founder — Application Status | `/founder/application-status` | `founder` |
 | Founder — Pitch Sessions | `/founder/pitch-sessions` | `founder` |
 | Founder — Pitch Materials | `/founder/pitch-materials` | `founder` |
