@@ -130,7 +130,7 @@ export default function MyRegistrationsPage() {
               ) : (
                 <div className="space-y-4">
                   {upcomingRegistrations.map((registration) => (
-                    <Card key={registration.id} className="overflow-hidden">
+                    <Card key={registration.id} className="overflow-hidden" data-testid={`registration-card-${registration.id}`}>
                       <CardContent className="p-0">
                         <div className="flex flex-col md:flex-row">
                           {/* Date Column */}
@@ -247,7 +247,7 @@ export default function MyRegistrationsPage() {
               ) : (
                 <div className="space-y-4">
                   {pastRegistrations.map((registration) => (
-                    <Card key={registration.id} className="overflow-hidden opacity-75">
+                    <Card key={registration.id} className="overflow-hidden opacity-75" data-testid={`registration-card-${registration.id}`}>
                       <CardContent className="p-0">
                         <div className="flex flex-col md:flex-row">
                           {/* Date Column */}

@@ -2320,3 +2320,147 @@
   **Last Updated:** March 14, 2026  
   **Implementation Complete:** March 14, 2026 (branch: `2026-03-14-FamilyOffice`)  
   **Owner:** Product Management Team
+
+---
+
+## Phase 11: Guest / User Role — Bug Fixes & Features
+
+**Branch:** `2026-03-13-GuestBugsandfeatures`  
+**Role Tested:** Guest / User (`user@test.com` / `User@12345`, role: `user`)  
+**Date:** March 15, 2026
+
+### Bug Fixes
+
+#### BUG-GUEST-001 — /investors CTA Buttons Silent Fail
+**Severity:** HIGH  
+**Root Cause:** `handleCheckout()` in `Investors.tsx` called non-existent `/api/membership/checkout` endpoint for authenticated users without investor role, resulting in a caught error with no meaningful navigation.  
+**Fix:** Added investor-role check in `handleCheckout()` — non-investor users are redirected to `/apply/investor` instead of hitting the missing checkout endpoint.  
+**Files Changed:** `src/pages/Investors.tsx`  
+**Test Coverage:** 7 E2E tests in `e2e/guest-bugs.spec.ts` (`BUG-GUEST-001` group)
+
+---
+
+#### BUG-GUEST-002 — Verify Identity Wrong Port on /membership
+**Severity:** HIGH  
+**Root Cause:** Shared with BUG-MOD-03 / BUG-FOUNDER-003 — `APP_BASE_URL` in `server/routes/identity-verification.ts` defaulted to `localhost:3002`.  
+**Fix:** Already resolved by the shared port fix (`APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:8082'`). Verified working for the `user` role.  
+**Files Changed:** `server/routes/identity-verification.ts` (existing fix)  
+**Test Coverage:** 3 E2E tests in `e2e/guest-bugs.spec.ts` (`BUG-GUEST-002` group)
+
+---
+
+#### BUG-GUEST-003 — /deals Returns 403 for Guest/User Role
+**Severity:** MEDIUM  
+**Root Cause:** `/deals` route in `App.tsx` used `<ProtectedRoute allowedRoles={INVESTOR_ROLES}>`, blocking guest users. The `DealsPage` component already had logic to show `OnboardingBanner` + public deal preview for non-approved investors — it just never got to render.  
+**Fix:** Changed `/deals` route to `<ProtectedRoute>` (any authenticated user), letting `DealsPage`'s internal role check handle display logic.  
+**Files Changed:** `src/App.tsx`  
+**Test Coverage:** 5 E2E tests in `e2e/guest-bugs.spec.ts` (`BUG-GUEST-003 / US-GUEST-001` group)
+
+---
+
+#### BUG-GUEST-004 — /verify-certificate/:code Returns 404
+**Severity:** MEDIUM  
+**Root Cause:** `App.tsx` only registered `/verify-certificate` (no param variant). Deep-linked URLs like `/verify-certificate/CERT-2025-000001` from QR codes and email links returned a React Router 404.  
+**Fix:** Added route `/verify-certificate/:certificateId` pointing to the same `CertificateVerification` component, which already uses `useParams<{ certificateId }>()` and auto-verifies on mount.  
+**Files Changed:** `src/App.tsx`  
+**Test Coverage:** 5 E2E tests in `e2e/guest-bugs.spec.ts` (`BUG-GUEST-004 / US-GUEST-003` group)
+
+---
+
+#### BUG-GUEST-005 — My Registrations Shows Zero After RSVP
+**Severity:** MEDIUM  
+**Root Cause:** `MyRegistrations` component and standalone `MyRegistrationsPage` used `data-testid="my-event-item"` (non-unique) and lacked per-card testids, making E2E assertions fail. The API itself already merged `event_attendance` records correctly.  
+**Fix:** Added `data-testid="registration-card-{id}"` to each registration card in both the `MyRegistrations` component and the standalone `MyRegistrations` page.  
+**Files Changed:** `src/components/events/MyRegistrations.tsx`, `src/pages/MyRegistrations.tsx`  
+**Test Coverage:** 5 E2E tests in `e2e/guest-bugs.spec.ts` (`BUG-GUEST-005 / US-GUEST-005` group)
+
+---
+
+### New User Stories
+
+#### US-GUEST-001: Public Deal Preview for All Authenticated Users
+**As a** logged-in user (any role)  
+**I want to** visit `/deals` and see a public preview of available deals with an invitation to apply  
+**So that** I understand the value of becoming an investor member  
+**Acceptance Criteria:**
+- `/deals` is accessible to any authenticated user (no role restriction at route level)
+- Non-investor users see `OnboardingBanner` with "Apply Now" → `/apply/investor`
+- Public deal teaser cards loaded from `GET /api/deals/public` are displayed
+- Full deal details remain gated (investor role required for `/deals/:dealId`)
+**Implementation Status:** ✅ Complete  
+**E2E Tests:** `US-GUEST-001` group in `e2e/guest-bugs.spec.ts`
+
+---
+
+#### US-GUEST-002: Functional Membership Plan CTAs on /investors
+**As a** logged-in user (any role) visiting the /investors page  
+**I want to** click "Join as Standard Member" or "Apply for Operator Plan"  
+**So that** I am guided to the correct application flow  
+**Acceptance Criteria:**
+- Unauthenticated: redirects to `/auth` (existing behaviour preserved)
+- Authenticated user without investor role: navigates to `/apply/investor`
+- Authenticated user with investor role: proceeds to payment checkout
+**Implementation Status:** ✅ Complete  
+**E2E Tests:** `US-GUEST-002` group in `e2e/guest-bugs.spec.ts`
+
+---
+
+#### US-GUEST-003: Public Certificate Verification Deep Link
+**As a** visitor (authenticated or not) who received a certificate QR code or email link  
+**I want to** visit `/verify-certificate/{certificateId}` and see instant verification  
+**So that** I can confirm the authenticity of an India Angel Forum attendance certificate  
+**Acceptance Criteria:**
+- `/verify-certificate/:certificateId` route exists and pre-fills the input
+- Auto-verification triggers on mount when `certificateId` is present in URL
+- Valid certificates show attendee name, event name, date, duration
+- Invalid certificates show clear "not found" error state
+- Page is publicly accessible (no auth required)
+**Implementation Status:** ✅ Complete  
+**E2E Tests:** `US-GUEST-003` group in `e2e/guest-bugs.spec.ts`
+
+---
+
+#### US-GUEST-004: Identity Verification Port Fix for /membership
+**As a** guest/user role member  
+**I want to** complete identity verification on the /membership page  
+**So that** I can subscribe to a membership plan  
+**Acceptance Criteria:**
+- `POST /api/verification/start` returns `inquiryUrl` containing port `8082`
+- `inquiryUrl` does NOT contain port `3002`
+- "Verify Identity" button on `/membership` is visible and functional
+**Implementation Status:** ✅ Complete (shared fix from `server/routes/identity-verification.ts`)  
+**E2E Tests:** `US-GUEST-004` group in `e2e/guest-bugs.spec.ts`
+
+---
+
+#### US-GUEST-005: My Registrations RSVP Count Consistency
+**As a** guest/user who has RSVPed to events  
+**I want to** see my registrations on both `/events` and `/my-registrations`  
+**So that** I have a consistent view of my event participation  
+**Acceptance Criteria:**
+- `GET /api/events/my-registrations` returns merged `event_registrations` + `event_attendance` records
+- Attendance-sourced records have `_source: 'attendance'`
+- Each registration card has unique `data-testid="registration-card-{id}"` for E2E traceability
+- Both the embedded `MyRegistrations` widget (on `/events`) and standalone `/my-registrations` page show RSVPs
+**Implementation Status:** ✅ Complete  
+**E2E Tests:** `US-GUEST-005` group in `e2e/guest-bugs.spec.ts`
+
+---
+
+### Test Summary
+
+| Test | Count | Status |
+|------|-------|--------|
+| `e2e/guest-bugs.spec.ts` | 29 | ✅ 29/29 PASS |
+| `e2e/operator-angel.spec.ts` (regression) | 22 | ✅ 22/22 PASS |
+| `e2e/application-crud-full.spec.ts` (regression) | 20 | ✅ 20/20 PASS |
+| `e2e/authorization.spec.ts` (regression) | 94/95 | ✅ 94 PASS, 1 pre-existing fail |
+| **TypeScript errors** | 0 | ✅ |
+| **ESLint errors** | 79 | ✅ Baseline (no new errors introduced) |
+
+---
+
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 11 Guest/User Bug Fixes added  
+**Last Updated:** March 15, 2026  
+**Implementation Complete:** March 15, 2026 (branch: `2026-03-13-GuestBugsandfeatures`)  
+**Owner:** Product Management Team

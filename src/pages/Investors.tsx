@@ -43,6 +43,16 @@ const Investors = () => {
       return;
     }
 
+    // BUG-GUEST-001 FIX / US-GUEST-002: redirect non-investors to application flow
+    const investorRoles = ['investor', 'angel_investor', 'vc_partner', 'family_office', 'operator_angel'];
+    const hasInvestorRole = user.roles?.some((r: string) =>
+      investorRoles.includes(r.toLowerCase())
+    );
+    if (!hasInvestorRole) {
+      navigate("/apply/investor");
+      return;
+    }
+
     setLoadingPlan(membershipType);
     try {
       const response = await apiClient.post<{ url: string }>('/api/membership/checkout', { membershipType });

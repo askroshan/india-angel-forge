@@ -172,6 +172,8 @@ const App = () => (
             <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/verify-certificate" element={<CertificateVerification />} />
+            {/* BUG-GUEST-004 FIX / US-GUEST-003: deep-link variant with pre-filled certificateId param */}
+            <Route path="/verify-certificate/:certificateId" element={<CertificateVerification />} />
             <Route path="/membership" element={
               <ProtectedRoute>
                 <Membership />
@@ -200,8 +202,9 @@ const App = () => (
                 <InvestorProfilePage />
               </ProtectedRoute>
             } />
+            {/* BUG-GUEST-003 FIX / US-GUEST-001: accessible to all authenticated users; DealsPage handles role-based display internally */}
             <Route path="/deals" element={
-              <ProtectedRoute allowedRoles={INVESTOR_ROLES}>
+              <ProtectedRoute>
                 <DealsPage />
               </ProtectedRoute>
             } />
