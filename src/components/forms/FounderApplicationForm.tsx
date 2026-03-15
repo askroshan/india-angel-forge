@@ -141,6 +141,19 @@ export function FounderApplicationForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* US-NEW-004: DPIIT Recognition Badge */}
+        <div
+          data-testid="dpiit-recognition-badge"
+          className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+        >
+          <span className="text-lg">🏛️</span>
+          <div>
+            <span className="font-semibold">DPIIT-Recognised Platform</span>
+            <span className="mx-2">·</span>
+            <span>Startup India — Section 80-IAC tax benefits available for eligible founders &amp; investors</span>
+          </div>
+        </div>
+
         {/* Company Information */}
         <Card>
           <CardHeader>
@@ -628,6 +641,20 @@ export function FounderApplicationForm() {
             />
           </CardContent>
         </Card>
+
+        {/* US-NEW-005: Referral Code */}
+        <div className="space-y-1">
+          <label htmlFor="referral-code" className="text-sm font-medium text-muted-foreground">
+            Referral Code (optional)
+          </label>
+          <input
+            id="referral-code"
+            data-testid="referral-code-input"
+            type="text"
+            placeholder="Enter referral code if you have one"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+        </div>
 
         <Button 
           type="submit" 

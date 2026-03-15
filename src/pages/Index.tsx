@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
@@ -18,6 +19,36 @@ import {
 } from "lucide-react";
 
 const Index = () => {
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadName, setLeadName] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSuccess, setLeadSuccess] = useState(false);
+  const [leadError, setLeadError] = useState('');
+
+  async function handleLeadSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!leadEmail) return;
+    setLeadSubmitting(true);
+    setLeadError('');
+    try {
+      const res = await fetch('/api/lead-capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: leadEmail, name: leadName, source: 'landing_page' }),
+      });
+      if (res.ok || res.status === 200) {
+        setLeadSuccess(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setLeadError(data.error || 'Something went wrong. Please try again.');
+      }
+    } catch {
+      setLeadError('Network error. Please try again.');
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
+
   const stats = [
     { value: "₹160+ Cr", label: "Capital Deployed" },
     { value: "400+", label: "Active Members" },
@@ -282,6 +313,61 @@ const Index = () => {
               <Link to="/apply/investor">I'm an Investor</Link>
             </Button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* US-NEW-001: Lead Capture Section */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-lg mx-auto text-center space-y-6">
+            <h3 className="text-2xl font-bold">Stay in the Loop</h3>
+            <p className="text-muted-foreground">
+              Get updates on upcoming events, investment opportunities, and forum news.
+            </p>
+            {leadSuccess ? (
+              <div
+                data-testid="lead-capture-success"
+                className="rounded-lg bg-green-50 border border-green-200 px-6 py-4 text-green-800 font-medium"
+              >
+                🎉 Thanks! We'll keep you updated.
+              </div>
+            ) : (
+              <form
+                data-testid="lead-capture-form"
+                onSubmit={handleLeadSubmit}
+                className="flex flex-col gap-3"
+              >
+                <input
+                  data-testid="lead-capture-name"
+                  type="text"
+                  placeholder="Your name (optional)"
+                  value={leadName}
+                  onChange={e => setLeadName(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <input
+                  data-testid="lead-capture-email"
+                  type="email"
+                  placeholder="Enter your email address *"
+                  value={leadEmail}
+                  onChange={e => setLeadEmail(e.target.value)}
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                {leadError && (
+                  <p className="text-sm text-destructive">{leadError}</p>
+                )}
+                <Button
+                  data-testid="lead-capture-submit"
+                  type="submit"
+                  disabled={leadSubmitting}
+                  className="w-full"
+                >
+                  {leadSubmitting ? 'Submitting…' : 'Notify Me'}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </section>

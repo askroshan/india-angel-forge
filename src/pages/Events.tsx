@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,16 @@ export default function Events() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState<string>('');
+  const [publicEvents, setPublicEvents] = useState<Array<{ id: string; title: string; date: string; location: string | null; type: string | null }>>([]);
+
+  useEffect(() => {
+    fetch('/api/events/public-calendar')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setPublicEvents(data.data ?? []);
+      })
+      .catch(() => {});
+  }, []);
   
   const filterOptions = {
     search: searchQuery || undefined,
@@ -208,6 +218,39 @@ export default function Events() {
               </Button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* US-NEW-002: Public Forum Calendar — visible to all visitors without auth */}
+      <section className="py-12 bg-muted/20 border-t" data-testid="public-forum-calendar">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl font-bold mb-6">Forum Calendar</h2>
+          {publicEvents.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No upcoming events scheduled. Check back soon.</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {publicEvents.map(ev => (
+                <div
+                  key={ev.id}
+                  data-testid={`calendar-event-${ev.id}`}
+                  className="rounded-lg border bg-card p-4 space-y-1 shadow-sm"
+                >
+                  <p className="font-semibold text-sm">{ev.title}</p>
+                  {ev.date && (
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                  {ev.location && (
+                    <p className="text-xs text-muted-foreground">{ev.location}</p>
+                  )}
+                  {ev.type && (
+                    <span className="inline-block text-xs rounded-full bg-primary/10 text-primary px-2 py-0.5">{ev.type}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

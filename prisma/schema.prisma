@@ -75,6 +75,8 @@ model User {
   complianceFilings      ComplianceFiling[]      @relation("UserComplianceFilings")
   // US-OA-004: Deal sourcing referrals
   dealReferrals          DealReferral[]
+  // US-NEW-005: Referral code
+  referralCode           ReferralCode?
 
   @@map("users")
 }
@@ -1146,6 +1148,7 @@ model EventAttendance {
   checkOutTime        DateTime?         @map("check_out_time")
   certificateId       String?           @unique @map("certificate_id")
   certificateUrl      String?           @map("certificate_url")
+  qrToken             String?           @unique @map("qr_token")
   notes               String?
   dietaryRequirements String?           @map("dietary_requirements")
   createdAt           DateTime          @default(now()) @map("created_at")
@@ -1625,7 +1628,7 @@ model DealReferral {
   userId       String             @map("user_id")
   companyName  String             @map("company_name")
   sector       String
-  stage        String             // pre_seed, seed, series_a, series_b, growth
+  stage        String // pre_seed, seed, series_a, series_b, growth
   description  String
   contactName  String             @map("contact_name")
   contactEmail String             @map("contact_email")
@@ -1640,4 +1643,52 @@ model DealReferral {
   @@index([userId])
   @@index([status])
   @@map("deal_referrals")
+}
+
+// ==================== US-NEW-001: LEAD CAPTURE ====================
+
+/// US-NEW-001: Lead Capture for Visitors
+/// Stores email and interest from unauthenticated visitors
+model LeadCapture {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  fullName  String?  @map("full_name")
+  interest  String? // "investor" | "founder" | "general"
+  source    String   @default("landing_page")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("lead_captures")
+}
+
+// ==================== US-NEW-005: REFERRAL CODES ====================
+
+/// US-NEW-005: Referral Code System
+/// Each authenticated user can generate a unique referral code
+model ReferralCode {
+  id         String   @id @default(cuid())
+  userId     String   @unique @map("user_id")
+  code       String   @unique
+  usageCount Int      @default(0) @map("usage_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uses ReferralUse[]
+
+  @@index([code])
+  @@map("referral_codes")
+}
+
+/// US-NEW-005: Tracks each use of a referral code
+model ReferralUse {
+  id             String   @id @default(cuid())
+  referralCodeId String   @map("referral_code_id")
+  referredEmail  String   @map("referred_email")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+
+  @@index([referralCodeId])
+  @@map("referral_uses")
 }

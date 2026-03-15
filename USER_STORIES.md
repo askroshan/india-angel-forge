@@ -2320,3 +2320,114 @@
   **Last Updated:** March 14, 2026  
   **Implementation Complete:** March 14, 2026 (branch: `2026-03-14-FamilyOffice`)  
   **Owner:** Product Management Team
+
+---
+
+## Phase 12: Engagement & Growth Features (US-NEW-001..006)
+
+### US-NEW-001: Landing Page Lead Capture
+**As a** prospective member visiting the landing page  
+**I want to** submit my email to express interest  
+**So that** the forum can follow up and grow its pipeline  
+**Acceptance Criteria:**
+- `POST /api/lead-capture` accepts `email`, `fullName`, `interest`, `source` and returns the lead
+- Duplicate email submissions return the existing record (no error)
+- Lead capture form visible on `/` with `data-testid="lead-capture-form"`
+- Success message shown with `data-testid="lead-capture-success"` after submit
+- E2E: `us-new-001-006.spec.ts` (US-NEW-001 suite)  
+**Implementation Status:** ✅ Complete
+- Schema: `LeadCapture` model → `lead_captures` table
+- Migration: `20260315000000_add_lead_capture_referral_qr_token`
+- API: `POST /api/lead-capture` in `server/routes/lead-capture.ts`
+- UI: Lead capture form section added to `src/pages/Index.tsx`
+
+---
+
+### US-NEW-002: Public Forum Calendar
+**As a** visitor (not logged in)  
+**I want to** see upcoming forum events on the events page  
+**So that** I can plan to attend before becoming a member  
+**Acceptance Criteria:**
+- `GET /api/events/public-calendar` returns upcoming events (no auth required)
+- Events include: id, title, description, date, location, type, capacity, status
+- Public calendar section visible on `/events` with `data-testid="public-forum-calendar"`
+- Each event entry has `data-testid="calendar-event-{id}"`
+- E2E: `us-new-001-006.spec.ts` (US-NEW-002 suite)  
+**Implementation Status:** ✅ Complete
+- API: `GET /api/events/public-calendar` in `server.ts` (placed before `/:id` route)
+- UI: Public calendar section added to `src/pages/Events.tsx`
+
+---
+
+### US-NEW-003: Application Status Email Notifications
+**As an** applicant (investor or founder)  
+**I want to** receive an email when my application status is updated  
+**So that** I stay informed without having to check the portal constantly  
+**Acceptance Criteria:**
+- `PATCH /api/admin/applications/investors/:id` triggers email to applicant
+- `PATCH /api/admin/applications/founders/:id` triggers email to applicant
+- `POST /api/admin/applications/investors/:id/notify` sends manual notification
+- `POST /api/admin/applications/founders/:id/notify` sends manual notification
+- Respects `NotificationPreference.emailApplications` setting
+- E2E: `us-new-001-006.spec.ts` (US-NEW-003 suite)  
+**Implementation Status:** ✅ Complete
+- Helper: `sendApplicationStatusEmail()` in `server.ts`
+- API: notify endpoints added to `server.ts`; auto-trigger on PATCH
+
+---
+
+### US-NEW-004: DPIIT Recognition Badge
+**As an** applicant visiting the application forms  
+**I want to** see trust signals confirming the forum is DPIIT-recognised  
+**So that** I feel confident submitting my application  
+**Acceptance Criteria:**
+- DPIIT badge with `data-testid="dpiit-recognition-badge"` visible on investor application form
+- DPIIT badge with `data-testid="dpiit-recognition-badge"` visible on founder application form
+- Badge visible without login
+- E2E: `us-new-001-006.spec.ts` (US-NEW-004 suite)  
+**Implementation Status:** ✅ Complete
+- UI: Badge added to `src/components/forms/InvestorApplicationForm.tsx`
+- UI: Badge added to `src/components/forms/FounderApplicationForm.tsx`
+
+---
+
+### US-NEW-005: Referral Code System
+**As a** member  
+**I want to** generate and share a referral code  
+**So that** I can invite others and track my referrals  
+**Acceptance Criteria:**
+- `POST /api/referrals/generate` creates or returns existing code (authenticated)
+- `GET /api/referrals/my-code` returns the caller's code with usage count
+- `POST /api/referrals/validate` checks if a code is valid (public)
+- Referral code input with `data-testid="referral-code-input"` on investor application form
+- Referral code input with `data-testid="referral-code-input"` on founder application form
+- E2E: `us-new-001-006.spec.ts` (US-NEW-005 suite)  
+**Implementation Status:** ✅ Complete
+- Schema: `ReferralCode` + `ReferralUse` models (linked to `User`)
+- API: `server/routes/referrals.ts` mounted at `/api/referrals`
+- UI: Referral input added to both application forms
+
+---
+
+### US-NEW-006: Mobile QR Code Check-in
+**As a** moderator at an event  
+**I want to** check in attendees by scanning or entering their QR code  
+**So that** I can quickly record attendance without manual lookup  
+**Acceptance Criteria:**
+- `GET /api/events/:eventId/attendance/qr-code` returns a QR token for the authenticated attendee
+- `POST /api/events/:eventId/attendance/qr-checkin` accepts `qrToken` or `userId` (admin/moderator only)
+- Moderator attendance page shows real QR scanner panel with `data-testid="qr-scanner-panel"`
+- Manual entry input with `data-testid="qr-manual-input"` for fallback
+- Check-in result shown with `data-testid="qr-checkin-result"`
+- E2E: `us-new-001-006.spec.ts` (US-NEW-006 suite)  
+**Implementation Status:** ✅ Complete
+- Schema: `qrToken` field added to `EventAttendance`
+- API: QR code + QR check-in endpoints in `server/routes/event-attendance.ts`
+- UI: Real scanner panel replacing placeholder in `src/pages/moderator/EventAttendance.tsx`
+
+---
+
+**Document Status:** ✅ ALL USER STORIES COMPLETE — Phase 12 Engagement & Growth features added  
+**Last Updated:** March 15, 2026  
+**Implementation Complete:** March 15, 2026 (branch: `2026-03-14-USNew001-006`)  
+**Owner:** Product Management Team

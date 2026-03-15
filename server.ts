@@ -27,6 +27,8 @@ import cmsRouter from './server/routes/cms';
 import membershipRouter from './server/routes/membership';
 import adminMembershipRouter from './server/routes/admin-membership';
 import identityVerificationRouter from './server/routes/identity-verification';
+import leadCaptureRouter from './server/routes/lead-capture';
+import referralsRouter from './server/routes/referrals';
 
 import path from 'path';
 import fs from 'fs';
@@ -129,6 +131,36 @@ const getUserId = (req: Request): string => {
   }
   return user.userId;
 };
+
+/**
+ * US-NEW-003: Send an email notification when an application status changes.
+ * Respects the user's NotificationPreference.emailApplications setting.
+ * Logs to EmailLog via the email service.
+ */
+async function sendApplicationStatusEmail(
+  userId: string,
+  email: string,
+  fullName: string,
+  applicationType: 'investor' | 'founder',
+  status: string
+): Promise<void> {
+  try {
+    const pref = await prisma.notificationPreference.findUnique({ where: { userId } });
+    if (pref && !pref.emailApplications) return; // user opted out
+
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const subject = `Your ${applicationType} application has been ${statusLabel}`;
+    const html = `
+      <p>Dear ${fullName},</p>
+      <p>We wanted to let you know that the status of your ${applicationType} application with India Angel Forum has been updated to: <strong>${statusLabel}</strong>.</p>
+      <p>If you have any questions, please don't hesitate to reach out to us.</p>
+      <p>Best regards,<br/>India Angel Forum Team</p>
+    `;
+    await emailService.sendEmail({ to: email, subject, html, userId });
+  } catch (err) {
+    console.error('sendApplicationStatusEmail error:', err);
+  }
+}
 
 // ==================== AUTH ROUTES ====================
 
@@ -487,6 +519,46 @@ app.get('/api/events/my-waitlist', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get user waitlist error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// ==================== PUBLIC CALENDAR (US-NEW-002) ====================
+// Must be registered BEFORE /api/events/:id to prevent route shadowing
+
+app.get('/api/events/public-calendar', async (_req, res) => {
+  try {
+    const now = new Date();
+    const events = await prisma.event.findMany({
+      where: { eventDate: { gte: now } },
+      orderBy: { eventDate: 'asc' },
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        eventDate: true,
+        location: true,
+        city: true,
+        venue: true,
+        capacity: true,
+        status: true,
+        eventType: { select: { name: true } },
+      },
+    });
+    const data = events.map(ev => ({
+      id: ev.id,
+      title: ev.title,
+      description: ev.description,
+      date: ev.eventDate,
+      location: ev.location ?? ev.city ?? ev.venue,
+      type: ev.eventType?.name,
+      capacity: ev.capacity,
+      status: ev.status,
+    }));
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching public calendar:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch events' });
   }
 });
 
@@ -1311,12 +1383,46 @@ app.patch('/api/admin/applications/investors/:id', authenticateToken, requireRol
         reviewedAt: new Date(),
         ...(reviewNotes !== undefined && { reviewNotes }),
       },
+      include: { user: { select: { id: true, email: true, fullName: true } } },
     });
+
+    // US-NEW-003: Send email notification on status change (non-blocking)
+    if (app.user && status) {
+      sendApplicationStatusEmail(
+        app.user.id,
+        app.user.email,
+        app.user.fullName ?? 'Applicant',
+        'investor',
+        status
+      ).catch(err => console.error('Failed to send investor status email:', err));
+    }
 
     res.json(transformInvestorApp(app));
   } catch (error) {
     console.error('Admin review investor application error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/applications/investors/:id/notify — Manually send status notification (US-NEW-003)
+app.post('/api/admin/applications/investors/:id/notify', authenticateToken, requireRole(['admin', 'moderator']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const app = await prisma.investorApplication.findUnique({
+      where: { id: req.params.id as string },
+      include: { user: { select: { id: true, email: true, fullName: true } } },
+    });
+    if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
+    await sendApplicationStatusEmail(
+      app.user.id,
+      app.user.email,
+      app.user.fullName ?? 'Applicant',
+      'investor',
+      app.status
+    );
+    return res.json({ success: true, message: 'Notification sent' });
+  } catch (error) {
+    console.error('Error sending investor notification:', error);
+    return res.status(500).json({ success: false, error: 'Failed to send notification' });
   }
 });
 
@@ -1458,12 +1564,46 @@ app.patch('/api/admin/applications/founders/:id', authenticateToken, requireRole
         reviewedAt: new Date(),
         ...(reviewNotes !== undefined && { reviewNotes }),
       },
+      include: { user: { select: { id: true, email: true, fullName: true } } },
     });
+
+    // US-NEW-003: Send email notification on status change (non-blocking)
+    if (app.user && status) {
+      sendApplicationStatusEmail(
+        app.user.id,
+        app.user.email,
+        app.user.fullName ?? 'Applicant',
+        'founder',
+        status
+      ).catch(err => console.error('Failed to send founder status email:', err));
+    }
 
     res.json(transformFounderApp(app));
   } catch (error) {
     console.error('Admin review founder application error:', error);
     res.status(500).json({ error: { message: 'Internal server error', code: 'SERVER_ERROR' } });
+  }
+});
+
+// POST /api/admin/applications/founders/:id/notify — Manually send status notification (US-NEW-003)
+app.post('/api/admin/applications/founders/:id/notify', authenticateToken, requireRole(['admin', 'moderator']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const app = await prisma.founderApplication.findUnique({
+      where: { id: req.params.id as string },
+      include: { user: { select: { id: true, email: true, fullName: true } } },
+    });
+    if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
+    await sendApplicationStatusEmail(
+      app.user.id,
+      app.user.email,
+      app.user.fullName ?? 'Applicant',
+      'founder',
+      app.status
+    );
+    return res.json({ success: true, message: 'Notification sent' });
+  } catch (error) {
+    console.error('Error sending founder notification:', error);
+    return res.status(500).json({ success: false, error: 'Failed to send notification' });
   }
 });
 
@@ -4944,6 +5084,49 @@ app.use('/api/admin/membership', adminMembershipRouter);
 // ==================== IDENTITY VERIFICATION ROUTES ====================
 
 app.use('/api/verification', identityVerificationRouter);
+
+// ==================== LEAD CAPTURE ROUTES (US-NEW-001) ====================
+
+app.use('/api/lead-capture', leadCaptureRouter);
+
+// Admin: list all leads
+app.get('/api/admin/lead-captures', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const leads = await prisma.leadCapture.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: leads });
+  } catch (error) {
+    console.error('Error fetching lead captures:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch leads' });
+  }
+});
+
+// Admin: list email logs (US-NEW-003)
+app.get('/api/admin/email-logs', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const logs = await prisma.emailLog.findMany({
+      orderBy: { sentAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        to: true,
+        subject: true,
+        status: true,
+        sentAt: true,
+        userId: true,
+      },
+    });
+    return res.json({ success: true, data: logs.map(l => ({ ...l, createdAt: l.sentAt })) });
+  } catch (error) {
+    console.error('Error fetching email logs:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch email logs' });
+  }
+});
+
+// ==================== REFERRAL CODE ROUTES (US-NEW-005) ====================
+
+app.use('/api/referrals', referralsRouter);
 
 // ==================== TEST SEEDING (E2E only) ====================
 

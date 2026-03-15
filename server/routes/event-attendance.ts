@@ -11,6 +11,7 @@ import { authenticateUser, requireRoles } from '../middleware/auth';
 import { prisma } from '../../db';
 import { certificateService } from '../services/certificate.service';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -456,6 +457,95 @@ router.get('/:eventId/statistics', authenticateUser, requireRoles(['admin']), as
       success: false,
       error: 'Failed to fetch statistics',
     });
+  }
+});
+
+/**
+ * GET /api/events/:eventId/attendance/qr-code
+ *
+ * US-NEW-006: Return a QR token for the authenticated user's attendance record.
+ * Creates or returns the existing qrToken for this user+event pair.
+ */
+router.get('/:eventId/attendance/qr-code', authenticateUser, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const attendance = await prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId } },
+    });
+    if (!attendance) {
+      return res.status(404).json({ success: false, error: 'No RSVP found for this event' });
+    }
+
+    // Generate a qrToken if none exists
+    let qrToken = attendance.qrToken;
+    if (!qrToken) {
+      qrToken = crypto.randomBytes(16).toString('hex');
+      await prisma.eventAttendance.update({
+        where: { userId_eventId: { userId, eventId } },
+        data: { qrToken },
+      });
+    }
+
+    return res.json({ success: true, data: { qrCode: qrToken, userId, eventId } });
+  } catch (error) {
+    console.error('Error fetching QR code:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch QR code' });
+  }
+});
+
+/**
+ * POST /api/events/:eventId/attendance/qr-checkin
+ *
+ * US-NEW-006: Check in an attendee via QR token or userId (moderator/admin).
+ * Accepts { qrToken } OR { userId } in body.
+ */
+router.post('/:eventId/attendance/qr-checkin', authenticateUser, requireRoles(['admin', 'moderator']), async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { qrToken, userId: bodyUserId } = req.body;
+
+    if (!qrToken && !bodyUserId) {
+      return res.status(400).json({ success: false, error: 'qrToken or userId is required' });
+    }
+
+    let attendance;
+    if (qrToken) {
+      attendance = await prisma.eventAttendance.findFirst({
+        where: { qrToken, eventId },
+      });
+    } else {
+      attendance = await prisma.eventAttendance.findUnique({
+        where: { userId_eventId: { userId: bodyUserId, eventId } },
+      });
+    }
+
+    if (!attendance) {
+      return res.status(404).json({ success: false, error: 'Attendance record not found' });
+    }
+
+    if (attendance.checkInTime) {
+      return res.status(400).json({ success: false, error: 'Already checked in', data: { attendance } });
+    }
+
+    if (attendance.rsvpStatus !== 'CONFIRMED') {
+      return res.status(400).json({ success: false, error: 'Can only check in confirmed attendees' });
+    }
+
+    const updated = await prisma.eventAttendance.update({
+      where: { id: attendance.id },
+      data: {
+        checkInTime: new Date(),
+        attendanceStatus: 'ATTENDED',
+      },
+    });
+
+    return res.json({ success: true, data: { attendance: updated } });
+  } catch (error) {
+    console.error('Error in QR check-in:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check in attendee' });
   }
 });
 
