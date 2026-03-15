@@ -84,7 +84,7 @@ export default function MyRegistrations() {
     <div
       key={registration.id}
       className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg"
-      data-testid="my-event-item"
+      data-testid={`registration-card-${registration.id}`}
       data-event-id={registration.eventId || registration.event_id}
     >
       <div className="flex-1 space-y-2">
