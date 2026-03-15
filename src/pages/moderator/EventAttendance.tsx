@@ -41,6 +41,9 @@ export default function EventAttendance() {
   const { eventId } = useParams<{ eventId: string }>();
   const queryClient = useQueryClient();
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [qrManualInput, setQrManualInput] = useState('');
+  const [qrResult, setQrResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [qrSubmitting, setQrSubmitting] = useState(false);
 
   // Fetch event details
   const { data: eventResponse, isLoading: eventLoading } = useQuery({
@@ -138,6 +141,35 @@ export default function EventAttendance() {
     checkOutMutation.mutate(userId);
   };
 
+  // US-NEW-006: QR check-in handler
+  const handleQrCheckin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qrManualInput.trim()) return;
+    setQrSubmitting(true);
+    setQrResult(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/events/${eventId}/attendance/qr-checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ userId: qrManualInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setQrResult({ success: true, message: 'Check-in successful!' });
+        queryClient.invalidateQueries({ queryKey: ['event-attendance', eventId] });
+        setQrManualInput('');
+        toast.success('Attendee checked in via QR');
+      } else {
+        setQrResult({ success: false, message: data.error || 'Check-in failed' });
+      }
+    } catch {
+      setQrResult({ success: false, message: 'Network error. Please try again.' });
+    } finally {
+      setQrSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (attendee: Attendee) => {
     if (attendee.checkOutTime) {
       return <Badge variant="default" className="bg-green-600" data-testid="attendance-status">Attended</Badge>;
@@ -217,7 +249,10 @@ export default function EventAttendance() {
                 </div>
               </CardDescription>
             </div>
-            <Button onClick={() => setShowQRScanner(!showQRScanner)}>
+            <Button
+              data-testid="qr-checkin-btn"
+              onClick={() => { setShowQRScanner(!showQRScanner); setQrResult(null); }}
+            >
               <QrCode className="mr-2 h-4 w-4" />
               {showQRScanner ? 'Close Scanner' : 'QR Code Check-in'}
             </Button>
@@ -267,17 +302,44 @@ export default function EventAttendance() {
         </CardContent>
       </Card>
 
-      {/* QR Scanner Placeholder */}
+      {/* US-NEW-006: QR Scanner Panel */}
       {showQRScanner && (
-        <Card className="mb-6 bg-slate-50">
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <QrCode className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">QR Code Scanner would appear here</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Attendees can scan their registration QR code for quick check-in
-              </p>
-            </div>
+        <Card className="mb-6" data-testid="qr-scanner-panel">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <QrCode className="h-5 w-5" />
+              QR Code Check-in
+            </CardTitle>
+            <CardDescription>
+              Enter the attendee's User ID or scan their QR code token to check them in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleQrCheckin} className="space-y-3">
+              <input
+                data-testid="qr-manual-input"
+                type="text"
+                placeholder="Attendee User ID or QR token"
+                value={qrManualInput}
+                onChange={e => setQrManualInput(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+              <Button
+                type="submit"
+                disabled={qrSubmitting || !qrManualInput.trim()}
+                data-testid="qr-submit-btn"
+              >
+                {qrSubmitting ? 'Checking in…' : 'Check In'}
+              </Button>
+            </form>
+            {qrResult && (
+              <div
+                data-testid="qr-checkin-result"
+                className={`mt-3 rounded-lg px-4 py-2 text-sm font-medium ${qrResult.success ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+              >
+                {qrResult.message}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
