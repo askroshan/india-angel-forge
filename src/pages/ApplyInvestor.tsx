@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 import { InvestorApplicationForm } from "@/components/forms/InvestorApplicationForm";
 import { OnboardingBanner } from "@/components/investor/OnboardingBanner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,17 @@ const ApplyInvestor = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Apply as an Investor — Join the Angel Network"
+        description="Apply to join India Angel Forum as an accredited angel investor. Get access to curated deal flow, monthly forums, SPV co-investment, and a network of 400+ angels backing India's top startups."
+        canonical="/apply/investor"
+        keywords="join angel network India, accredited investor application, angel investor registration India, IAF investor application"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "For Investors", url: "/investors"},
+          {name: "Apply as Investor", url: "/apply/investor"}
+        ]}
+      />
       <Navigation />
 
       <section className="py-16">

@@ -1,0 +1,49 @@
+{
+  "name": "India Angel Forum",
+  "short_name": "IAF",
+  "description": "India's largest angel investing network — connecting 400+ accredited investors with exceptional early-stage startups.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a3a5c",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-IN",
+  "categories": ["finance", "business"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Apply as Investor",
+      "short_name": "Invest",
+      "description": "Apply to join India Angel Forum as an accredited investor",
+      "url": "/apply/investor",
+      "icons": [{"src": "/favicon.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Apply for Funding",
+      "short_name": "Fundraise",
+      "description": "Apply to present your startup at India Angel Forum",
+      "url": "/apply/founder",
+      "icons": [{"src": "/favicon.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Upcoming Events",
+      "short_name": "Events",
+      "description": "Browse upcoming angel forum events",
+      "url": "/events",
+      "icons": [{"src": "/favicon.png", "sizes": "96x96"}]
+    }
+  ]
+}

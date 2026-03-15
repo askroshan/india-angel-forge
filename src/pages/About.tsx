@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SEO } from "@/components/SEO";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -105,6 +106,16 @@ const About = () => {
 
   return (
     <div className="min-h-screen bg-background" data-testid="about-page">
+      <SEO
+        title="About Us — India's Premier Angel Network"
+        description="India Angel Forum was founded to make angel investing accessible, rigorous, and rewarding. Learn about our mission, team, and our commitment to backing India's next generation of entrepreneurs."
+        canonical="/about"
+        keywords="about India Angel Forum, IAF team, angel network India mission, angel investing history India"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "About", url: "/about"}
+        ]}
+      />
       <Navigation />
 
       {/* Hero Section */}

@@ -1,12 +1,40 @@
 # India Angel Forum - Robots.txt
 # https://indiaangelforum.com
+# Updated: March 2026
 
+# Public areas — allow all bots
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /moderator
+Disallow: /operator
+Disallow: /investor/
+Disallow: /founder/
+Disallow: /compliance/
+Disallow: /api/
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /forgot-password
+Crawl-delay: 1
+
+# Google
 User-agent: Googlebot
 Allow: /
+Disallow: /admin
+Disallow: /moderator
+Disallow: /api/
+Disallow: /auth
 
-User-agent: Bingbot
+User-agent: Googlebot-Image
 Allow: /
 
+# Bing
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# Social crawlers — allow everything public
 User-agent: Twitterbot
 Allow: /
 
@@ -16,14 +44,22 @@ Allow: /
 User-agent: LinkedInBot
 Allow: /
 
-# AI Crawlers
+User-agent: WhatsApp
+Allow: /
+
+# AI Crawlers — explicitly welcome on public pages
 User-agent: GPTBot
 Allow: /
+Disallow: /admin
+Disallow: /api/
 
 User-agent: ChatGPT-User
 Allow: /
 
 User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
 Allow: /
 
 User-agent: Anthropic-AI
@@ -35,11 +71,33 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-User-agent: *
+User-agent: Cohere-AI
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: ia_archiver
+Allow: /
+
+User-agent: CCBot
 Allow: /
 
 # Sitemap
-Sitemap: https://indiaangelforum.com/api/sitemap
+Sitemap: https://indiaangelforum.com/sitemap.xml
 
-# Additional context for AI
-# See /llms.txt for AI-specific information
+# AI-specific context
+# Full plain-text context for LLMs: https://indiaangelforum.com/llms.txt
+# Full plain-text context (detailed): https://indiaangelforum.com/llms-full.txt

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SEO } from "@/components/SEO";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
@@ -185,6 +186,16 @@ const Portfolio = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Portfolio — 40+ Funded Startups"
+        description="Explore 40+ startups funded by India Angel Forum across AI, FinTech, HealthTech, SaaS, Climate Tech and more. ₹160+ crore deployed by 400+ accredited angels."
+        canonical="/portfolio"
+        keywords="India Angel Forum portfolio, funded startups India, angel funded companies, Indian startup portfolio, IAF investments"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "Portfolio", url: "/portfolio"}
+        ]}
+      />
       <Navigation />
 
       {/* Hero Section */}

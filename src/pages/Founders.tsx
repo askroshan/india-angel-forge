@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 import { 
   FileText, 
   UserCheck, 
@@ -95,6 +96,22 @@ const Founders = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Apply for Startup Funding — For Founders"
+        description="Apply for free to present your startup to 400+ accredited angel investors at India Angel Forum. Only top 1% selected. Raise ₹1–5 crore. Forum showcase fee of ₹50,000 applies only upon selection."
+        canonical="/founders"
+        keywords="startup funding India, apply for angel funding, angel investor pitch India, startup pitch India, seed funding India, early stage funding, IAF founders"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "For Founders", url: "/founders"}
+        ]}
+        faq={[
+          {question: "How do I apply for funding from India Angel Forum?", answer: "Apply for free at indiaangelforum.com/apply/founder. The process takes about 15 minutes. Our team reviews applications using ACA best practices. Only the top 1% of applications are selected."},
+          {question: "What does it cost to pitch at India Angel Forum?", answer: "The application is completely free. A forum showcase fee of ₹50,000 applies only if your startup is selected for presentation — not at the application stage."},
+          {question: "How much funding can a startup raise at India Angel Forum?", answer: "Selected startups typically raise ₹1–5 crore per angel round from IAF members through SPV co-investment structures."},
+          {question: "How long does the India Angel Forum fundraising process take?", answer: "Typically 6–10 weeks from application to close: Week 1-2 screening, Week 3-4 due diligence, Week 5-6 forum presentation, Week 7-10 term sheet and close."}
+        ]}
+      />
       <Navigation />
 
       {/* Hero Section */}
