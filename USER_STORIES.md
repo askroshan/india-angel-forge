@@ -995,8 +995,8 @@
   - AND I receive confirmation email
   - AND I can track application status
 
-  **Implementation Status:** ✅ Complete  
-  **Test Coverage:** 12 test cases  
+  **Implementation Status:** ✅ Complete (BUG-FOUNDER-001 fixed 2026-03-15: endpoint corrected to `/api/founders/applications`, field mapping fixed, data-testid added)  
+  **Test Coverage:** 17 E2E test cases (`e2e/founder-bugs.spec.ts`)  
   **Database Tables:** `founder_applications`, `companies`
 
   ---
@@ -1722,7 +1722,7 @@
   - ✅ US-INVESTOR-005: Track Deal Pipeline (10/10 tests - 100%)
   - ✅ US-INVESTOR-006: View Deal Documents (2/2 tests - 100%)
   - ✅ US-INVESTOR-007: Submit Investment Commitment (7/7 tests - 100%)
-  - ✅ US-FOUNDER-001: Submit Founder Application (17/17 tests - 100%)
+  - ✅ US-FOUNDER-001: Submit Founder Application (17/17 tests - 100%) [BUG-FOUNDER-001 fixed]
   - ✅ US-FOUNDER-002: Track Application Status (8/8 tests - 100%)
 
   ### Phase 3: SPV & Portfolio (3 weeks) ✅ COMPLETE
@@ -1793,9 +1793,18 @@
   - ✅ US-OA-004: Deal Sourcing / Network Referrals — Operators can submit startup referrals from their network. New Prisma model `DealReferral`. Page at `/operator/deal-sourcing`. Admin can review/approve/reject via `PATCH /api/admin/deal-referrals/:id`.
   - ✅ US-OA-005: Operator Performance Overview — Operators see engagement metrics (total referrals, accepted referrals, events attended, engagement score) at `/operator/performance`. Backed by `GET /api/operator/performance-summary`.
 
+  ### Phase 9: Founder Role Bugs (2026-03-13-FounderBugs) ✅ COMPLETE
+
+  #### Bug Fixes
+  - ✅ BUG-FOUNDER-001 (CRITICAL): Founder application form submits to wrong endpoint — `FounderApplicationForm.tsx` `onSubmit()` called `/api/applications/founder` (route does not exist → 404 silently) and sent snake_case field names incompatible with the server. Fixed: updated to call `/api/founders/applications` with correct camelCase field mapping (`company_name` → `companyName`, `founder_name` → `fullName`, `founder_email` → `email`, `industry_sector` → `industry`, `stage` → `fundingStage`, `amount_raising` → `fundingRequired`, etc.). Also added `data-testid` attributes (`field-company-name`, `field-founder-name`, `field-founder-email`, `field-founder-phone`, `field-amount-raising`, `btn-submit-founder-application`, `input-*`) for full E2E traceability.
+  - ✅ BUG-FOUNDER-002 (HIGH): Events page "My Registrations" blank for Founder — same root cause as BUG-OA-001. `GET /api/events/my-registrations` only queried `event_registrations` table; Founder's RSVPs were in `event_attendance` (RSVP flow). Fix already applied in Phase 8 (BUG-OA-001 fix). Confirmed: 1 attendance record returned for `founder@startup.test`, `_source: 'attendance'`. API, UI, and E2E tests all green.
+  - ✅ BUG-FOUNDER-003 (HIGH): Persona Identity Verification redirects to wrong port — same root cause as BUG-OA-002. `APP_BASE_URL` defaulted to `http://localhost:3002` (Docker port). Fix already applied in Phase 8 (BUG-OA-002 fix). Confirmed: `POST /api/verification/start` returns `inquiryUrl` containing `localhost:8082`, not `3002`.
+
+  #### Founder User Stories (Re-verified)
+  - ✅ US-FOUNDER-001: Submit Founder Application — complete end-to-end flow verified: form submits to `/api/founders/applications`, DB record persists with `SUBMITTED` status, admin can view and update via `/api/admin/applications/founders`. **17 new E2E tests in `e2e/founder-bugs.spec.ts`** covering API CRUD, UI form submission, persisted DB records, authorization (403/401), and admin review flow.
 
 
-  ## Success Metrics
+
 
   ### User Engagement
   - **Target:** 80% of approved investors complete KYC within 7 days

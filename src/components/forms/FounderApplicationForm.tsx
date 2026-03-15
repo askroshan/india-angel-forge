@@ -67,38 +67,46 @@ export function FounderApplicationForm() {
   const onSubmit = async (values: FounderApplicationFormValues) => {
     setIsSubmitting(true);
     try {
+      // BUG-FOUNDER-001 FIX: Map form snake_case fields to the server's camelCase contract,
+      // and call the correct endpoint /api/founders/applications (not /api/applications/founder).
+      const companyDescription = [
+        values.business_model,
+        values.problem_statement ? `Problem: ${values.problem_statement}` : '',
+        values.solution_description ? `Solution: ${values.solution_description}` : '',
+        values.target_market ? `Target Market: ${values.target_market}` : '',
+        values.unique_value_proposition ? `UVP: ${values.unique_value_proposition}` : '',
+      ].filter(Boolean).join('\n\n');
+
       const submissionData = {
-        company_name: values.company_name,
-        company_website: values.company_website || null,
-        industry_sector: values.industry_sector,
-        stage: values.stage,
-        founder_name: values.founder_name,
-        founder_email: values.founder_email,
-        founder_phone: values.founder_phone,
+        // Required fields — mapped to server camelCase contract
+        fullName: values.founder_name,
+        email: values.founder_email,
+        phone: values.founder_phone,
+        companyName: values.company_name,
+        industry: values.industry_sector,
+        fundingStage: values.stage,
+        fundingRequired: values.amount_raising,
+        companyDescription,
+        // Rich metadata fields (stored in Prisma metadata JSON column via ...rest)
+        productUrl: values.company_website || null,
+        pitchDeckUrl: values.pitch_deck_url || null,
+        traction: values.current_revenue || null,
+        teamBio: values.co_founders || null,
         founder_linkedin: values.founder_linkedin || null,
-        co_founders: values.co_founders || null,
         founding_date: values.founding_date || null,
         team_size: values.team_size ? Number(values.team_size) : null,
         location: values.location,
-        business_model: values.business_model,
-        problem_statement: values.problem_statement,
-        solution_description: values.solution_description,
-        target_market: values.target_market,
-        unique_value_proposition: values.unique_value_proposition,
-        current_revenue: values.current_revenue || null,
         monthly_burn_rate: values.monthly_burn_rate || null,
         customers_count: values.customers_count || null,
         previous_funding: values.previous_funding || null,
-        amount_raising: values.amount_raising,
-        use_of_funds: values.use_of_funds,
-        pitch_deck_url: values.pitch_deck_url || null,
+        use_of_funds: values.use_of_funds || null,
         video_pitch_url: values.video_pitch_url || null,
         referral_source: values.referral_source || null,
       };
 
-      // Submit via API for server-side validation and rate limiting
+      // BUG-FOUNDER-001 FIX: Use /api/founders/applications (correct endpoint)
       const { data, error } = await apiClient.post<{ error?: string; details?: string[] }>(
-        '/api/applications/founder',
+        '/api/founders/applications',
         submissionData
       );
 
@@ -152,10 +160,10 @@ export function FounderApplicationForm() {
               control={form.control}
               name="company_name"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-testid="field-company-name">
                   <FormLabel>Company Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="TechCorp Pvt Ltd" {...field} />
+                    <Input placeholder="TechCorp Pvt Ltd" data-testid="input-company-name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -253,10 +261,10 @@ export function FounderApplicationForm() {
               control={form.control}
               name="founder_name"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-testid="field-founder-name">
                   <FormLabel>Your Full Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Rajesh Kumar" {...field} />
+                    <Input placeholder="Rajesh Kumar" data-testid="input-founder-name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -267,10 +275,10 @@ export function FounderApplicationForm() {
               control={form.control}
               name="founder_email"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-testid="field-founder-email">
                   <FormLabel>Email Address *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="rajesh@company.com" {...field} />
+                    <Input type="email" placeholder="rajesh@company.com" data-testid="input-founder-email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -281,10 +289,10 @@ export function FounderApplicationForm() {
               control={form.control}
               name="founder_phone"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-testid="field-founder-phone">
                   <FormLabel>Phone Number *</FormLabel>
                   <FormControl>
-                    <Input placeholder="+91 98765 43210" {...field} />
+                    <Input placeholder="+91 98765 43210" data-testid="input-founder-phone" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -542,10 +550,10 @@ export function FounderApplicationForm() {
               control={form.control}
               name="amount_raising"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-testid="field-amount-raising">
                   <FormLabel>Amount Raising *</FormLabel>
                   <FormControl>
-                    <Input placeholder="₹2-3 Cr" {...field} />
+                    <Input placeholder="₹2-3 Cr" data-testid="input-amount-raising" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -635,6 +643,7 @@ export function FounderApplicationForm() {
           className="w-full" 
           variant="accent"
           disabled={isSubmitting}
+          data-testid="btn-submit-founder-application"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isSubmitting ? "Submitting..." : "Submit Application"}
