@@ -1,10 +1,22 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 import { FounderApplicationForm } from "@/components/forms/FounderApplicationForm";
 
 const ApplyFounder = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Apply for Funding — Founder Application"
+        description="Apply to present your startup to 400+ accredited angels at India Angel Forum. Free application. ₹50,000 showcase fee only upon selection. Top 1% of applicants get funded."
+        canonical="/apply/founder"
+        keywords="apply startup funding India, founder application angel network, pitch to angel investors India, startup funding application"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "For Founders", url: "/founders"},
+          {name: "Apply for Funding", url: "/apply/founder"}
+        ]}
+      />
       <Navigation />
 
       <section className="py-16">

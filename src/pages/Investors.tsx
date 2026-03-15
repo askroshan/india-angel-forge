@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
@@ -174,20 +174,21 @@ const Investors = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>For Investors - India Angel Forum</title>
-        <meta
-          name="description"
-          content="Join India's largest angel network. Access curated deal flow, expert diligence, and SPV infrastructure. Membership plans starting at ₹36,000/year."
-        />
-        <link rel="canonical" href="https://indiaangelforum.com/investors" />
-        <meta property="og:title" content="For Investors - India Angel Forum" />
-        <meta
-          property="og:description"
-          content="Join 400+ angels and family offices backing the next generation of Indian unicorns. Curated deal flow, collaborative diligence, and transparent economics."
-        />
-        <meta property="og:url" content="https://indiaangelforum.com/investors" />
-      </Helmet>
+      <SEO
+        title="For Investors — Join India's Largest Angel Network"
+        description="Join 400+ accredited angels co-investing in India's top startups. Curated deal flow, SPV infrastructure, collaborative due diligence. Membership from ₹36,000/year."
+        canonical="/investors"
+        keywords="angel investor India, join angel network India, accredited investor India, SPV investment India, curated deal flow India, membership angel network"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "For Investors", url: "/investors"}
+        ]}
+        faq={[
+          {question: "Who can join India Angel Forum as an investor?", answer: "India Angel Forum is open to SEBI-compliant accredited investors. Eligible individuals include HNIs (High Net Worth Individuals), family offices, angels with prior investing experience, and operators with domain expertise."},
+          {question: "What is the minimum investment amount at India Angel Forum?", answer: "Investment ticket sizes vary by deal and SPV structure, typically ranging from ₹5 lakh to ₹25 lakh per deal. You can participate in multiple deals across sectors through co-investment SPVs."},
+          {question: "What membership plans does India Angel Forum offer for investors?", answer: "Three plans: Standard at ₹60,000/year, Operator Angel at ₹36,000/year (40% discount for active operators), and Family Office at ₹2,50,000/year with up to 3 seats and a dedicated relationship manager."}
+        ]}
+      />
 
       <Navigation />
 

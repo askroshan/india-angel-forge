@@ -54,6 +54,7 @@ import {
   ArrowRight,
   XCircle,
 } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 // ==================== TYPES ====================
 
@@ -420,6 +421,16 @@ const Membership = () => {
 
   return (
     <div className="min-h-screen bg-background" data-testid="membership-page">
+      <SEO
+        title="Membership Plans — Join India's Largest Angel Network"
+        description="Choose your India Angel Forum membership: Standard (₹60,000/yr), Operator Angel (₹36,000/yr), or Family Office (₹2,50,000/yr). Get access to curated deal flow, monthly forums, and SPV co-investment."
+        canonical="/membership"
+        keywords="angel network membership India, angel investor subscription, IAF membership plans, angel investing fee India"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "Membership", url: "/membership"}
+        ]}
+      />
       <Navigation />
 
       <main className="container mx-auto px-4 py-24">

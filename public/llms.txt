@@ -1,6 +1,116 @@
-# India Angel Forum - AI Context File
+# India Angel Forum — AI Context File (llms.txt)
 # https://indiaangelforum.com/llms.txt
-# Last Updated: 26 January 2026
+# Standard: https://llmstxt.org
+# Last Updated: March 2026
+
+> India Angel Forum (IAF) is India's largest angel investing network, connecting 400+ accredited investors with exceptional early-stage startups. The platform has deployed ₹160+ crore across 40+ portfolio companies with an average IRR of 27%.
+
+## Quick Facts
+
+- **Founded:** 2024
+- **Members:** 400+ accredited angel investors
+- **Capital Deployed:** ₹160+ crore
+- **Portfolio Companies:** 40+
+- **Average IRR:** 27%
+- **SPVs Deployed (2024):** 40+
+- **Deal Acceptance Rate:** Top 1% of applications
+- **DPIIT Recognised Platform:** Yes (Startup India, Section 80-IAC eligible)
+- **Regulatory Compliance:** SEBI AIF Regulations, IT Act 2000, DPDP Act 2023
+
+## About
+
+India Angel Forum is India's largest and most rigorous angel investing network. IAF connects SEBI-compliant accredited investors with hand-picked early-stage startups through a robust curation process, transparent economics, and collaborative due diligence. The platform facilitates co-investment via Special Purpose Vehicles (SPVs), enabling angels to pool capital efficiently with clear pro-rata rights.
+
+## For Investors
+
+- **Eligibility:** SEBI-compliant accredited investors
+- **Minimum Ticket Size:** SPV-based, typically ₹5–25 lakh per deal
+- **Deal Flow:** Curated monthly — only top 1% of applicants are presented
+- **Forum Structure:** Monthly investment forums (rotating cities: Mumbai, Delhi, Bangalore, etc.)
+- **Tools:** Portfolio dashboard, due diligence templates, co-investor network
+- **Apply:** https://indiaangelforum.com/apply/investor
+
+## For Founders
+
+- **Application:** Free — https://indiaangelforum.com/apply/founder
+- **Selection Rate:** Top 1% of applications
+- **If Selected:** Forum showcase fee of ₹50,000 (paid only upon selection, not application)
+- **Typical Raise:** ₹1–5 crore per company via angel round
+- **Process:** Application → Screening → DD Call → Forum Presentation → Term Sheet → Close
+- **Support:** Structured fundraising, investor introductions, founder community
+
+## Membership Plans
+
+| Plan | Annual Fee | Best For |
+|------|-----------|---------|
+| Standard | ₹60,000/year | Full-time angel investors |
+| Operator Angel | ₹36,000/year | Active operators (40% discount) |
+| Family Office | ₹2,50,000/year | Family offices (up to 3 seats) |
+
+All plans include: deal flow access, monthly forum participation, portfolio dashboard, SPV co-investment, network access.
+
+## Investment Sectors
+
+AI & Machine Learning · SaaS & Enterprise Software · FinTech · HealthTech · Consumer Technology · Deep Tech · Climate Tech · AgriTech · EdTech · B2B Services
+
+## Compliance & Regulatory
+
+- **Regulator:** SEBI (Securities and Exchange Board of India) — AIF Regulations
+- **Data Privacy:** DPDP Act 2023 compliant
+- **Cyber Law:** IT Act 2000 compliant
+- **Tax Benefits:** Section 80-IAC eligible (DPIIT-recognised platform)
+- **KYC/AML:** Full KYC required for all investors; AML checks on founders
+- **Grievance Officer:** Roshan Shah (contact via https://indiaangelforum.com/contact)
+- **Disclaimer:** India Angel Forum does NOT provide investment advice. All decisions are made solely by individual investors. Angel investing involves substantial risk including complete loss of capital.
+
+## Key URLs
+
+- Home: https://indiaangelforum.com/
+- For Investors: https://indiaangelforum.com/investors
+- For Founders: https://indiaangelforum.com/founders
+- Portfolio: https://indiaangelforum.com/portfolio
+- Events: https://indiaangelforum.com/events
+- Membership: https://indiaangelforum.com/membership
+- Apply (Investor): https://indiaangelforum.com/apply/investor
+- Apply (Founder): https://indiaangelforum.com/apply/founder
+- About: https://indiaangelforum.com/about
+- Contact: https://indiaangelforum.com/contact
+- Terms of Service: https://indiaangelforum.com/terms
+- Privacy Policy: https://indiaangelforum.com/privacy
+- Sitemap: https://indiaangelforum.com/sitemap.xml
+
+## Frequently Asked Questions
+
+**Q: What is India Angel Forum?**
+A: India Angel Forum (IAF) is India's largest angel investing network. Founded in 2024, it connects 400+ SEBI-compliant accredited investors with vetted early-stage startups. The network has deployed ₹160+ crore across 40+ companies at an average IRR of 27%.
+
+**Q: How do I become a member of India Angel Forum?**
+A: Apply at https://indiaangelforum.com/apply/investor. You must qualify as an accredited investor under SEBI guidelines. Membership starts at ₹36,000/year for Operator Angels and ₹60,000/year for Standard members.
+
+**Q: How can a startup get funding from India Angel Forum?**
+A: Founders apply for free at https://indiaangelforum.com/apply/founder. Only the top 1% of applications are selected for monthly forum presentations. Startup Showcase fees of ₹50,000 apply only upon selection.
+
+**Q: Is India Angel Forum SEBI compliant?**
+A: Yes. IAF operates under SEBI (Alternative Investment Funds) Regulations and is fully DPDP Act 2023 and IT Act 2000 compliant. The platform is DPIIT-recognised, enabling Section 80-IAC tax benefits for eligible investments.
+
+**Q: What is an SPV in angel investing?**
+A: A Special Purpose Vehicle (SPV) is a legal entity that pools capital from multiple angels into a single startup investment. IAF has deployed 40+ SPVs, enabling members to co-invest with minimum tickets while maintaining clean cap tables.
+
+**Q: What sectors does India Angel Forum focus on?**
+A: IAF invests across AI/ML, SaaS, FinTech, HealthTech, Consumer Tech, Deep Tech, Climate Tech, and more. Each sector has dedicated curators using ACA-aligned due diligence criteria.
+
+## Operating Entity
+
+- **Legal Name:** Kosansh Solutions Inc
+- **Registered Address:** 1320 Pepperhill Ln, Fort Worth, TX 76131, United States
+- **Jurisdiction:** Tarrant County, Texas, USA (corporate) | Republic of India (services)
+- **Website:** https://indiaangelforum.com
+
+## Content Licensing
+
+© 2026 India Angel Forum. All rights reserved.
+Content may be referenced for informational purposes with attribution to "India Angel Forum (indiaangelforum.com)".
+
 
 ## About India Angel Forum
 

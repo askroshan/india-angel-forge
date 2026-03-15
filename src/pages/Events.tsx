@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,6 +51,20 @@ export default function Events() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Investment Events & Angel Forums"
+        description="Browse upcoming India Angel Forum monthly investment forums and sector summits in Mumbai, Delhi, Bangalore and more. Meet 400+ angels, hear curated pitches, co-invest in top startups."
+        canonical="/events"
+        keywords="angel forum events India, startup pitch events India, investment forums Mumbai Delhi Bangalore, IAF events, angel investor meetup India"
+        breadcrumbs={[
+          {name: "Home", url: "/"},
+          {name: "Events", url: "/events"}
+        ]}
+        faq={[
+          {question: "What happens at an India Angel Forum monthly event?", answer: "Each monthly forum features 3–5 curated startup pitches, networking with 400+ accredited angels, due diligence discussions, and SPV co-investment opportunities. Events rotate across Mumbai, Delhi, Bangalore, and other major cities."},
+          {question: "Where are India Angel Forum events held?", answer: "IAF events are held across major Indian cities including Mumbai, Delhi, Bangalore, Chennai, Hyderabad, Pune, and Kolkata. Some events are also available online."}
+        ]}
+      />
       <Navigation />
 
       {/* Hero Section */}

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
@@ -100,6 +101,21 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="India's Largest Angel Investing Network"
+        description="India Angel Forum connects 400+ accredited angels with exceptional early-stage startups. ₹160+ crore deployed, 40+ portfolio companies, 27% average IRR. Join India's most rigorous angel network."
+        canonical="/"
+        keywords="angel investing India, angel network India, startup funding India, accredited investor network, DPIIT recognised platform, early stage investment, SPV co-investment"
+        breadcrumbs={[{name: "Home", url: "/"}]}
+        faq={[
+          {question: "What is India Angel Forum?", answer: "India Angel Forum (IAF) is India's largest angel investing network, founded in 2024. It connects 400+ SEBI-compliant accredited investors with exceptional early-stage startups. The network has deployed ₹160+ crore across 40+ portfolio companies with an average IRR of 27%."},
+          {question: "How do I join India Angel Forum as an investor?", answer: "Apply at indiaangelforum.com/apply/investor. You must qualify as a SEBI-compliant accredited investor. Membership starts at ₹36,000/year (Operator Angel) or ₹60,000/year (Standard). After review, you gain access to curated deals, monthly forums, and SPV co-investments."},
+          {question: "How can a startup get funding from India Angel Forum?", answer: "Founders apply for free at indiaangelforum.com/apply/founder. Only the top 1% are selected. A ₹50,000 showcase fee applies only upon selection. Selected startups typically raise ₹1–5 crore per angel round."},
+          {question: "Is India Angel Forum SEBI compliant?", answer: "Yes. IAF operates under SEBI Alternative Investment Funds Regulations and is DPIIT-recognised, enabling Section 80-IAC tax benefits. The platform is also DPDP Act 2023 and IT Act 2000 compliant."},
+          {question: "What sectors does India Angel Forum invest in?", answer: "IAF invests across AI/ML, SaaS, FinTech, HealthTech, Consumer Tech, Deep Tech, and Climate Tech, with sector-specific diligence criteria."},
+          {question: "What are the membership fees for India Angel Forum?", answer: "Standard: ₹60,000/year | Operator Angel: ₹36,000/year (40% discount for active operators) | Family Office: ₹2,50,000/year with up to 3 seats and a dedicated relationship manager."},
+        ]}
+      />
       <Navigation />
 
       {/* Hero Section */}
@@ -372,9 +388,57 @@ const Index = () => {
         </div>
       </section>
 
+      {/* FAQ Section — AEO/AIO: answers common AI search queries */}
+      <section className="py-16 bg-white" aria-labelledby="faq-heading">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 id="faq-heading" className="text-2xl font-bold text-center mb-8">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
+              {[
+                {
+                  q: "What is India Angel Forum?",
+                  a: "India Angel Forum (IAF) is India's largest angel investing network, founded in 2024. It connects 400+ SEBI-compliant accredited investors with exceptional early-stage startups. The network has deployed ₹160+ crore across 40+ portfolio companies with an average IRR of 27%."
+                },
+                {
+                  q: "How do I join India Angel Forum as an investor?",
+                  a: "Apply at indiaangelforum.com/apply/investor. You must qualify as a SEBI-compliant accredited investor. Membership starts at ₹36,000/year (Operator Angel) or ₹60,000/year (Standard). After review, you gain access to curated deals, monthly forums, and SPV co-investments."
+                },
+                {
+                  q: "How can a startup get funding from India Angel Forum?",
+                  a: "Founders apply for free at indiaangelforum.com/apply/founder. Only the top 1% are selected. A ₹50,000 showcase fee applies only upon selection — not at application. Selected startups typically raise ₹1–5 crore per angel round."
+                },
+                {
+                  q: "Is India Angel Forum SEBI compliant?",
+                  a: "Yes. IAF operates under SEBI (Alternative Investment Funds) Regulations and is DPIIT-recognised, enabling Section 80-IAC tax benefits. The platform is also DPDP Act 2023 and IT Act 2000 compliant."
+                },
+                {
+                  q: "What sectors does India Angel Forum invest in?",
+                  a: "IAF invests across AI/ML, SaaS, FinTech, HealthTech, Consumer Tech, Deep Tech, and Climate Tech, with sector-specific diligence criteria aligned with ACA best practices."
+                },
+                {
+                  q: "What are the membership fees for India Angel Forum?",
+                  a: "Standard: ₹60,000/year | Operator Angel: ₹36,000/year (40% off for active operators) | Family Office: ₹2,50,000/year (up to 3 seats + dedicated RM)."
+                },
+              ].map(({ q, a }) => (
+                <details key={q} className="border border-border rounded-lg px-5 py-4 group">
+                  <summary className="font-semibold cursor-pointer text-foreground list-none flex justify-between items-center">
+                    {q}
+                    <span className="ml-2 shrink-0 text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+                  </summary>
+                  <p className="mt-3 text-muted-foreground leading-relaxed">{a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
 };
 
 export default Index;
+
